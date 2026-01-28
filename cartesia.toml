@@ -1,0 +1,7 @@
+[template]
+name = "tara-daytona"
+type = "voice-agent"
+version = "1.0.0"
+
+[build]
+entrypoint = "main:app"
