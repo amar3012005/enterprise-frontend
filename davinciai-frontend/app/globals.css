@@ -1,0 +1,122 @@
+/* ============= CUSTOM FONTS ============= */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============= BASE STYLES ============= */
+@layer base {
+  body {
+    background-color: #000a1a;
+    color: #f3f4f6;
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* ============= GLASSMORPHISM & PREMIUM UI ============= */
+@layer components {
+  .glass-card {
+    background: rgba(17, 24, 39, 0.6);
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glass-card:hover {
+    border-color: rgba(0, 102, 255, 0.4);
+    box-shadow: 0 12px 48px 0 rgba(0, 102, 255, 0.2);
+  }
+
+  .glass-input {
+    background: rgba(17, 24, 39, 0.4);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    transition: all 0.2s;
+  }
+
+  .glass-input:focus {
+    border-color: rgba(0, 102, 255, 0.5);
+    background: rgba(17, 24, 39, 0.6);
+    box-shadow: 0 0 0 4px rgba(0, 102, 255, 0.1);
+  }
+
+  /* Manual implementation instead of @apply to avoid Tailwind 4 build errors */
+  .text-gradient {
+    background: linear-gradient(to right, #66a7ff, #00d9ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .btn-primary {
+    background-color: #0066ff;
+    color: white;
+    font-weight: 500;
+    transition: all 0.2s;
+    box-shadow: 0 0 20px rgba(0, 102, 255, 0.3);
+  }
+
+  .btn-primary:hover {
+    background-color: #0052cc;
+    box-shadow: 0 0 30px rgba(0, 102, 255, 0.5);
+  }
+
+  .btn-primary:active {
+    transform: scale(0.95);
+  }
+}
+
+/* ============= BACKGROUND EFFECTS ============= */
+.mesh-bg {
+  background-image:
+    radial-gradient(at 40% 20%, rgba(0, 102, 255, 0.2) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, rgba(0, 217, 255, 0.15) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, rgba(0, 102, 255, 0.15) 0px, transparent 50%);
+  background-color: #000a1a;
+  background-attachment: fixed;
+}
+
+/* Custom Orb Animation */
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+
+  33% {
+    transform: translate(10px, -20px);
+  }
+
+  66% {
+    transform: translate(-10px, 10px);
+  }
+}
+
+.orb-float {
+  animation: float 12s ease-in-out infinite;
+}
+
+/* Shimmer Loading */
+.loading-shimmer {
+  background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.05) 50%,
+      transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer-anim 2s infinite linear;
+}
+
+@keyframes shimmer-anim {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
+}

@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 class RAGClient:
     """
-    Async client for the Daytona RAG Service.
+    Async client for the DaVinci AI RAG Service.
     Handles context retrieval without generation.
     """
     def __init__(self, base_url: str = RAG_SERVICE_URL):

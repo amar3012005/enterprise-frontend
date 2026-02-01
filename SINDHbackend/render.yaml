@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: sindh-backend
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        fromDatabase:
+          name: sindh-mongodb
+          property: connectionString

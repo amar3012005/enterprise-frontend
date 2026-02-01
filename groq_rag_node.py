@@ -15,8 +15,8 @@ from rag_client import RAGClient
 
 class GroqRAGNode(ReasoningNode):
     """
-    ReasoningNode that uses RAG-Daytona pipeline for context and Groq for generation.
-    Replaces Gemini-based ChatNode.
+    ReasoningNode that uses RAG pipeline for context and Groq for generation.
+    Optimized for DaVinci AI's Tara conversational agent.
     """
     def __init__(
         self,
@@ -84,7 +84,7 @@ class GroqRAGNode(ReasoningNode):
             context_block += f"### TEAM KNOWLEDGE (Hive Mind):\n{hive_mind_context}\n\n"
 
         if relevant_docs:
-            context_block += "### DAYTONA DOCUMENTATION:\n"
+            context_block += "### RELEVANT KNOWLEDGE:\n"
             for doc in relevant_docs:
                  clean_text = doc.get('text', '').replace('\n', ' ').strip()
                  context_block += f"- {clean_text[:500]}...\n"
