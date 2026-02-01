@@ -1,6 +1,6 @@
 "use client";
 
-import { Settings, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 
 interface DashboardHeaderProps {
     tenantName: string;
@@ -9,83 +9,29 @@ interface DashboardHeaderProps {
 
 export default function DashboardHeader({ tenantName, onLogout }: DashboardHeaderProps) {
     return (
-        <header style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '32px'
-        }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{
-                    width: '40px',
-                    height: '40px',
-                    backgroundColor: '#000',
-                    borderRadius: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#fff',
-                    fontWeight: 'bold',
-                    fontSize: '20px'
-                }}>Q</div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                    <NavButton label="Rent" active />
-                    <NavButton label="Buy" />
-                    <NavButton label="Sell" />
+        <header className="flex justify-between items-center mb-8">
+            <div className="flex items-center gap-4">
+                {/* Logo */}
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-orange-500 rounded-xl flex items-center justify-center">
+                    <span className="text-white font-bold text-xl">D</span>
+                </div>
+                {/* Tenant Name */}
+                <div>
+                    <h2 className="text-white font-semibold text-lg font-display">{tenantName}</h2>
+                    <p className="text-neutral-500 text-xs">Voice Agent Platform</p>
                 </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{
-                    backgroundColor: '#fff',
-                    padding: '8px 16px',
-                    borderRadius: '20px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '13px',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                }}>
-                    <div style={{ width: '16px', height: '16px', backgroundColor: '#000', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ width: '6px', height: '6px', border: '1px solid #fff', borderRadius: '50%' }} />
-                    </div>
-                    Your Location: Los Angeles
-                </div>
+            <div className="flex items-center gap-4">
+                {/* Logout Button */}
                 <button
                     onClick={onLogout}
-                    style={{
-                        width: '40px',
-                        height: '40px',
-                        backgroundColor: '#fff',
-                        borderRadius: '50%',
-                        border: 'none',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                        cursor: 'pointer'
-                    }}
+                    className="px-4 py-2 rounded-lg bg-[#1a1a1a] hover:bg-[#222222] border border-[#262626] text-sm text-neutral-400 hover:text-white transition-colors flex items-center gap-2"
                 >
-                    <LogOut size={18} />
+                    <LogOut size={16} />
+                    Log Out
                 </button>
             </div>
         </header>
-    );
-}
-
-function NavButton({ label, active = false }: { label: string, active?: boolean }) {
-    return (
-        <button style={{
-            backgroundColor: active ? '#cccccc' : '#fff',
-            border: 'none',
-            padding: '8px 20px',
-            borderRadius: '12px',
-            fontSize: '14px',
-            fontWeight: 500,
-            cursor: 'pointer',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-        }}>
-            {label}
-        </button>
     );
 }

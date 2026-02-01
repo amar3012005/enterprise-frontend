@@ -1,391 +1,254 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { ArrowLeft, Phone, Clock, TrendingUp, Users, Mic, Volume2, MessageSquare, CheckCircle, XCircle, BarChart3 } from "lucide-react";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import SideNavigation from "@/components/dashboard/SideNavigation";
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { 
+  ArrowLeft, 
+  Phone, 
+  Clock, 
+  TrendingUp, 
+  Users, 
+  Mic, 
+  Volume2, 
+  MessageSquare, 
+  CheckCircle, 
+  BarChart3,
+  Wallet,
+  Activity
+} from 'lucide-react';
+import { api } from '@/lib/api';
 
 export default function AnalyticsPage() {
-    const params = useParams();
-    const router = useRouter();
-    const agentId = params.agent_id as string;
+  const params = useParams();
+  const router = useRouter();
+  const agentId = params.agent_id as string;
+  
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [tenant, setTenant] = useState<any>(null);
 
-    const [isMounted, setIsMounted] = useState(false);
-    const [agent, setAgent] = useState<any>(null);
-    const [tenant, setTenant] = useState<any>(null);
+  useEffect(() => {
+    const storedTenant = localStorage.getItem('tenant');
+    if (storedTenant) {
+      setTenant(JSON.parse(storedTenant));
+    }
 
-    useEffect(() => {
-        setIsMounted(true);
-    }, []);
+    loadAnalytics();
+  }, [agentId]);
 
-    useEffect(() => {
-        if (!isMounted) return;
+  const loadAnalytics = async () => {
+    try {
+      setIsLoading(true);
+      const data = await api.getAnalytics(agentId);
+      setAnalytics(data);
+    } catch (err) {
+      console.error('Failed to load analytics:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-        const storedTenant = localStorage.getItem("tenant");
-        if (storedTenant) {
-            setTenant(JSON.parse(storedTenant));
-        }
+  const logout = () => {
+    localStorage.clear();
+    router.push('/login');
+  };
 
-        // Mock data - replace with actual API call
-        setAgent({
-            agent_name: "TARA Voice Agent",
-            stats: {
-                total_calls: 1247,
-                active_calls: 3,
-                avg_call_duration: "4:32",
-                success_rate: 94.2,
-                total_minutes: 5623,
-                avg_response_time: "1.2s",
-                customer_satisfaction: 4.7,
-                calls_today: 89,
-                peak_hours: "2PM - 4PM",
-                most_common_intent: "Product Inquiry"
-            }
-        });
-    }, [isMounted]);
-
-    const logout = () => {
-        localStorage.clear();
-        window.location.href = "/login";
-    };
-
-    if (!isMounted) return null;
-
-    return (
-        <div style={{
-            height: '100vh',
-            backgroundColor: '#e6e6e6',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-            color: '#1a1a1a',
-            padding: '24px',
-            overflow: 'hidden'
-        }}>
-            <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-                {/* Header */}
-                <DashboardHeader
-                    tenantName={tenant?.organization_name || "Enterprise"}
-                    onLogout={logout}
-                />
-
-                {/* Grid Layout */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '24px', marginTop: '24px' }}>
-
-                    {/* Side Navigation */}
-                    <div style={{ gridColumn: 'span 1' }}>
-                        <SideNavigation onLogout={logout} />
-                    </div>
-
-                    {/* Main Content */}
-                    <div style={{ gridColumn: 'span 11' }}>
-                        {/* Page Header */}
-                        <div style={{ marginBottom: '16px' }}>
-                            <button
-                                onClick={() => router.push(`/enterprise/dashboard/${agentId}`)}
-                                style={{
-                                    background: 'transparent',
-                                    border: 'none',
-                                    color: '#666',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    fontSize: '13px',
-                                    marginBottom: '8px',
-                                    padding: '4px 0',
-                                    transition: 'color 0.2s'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.color = '#1a1a1a'}
-                                onMouseLeave={(e) => e.currentTarget.style.color = '#666'}
-                            >
-                                <ArrowLeft size={14} />
-                                Back to Dashboard
-                            </button>
-
-                            <h1 style={{
-                                fontSize: '24px',
-                                fontWeight: 700,
-                                marginBottom: '4px'
-                            }}>Voice Agent Analytics</h1>
-                            <p style={{ color: '#666', fontSize: '12px' }}>
-                                Performance metrics for {agent?.agent_name || agentId}
-                            </p>
-                        </div>
-
-                        {/* Key Metrics Row */}
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(4, 1fr)',
-                            gap: '12px',
-                            marginBottom: '12px'
-                        }}>
-                            <StatCard
-                                icon={<Phone size={20} />}
-                                label="Total Calls"
-                                value="1,247"
-                                change="+12.5%"
-                                positive={true}
-                            />
-                            <StatCard
-                                icon={<Clock size={20} />}
-                                label="Avg Call Duration"
-                                value="4:32"
-                                change="-8.2%"
-                                positive={false}
-                            />
-                            <StatCard
-                                icon={<CheckCircle size={20} />}
-                                label="Success Rate"
-                                value="94.2%"
-                                change="+2.1%"
-                                positive={true}
-                            />
-                            <StatCard
-                                icon={<Users size={20} />}
-                                label="Active Calls"
-                                value="3"
-                                change="Live"
-                                live={true}
-                            />
-                        </div>
-
-                        {/* Charts and Details Grid */}
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(3, 1fr)',
-                            gap: '12px',
-                            marginBottom: '12px'
-                        }}>
-                            {/* Total Minutes */}
-                            <DetailCard
-                                title="Total Minutes"
-                                value="5,623"
-                                subtitle="This month"
-                                icon={<Volume2 size={18} />}
-                            />
-
-                            {/* Avg Response Time */}
-                            <DetailCard
-                                title="Avg Response Time"
-                                value="1.2s"
-                                subtitle="Under 2s target"
-                                icon={<Mic size={18} />}
-                                highlight={true}
-                            />
-
-                            {/* Customer Satisfaction */}
-                            <DetailCard
-                                title="Customer Satisfaction"
-                                value="4.7/5.0"
-                                subtitle="Based on 892 ratings"
-                                icon={<MessageSquare size={18} />}
-                            />
-                        </div>
-
-                        {/* Additional Insights */}
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(2, 1fr)',
-                            gap: '12px',
-                            marginBottom: '12px'
-                        }}>
-                            {/* Calls Today */}
-                            <InsightCard
-                                title="Calls Today"
-                                value="89"
-                                description="Peak hours: 2PM - 4PM"
-                                icon={<BarChart3 size={18} />}
-                            />
-
-                            {/* Most Common Intent */}
-                            <InsightCard
-                                title="Most Common Intent"
-                                value="Product Inquiry"
-                                description="42% of all calls"
-                                icon={<MessageSquare size={18} />}
-                            />
-                        </div>
-
-                        {/* Call Volume Chart Placeholder */}
-                        <div style={{
-                            backgroundColor: '#f5f5f5',
-                            borderRadius: '16px',
-                            padding: '16px',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-                        }}>
-                            <h3 style={{
-                                fontSize: '14px',
-                                fontWeight: 600,
-                                marginBottom: '12px',
-                                color: '#1a1a1a'
-                            }}>Call Volume (Last 7 Days)</h3>
-                            <div style={{
-                                height: '120px',
-                                display: 'flex',
-                                alignItems: 'flex-end',
-                                gap: '8px',
-                                padding: '8px 0'
-                            }}>
-                                {[65, 78, 82, 91, 88, 95, 89].map((height, i) => (
-                                    <div
-                                        key={i}
-                                        style={{
-                                            flex: 1,
-                                            height: `${height}%`,
-                                            backgroundColor: i === 6 ? '#4a90e2' : '#cbd5e1',
-                                            borderRadius: '8px 8px 0 0',
-                                            position: 'relative',
-                                            transition: 'all 0.3s'
-                                        }}
-                                    >
-                                        <div style={{
-                                            position: 'absolute',
-                                            bottom: '-24px',
-                                            left: '50%',
-                                            transform: 'translateX(-50%)',
-                                            fontSize: '11px',
-                                            color: '#666',
-                                            whiteSpace: 'nowrap'
-                                        }}>
-                                            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i]}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+  return (
+    <div className="min-h-screen bg-[#0a0a0a]">
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push(`/enterprise/dashboard/${agentId}`)}
+              className="p-2 rounded-lg bg-[#1a1a1a] hover:bg-[#222222] border border-[#262626] transition-colors"
+            >
+              <ArrowLeft size={18} className="text-neutral-400" />
+            </button>
+            <div>
+              <h1 className="text-2xl font-bold text-white mb-1" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+                Analytics
+              </h1>
+              <p className="text-sm text-neutral-500">
+                Performance metrics for {agentId.slice(0, 8)}...
+              </p>
             </div>
+          </div>
+          <button
+            onClick={logout}
+            className="px-4 py-2 rounded-lg bg-[#1a1a1a] hover:bg-[#222222] border border-[#262626] text-sm text-neutral-400 hover:text-white transition-colors"
+          >
+            Log Out
+          </button>
         </div>
-    );
+
+        {isLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="w-8 h-8 border-2 border-neutral-700 border-t-blue-500 rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Key Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                icon={<Phone size={18} />}
+                label="Total Calls"
+                value={analytics?.today?.calls?.toString() || '0'}
+                change="+12.5%"
+                positive
+              />
+              <StatCard
+                icon={<Clock size={18} />}
+                label="Avg Duration"
+                value={analytics?.avg_call_duration_formatted || '0:00'}
+                change="-8.2%"
+                positive={false}
+              />
+              <StatCard
+                icon={<CheckCircle size={18} />}
+                label="Success Rate"
+                value={`${(analytics?.success_rate || 0).toFixed(1)}%`}
+                change="+2.1%"
+                positive
+              />
+              <StatCard
+                icon={<Activity size={18} />}
+                label="Active Calls"
+                value={analytics?.active_calls?.toString() || '0'}
+                change="Live"
+                live
+              />
+            </div>
+
+            {/* Secondary Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <MetricCard
+                icon={<Volume2 size={16} />}
+                title="Total Minutes"
+                value={analytics?.today?.minutes?.toString() || '0'}
+                subtitle="This period"
+                color="blue"
+              />
+              <MetricCard
+                icon={<Mic size={16} />}
+                title="Response Time"
+                value={`${(analytics?.avg_response_time_ms || 0).toFixed(0)}ms`}
+                subtitle="Average latency"
+                color="orange"
+              />
+              <MetricCard
+                icon={<Wallet size={16} />}
+                title="Cost Today"
+                value={`€${(analytics?.today?.cost || 0).toFixed(2)}`}
+                subtitle="Total spend"
+                color="green"
+              />
+            </div>
+
+            {/* Charts Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Call Volume Chart */}
+              <div className="card-elevated p-6">
+                <h3 className="text-sm font-semibold text-white mb-6" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+                  Call Volume Trend
+                </h3>
+                <div className="h-48 flex items-end gap-2">
+                  {[65, 78, 82, 91, 88, 95, 89, 72, 85, 93, 87, 76].map((height, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ height: 0 }}
+                      animate={{ height: `${height}%` }}
+                      transition={{ delay: i * 0.05, duration: 0.5 }}
+                      className="flex-1 bg-gradient-to-t from-blue-500/50 to-blue-500/20 rounded-t-sm hover:from-blue-500 hover:to-blue-400 transition-all cursor-pointer"
+                    />
+                  ))}
+                </div>
+                <div className="flex justify-between mt-4 text-xs text-neutral-500">
+                  <span>00:00</span>
+                  <span>06:00</span>
+                  <span>12:00</span>
+                  <span>18:00</span>
+                  <span>23:59</span>
+                </div>
+              </div>
+
+              {/* Cost Breakdown */}
+              <div className="card-elevated p-6">
+                <h3 className="text-sm font-semibold text-white mb-6" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+                  Cost Breakdown
+                </h3>
+                <div className="space-y-4">
+                  {[
+                    { label: '0-5 min', cost: '€2.00', percent: 45, color: 'bg-emerald-500' },
+                    { label: '5-10 min', cost: '€3.50', percent: 30, color: 'bg-blue-500' },
+                    { label: '10-15 min', cost: '€5.00', percent: 15, color: 'bg-orange-500' },
+                    { label: '15+ min', cost: '€7.00', percent: 10, color: 'bg-purple-500' },
+                  ].map((tier, i) => (
+                    <div key={i} className="flex items-center gap-4">
+                      <span className="w-16 text-sm text-neutral-400">{tier.label}</span>
+                      <div className="flex-1 h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${tier.percent}%` }}
+                          transition={{ delay: i * 0.1, duration: 0.5 }}
+                          className={`h-full ${tier.color} rounded-full`}
+                        />
+                      </div>
+                      <span className="w-12 text-sm text-white text-right">{tier.cost}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function StatCard({ icon, label, value, change, positive, live }: any) {
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            style={{
-                backgroundColor: '#f5f5f5',
-                borderRadius: '12px',
-                padding: '14px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-            }}
-        >
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                marginBottom: '12px',
-                color: '#666'
-            }}>
-                {icon}
-                <span style={{ fontSize: '12px', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    {label}
-                </span>
-            </div>
-            <div style={{
-                fontSize: '28px',
-                fontWeight: 700,
-                marginBottom: '4px',
-                color: '#1a1a1a'
-            }}>
-                {value}
-            </div>
-            <div style={{
-                fontSize: '13px',
-                color: live ? '#4ade80' : positive ? '#22c55e' : '#ef4444',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
-            }}>
-                {!live && <TrendingUp size={14} style={{ transform: positive ? 'none' : 'rotate(180deg)' }} />}
-                {live && <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#4ade80' }} />}
-                {change}
-            </div>
-        </motion.div>
-    );
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="card-solid p-5"
+    >
+      <div className="flex items-center gap-2 mb-3 text-neutral-500">
+        {icon}
+        <span className="text-xs font-medium uppercase tracking-wider">{label}</span>
+      </div>
+      <div className="text-2xl font-bold text-white mb-1">{value}</div>
+      <div className={`flex items-center gap-1 text-xs ${live ? 'text-emerald-400' : positive ? 'text-emerald-400' : 'text-red-400'}`}>
+        {!live && <TrendingUp size={12} className={positive ? '' : 'rotate-180'} />}
+        {live && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
+        {change}
+      </div>
+    </motion.div>
+  );
 }
 
-function DetailCard({ title, value, subtitle, icon, highlight }: any) {
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
-            style={{
-                backgroundColor: highlight ? '#e0f2fe' : '#f5f5f5',
-                borderRadius: '12px',
-                padding: '14px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                border: highlight ? '1px solid #bae6fd' : 'none'
-            }}
-        >
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                marginBottom: '12px',
-                color: highlight ? '#0369a1' : '#666'
-            }}>
-                {icon}
-                <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    {title}
-                </span>
-            </div>
-            <div style={{
-                fontSize: '24px',
-                fontWeight: 700,
-                marginBottom: '4px',
-                color: highlight ? '#0c4a6e' : '#1a1a1a'
-            }}>
-                {value}
-            </div>
-            <div style={{ fontSize: '12px', color: '#666' }}>
-                {subtitle}
-            </div>
-        </motion.div>
-    );
-}
+function MetricCard({ icon, title, value, subtitle, color = 'blue' }: any) {
+  const colorMap: any = {
+    blue: 'text-blue-400 bg-blue-500/10',
+    orange: 'text-orange-400 bg-orange-500/10',
+    green: 'text-emerald-400 bg-emerald-500/10'
+  };
 
-function InsightCard({ title, value, description, icon }: any) {
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.2 }}
-            style={{
-                backgroundColor: '#f5f5f5',
-                borderRadius: '12px',
-                padding: '14px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-            }}
-        >
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                marginBottom: '12px',
-                color: '#666'
-            }}>
-                {icon}
-                <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    {title}
-                </span>
-            </div>
-            <div style={{
-                fontSize: '20px',
-                fontWeight: 700,
-                marginBottom: '4px',
-                color: '#1a1a1a'
-            }}>
-                {value}
-            </div>
-            <div style={{ fontSize: '12px', color: '#666' }}>
-                {description}
-            </div>
-        </motion.div>
-    );
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.1 }}
+      className="card-solid p-5"
+    >
+      <div className={`w-10 h-10 rounded-lg ${colorMap[color]} flex items-center justify-center mb-3`}>
+        {icon}
+      </div>
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500 mb-1">{title}</p>
+      <h4 className="text-xl font-mono font-bold text-white">{value}</h4>
+      <p className="text-xs text-neutral-500 mt-1">{subtitle}</p>
+    </motion.div>
+  );
 }

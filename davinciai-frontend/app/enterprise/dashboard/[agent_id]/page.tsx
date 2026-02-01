@@ -62,30 +62,24 @@ export default function EnterpriseAgentDashboard() {
 
     if (isLoading) {
         return (
-            <div style={{ minHeight: '100vh', backgroundColor: '#f2f2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ color: '#666' }}>Loading dashboard...</div>
+            <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-neutral-700 border-t-blue-500 rounded-full animate-spin" />
             </div>
         );
     }
 
     if (!agent) {
         return (
-            <div style={{ minHeight: '100vh', backgroundColor: '#f2f2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ color: '#666' }}>No agent found</div>
+            <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+                <div className="text-neutral-400">No agent found</div>
             </div>
         );
     }
 
     return (
-        <div style={{
-            minHeight: '100vh',
-            backgroundColor: '#e6e6e6',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-            color: '#1a1a1a',
-            padding: '24px'
-        }}>
+        <div className="min-h-screen bg-[#0a0a0a] px-6 py-6">
             {/* Main Wrapper */}
-            <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+            <div className="max-w-7xl mx-auto">
 
                 {/* Header Component */}
                 <DashboardHeader
@@ -94,15 +88,15 @@ export default function EnterpriseAgentDashboard() {
                 />
 
                 {/* Grid Layout */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '24px' }}>
+                <div className="grid grid-cols-12 gap-6 mt-6">
 
                     {/* Left Column: Side Navigation */}
-                    <div style={{ gridColumn: 'span 1' }}>
+                    <div className="col-span-1">
                         <SideNavigation onLogout={logout} />
                     </div>
 
                     {/* Middle Column: Agent Visualizer */}
-                    <div style={{ gridColumn: 'span 7' }}>
+                    <div className="col-span-7">
                         <AgentVisualizer
                             agentName={agent.agent_name}
                             agentDescription={agent.agent_description || "Enterprise-grade voice agent"}
@@ -114,7 +108,7 @@ export default function EnterpriseAgentDashboard() {
                     </div>
 
                     {/* Right Column: AI Assistant */}
-                    <div style={{ gridColumn: 'span 4' }}>
+                    <div className="col-span-4">
                         <AIAssistantPanel agentId={agentId} />
 
                         {/* Stats Cards Below */}
