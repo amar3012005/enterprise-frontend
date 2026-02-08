@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TARA - Daytona V2 Voice Assistant</title>
+    <title>TARA - Daytona RAG Interface</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <style>
@@ -24,6 +24,9 @@
             --color-warning: #f59e0b;
             --color-error: #ef4444;
             --color-info: #3b82f6;
+            --color-teal: #06b6d4;
+            --color-purple: #8b5cf6;
+            --color-pink: #ec4899;
 
             --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             --border-radius: 12px;
@@ -93,6 +96,43 @@
             letter-spacing: -0.02em;
         }
 
+        .header-tabs {
+            display: flex;
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px;
+            border-radius: 8px;
+        }
+
+        .header-tab {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            color: var(--color-light-gray);
+            font-family: var(--font-family);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .header-tab:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .header-tab.active {
+            background: var(--color-orange);
+            color: var(--color-white);
+        }
+
+        .header-tab .material-icons-round {
+            font-size: 18px;
+        }
+
         .header-status {
             display: flex;
             align-items: center;
@@ -137,18 +177,23 @@
             }
         }
 
-        /* Main Content */
+        /* Tab Content */
+        .tab-content {
+            display: none;
+            flex: 1;
+        }
+
+        .tab-content.active {
+            display: flex;
+        }
+
+        /* Main Content - Chat */
         .main-content {
             flex: 1;
             display: grid;
-            grid-template-columns: 1fr 380px;
+            grid-template-columns: 1fr 300px;
             gap: 0;
-        }
-
-        @media (max-width: 1024px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
+            height: calc(100vh - 70px);
         }
 
         /* Chat Panel */
@@ -209,10 +254,6 @@
             margin-top: 6px;
         }
 
-        .message.agent .timestamp {
-            color: var(--color-dark-gray);
-        }
-
         /* Chat Input Area */
         .chat-input-area {
             padding: 16px 24px 24px;
@@ -242,58 +283,6 @@
             max-height: 120px;
         }
 
-        .text-input::placeholder {
-            color: var(--color-dark-gray);
-        }
-
-        .text-input:disabled {
-            background: transparent;
-        }
-
-        /* Microphone Button */
-        .mic-button {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            border: none;
-            background: var(--color-light-gray);
-            color: var(--color-dark-gray);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: var(--transition);
-            flex-shrink: 0;
-        }
-
-        .mic-button:hover:not(:disabled) {
-            background: var(--color-black);
-            color: var(--color-white);
-        }
-
-        .mic-button.active {
-            background: var(--color-orange);
-            color: var(--color-white);
-            animation: micPulse 1.5s infinite;
-        }
-
-        .mic-button:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-
-        @keyframes micPulse {
-
-            0%,
-            100% {
-                box-shadow: 0 0 0 0 rgba(242, 86, 35, 0.4);
-            }
-
-            50% {
-                box-shadow: 0 0 0 12px rgba(242, 86, 35, 0);
-            }
-        }
-
         .send-button {
             width: 48px;
             height: 48px;
@@ -306,7 +295,6 @@
             align-items: center;
             justify-content: center;
             transition: var(--transition);
-            flex-shrink: 0;
         }
 
         .send-button:hover:not(:disabled) {
@@ -332,10 +320,6 @@
             margin-bottom: 24px;
         }
 
-        .panel-section:last-child {
-            margin-bottom: 0;
-        }
-
         .section-title {
             font-size: 0.75rem;
             font-weight: 600;
@@ -345,27 +329,6 @@
             margin-bottom: 12px;
         }
 
-        /* Session Control */
-        .session-input {
-            width: 100%;
-            padding: 12px 14px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--color-dark-gray);
-            border-radius: var(--border-radius-sm);
-            font-family: var(--font-family);
-            font-size: 0.875rem;
-            color: var(--color-white);
-            margin-bottom: 12px;
-            outline: none;
-            transition: var(--transition);
-        }
-
-        .session-input:focus {
-            border-color: var(--color-orange);
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        /* Session Control */
         .session-button {
             width: 100%;
             padding: 14px 20px;
@@ -388,81 +351,12 @@
             color: var(--color-white);
         }
 
-        .session-button.start:hover:not(:disabled) {
-            background: var(--color-orange-dark);
-        }
-
         .session-button.end {
             background: transparent;
             border: 1px solid var(--color-dark-gray);
             color: var(--color-light-gray);
         }
 
-        .session-button.end:hover:not(:disabled) {
-            border-color: var(--color-error);
-            color: var(--color-error);
-        }
-
-        .session-button:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-
-        /* Toggle */
-        .toggle-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: var(--border-radius-sm);
-            margin-bottom: 8px;
-        }
-
-        .toggle-label {
-            font-size: 0.875rem;
-            color: var(--color-light-gray);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .toggle-label .material-icons-round {
-            font-size: 20px;
-            color: var(--color-dark-gray);
-        }
-
-        .toggle-switch {
-            width: 44px;
-            height: 24px;
-            background: var(--color-dark-gray);
-            border-radius: 12px;
-            cursor: pointer;
-            position: relative;
-            transition: var(--transition);
-        }
-
-        .toggle-switch.active {
-            background: var(--color-orange);
-        }
-
-        .toggle-switch::after {
-            content: '';
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 20px;
-            height: 20px;
-            background: var(--color-white);
-            border-radius: 50%;
-            transition: var(--transition);
-        }
-
-        .toggle-switch.active::after {
-            transform: translateX(20px);
-        }
-
-        /* Info Grid */
         .info-grid {
             display: grid;
             gap: 8px;
@@ -489,143 +383,6 @@
             font-family: 'SF Mono', 'Monaco', monospace;
         }
 
-        .info-value.state-listening {
-            color: var(--color-info);
-        }
-
-        .info-value.state-speaking {
-            color: var(--color-orange);
-        }
-
-        .info-value.state-thinking {
-            color: #a855f7;
-        }
-
-        /* Language Toggle */
-        .language-toggle {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .lang-label {
-            font-size: 0.875rem;
-            color: var(--color-dark-gray);
-            transition: var(--transition);
-        }
-
-        .lang-label.active {
-            color: var(--color-white);
-            font-weight: 500;
-        }
-
-        /* Logs Section */
-        .logs-container {
-            max-height: 250px;
-            overflow-y: auto;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: var(--border-radius-sm);
-            padding: 12px;
-        }
-
-        .log-item {
-            font-family: 'SF Mono', 'Monaco', monospace;
-            font-size: 0.75rem;
-            padding: 6px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            color: var(--color-light-gray);
-        }
-
-        .log-item:last-child {
-            border-bottom: none;
-        }
-
-        .log-item.info {
-            color: #60a5fa;
-        }
-
-        .log-item.success {
-            color: #4ade80;
-        }
-
-        .log-item.warning {
-            color: #fbbf24;
-        }
-
-        .log-item.error {
-            color: #f87171;
-        }
-
-        .log-time {
-            opacity: 0.6;
-            margin-right: 8px;
-        }
-
-        /* VAD Visualizer */
-        .vad-visualizer {
-            height: 40px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: var(--border-radius-sm);
-            margin: 16px 0;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            padding: 0 10px;
-            gap: 2px;
-        }
-
-        .vad-bar {
-            width: 4px;
-            background: var(--color-orange);
-            border-radius: 2px;
-            transition: height 0.1s ease;
-        }
-
-        /* Metric Pills */
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 6px;
-            margin-top: 8px;
-        }
-
-        .metric-pill {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 6px;
-            font-size: 0.7rem;
-            font-family: 'SF Mono', 'Monaco', monospace;
-            padding: 6px 10px;
-            border-radius: 6px;
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--color-light-gray);
-        }
-
-        .metric-label {
-            opacity: 0.6;
-            font-size: 0.65rem;
-            text-transform: uppercase;
-        }
-
-        .metric-value {
-            color: var(--color-white);
-            font-weight: 500;
-        }
-
-        .metric-pill.success .metric-value {
-            color: #4ade80;
-        }
-
-        .metric-pill.warning .metric-value {
-            color: #fbbf24;
-        }
-
-        .metric-pill.error .metric-value {
-            color: #f87171;
-        }
-
-        /* Empty State */
         .empty-state {
             flex: 1;
             display: flex;
@@ -643,37 +400,391 @@
             opacity: 0.3;
         }
 
-        .empty-state h3 {
-            font-size: 1.125rem;
-            font-weight: 500;
-            margin-bottom: 8px;
-            color: var(--color-black);
-        }
-
-        .empty-state p {
-            font-size: 0.875rem;
-        }
-
-        /* Scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: var(--color-light-gray);
-            border-radius: 3px;
-        }
-
-        .controls-panel::-webkit-scrollbar-thumb {
-            background: var(--color-dark-gray);
-        }
-
         .hidden {
             display: none !important;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════════
+           Hive Mind Visualizer Tab
+           ═══════════════════════════════════════════════════════════════════════ */
+        .visualizer-container {
+            flex: 1;
+            display: flex;
+            background: var(--color-black);
+            height: calc(100vh - 70px);
+        }
+
+        .viz-canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #vizCanvas {
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        .viz-sidebar {
+            width: 320px;
+            background: #1a1a1a;
+            border-left: 1px solid #333;
+            padding: 20px;
+            overflow-y: auto;
+            color: var(--color-white);
+        }
+
+        .viz-header {
+            margin-bottom: 24px;
+        }
+
+        .viz-header h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--color-teal);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .viz-controls {
+            margin-bottom: 24px;
+        }
+
+        .viz-control-group {
+            margin-bottom: 16px;
+        }
+
+        .viz-control-group label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--color-dark-gray);
+            margin-bottom: 8px;
+        }
+
+        .viz-select {
+            width: 100%;
+            padding: 10px 12px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: var(--color-white);
+            font-family: var(--font-family);
+            font-size: 0.875rem;
+            cursor: pointer;
+        }
+
+        .viz-btn {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--color-teal);
+            border: none;
+            border-radius: 8px;
+            color: var(--color-black);
+            font-family: var(--font-family);
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .viz-btn:hover {
+            background: #14b8a6;
+            transform: translateY(-1px);
+        }
+
+        .viz-btn:disabled {
+            background: #444;
+            color: #888;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .viz-stats {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+
+        .viz-stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .viz-stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .viz-stat-label {
+            font-size: 0.8125rem;
+            color: var(--color-dark-gray);
+        }
+
+        .viz-stat-value {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--color-teal);
+            font-family: 'SF Mono', monospace;
+        }
+
+        /* Tooltip */
+        .viz-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.95);
+            border: 1px solid var(--color-teal);
+            border-radius: 8px;
+            padding: 16px;
+            max-width: 320px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            z-index: 1000;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .viz-tooltip.visible {
+            opacity: 1;
+        }
+
+        .viz-tooltip-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--color-teal);
+            margin-bottom: 8px;
+        }
+
+        .viz-tooltip-issue {
+            font-size: 0.875rem;
+            color: var(--color-white);
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+
+        .viz-tooltip-solution {
+            font-size: 0.8125rem;
+            color: var(--color-light-gray);
+            line-height: 1.4;
+        }
+
+        .viz-tooltip-meta {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #444;
+            display: flex;
+            gap: 12px;
+        }
+
+        .viz-tooltip-tag {
+            font-size: 0.6875rem;
+            padding: 4px 8px;
+            background: rgba(6, 182, 212, 0.2);
+            border-radius: 4px;
+            color: var(--color-teal);
+        }
+
+        /* Legend */
+        .viz-legend {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .viz-legend-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--color-dark-gray);
+            margin-bottom: 12px;
+        }
+
+        .viz-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+        }
+
+        .viz-legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .viz-legend-label {
+            font-size: 0.8125rem;
+            color: var(--color-light-gray);
+        }
+
+        /* Loading State */
+        .viz-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--color-teal);
+        }
+
+        .viz-loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid #333;
+            border-top-color: var(--color-teal);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Point categories colors */
+        .cat-developer {
+            background: var(--color-teal);
+        }
+
+        .cat-startup {
+            background: var(--color-purple);
+        }
+
+        .cat-enterprise {
+            background: var(--color-orange);
+        }
+
+        .cat-devops {
+            background: var(--color-pink);
+        }
+
+        .cat-onboarding {
+            background: var(--color-success);
+        }
+
+        .cat-default {
+            background: var(--color-info);
+        }
+
+        /* Insights Panel Styles */
+        .viz-insights {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        .trending-list,
+        .recent-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .trending-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 10px;
+            background: rgba(6, 182, 212, 0.1);
+            border-radius: 6px;
+            border-left: 3px solid var(--color-teal);
+        }
+
+        .trending-item-name {
+            font-size: 0.8125rem;
+            color: var(--color-light-gray);
+            flex: 1;
+        }
+
+        .trending-item-count {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--color-teal);
+            background: rgba(6, 182, 212, 0.2);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .trending-item-bar {
+            height: 4px;
+            background: linear-gradient(90deg, var(--color-teal), transparent);
+            border-radius: 2px;
+            margin-top: 4px;
+        }
+
+        .recent-item {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 6px;
+            border-left: 3px solid var(--color-purple);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .recent-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(4px);
+        }
+
+        .recent-item-issue {
+            font-size: 0.8125rem;
+            color: var(--color-light-gray);
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .recent-item-meta {
+            display: flex;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .recent-item-tag {
+            font-size: 0.6875rem;
+            padding: 2px 6px;
+            background: rgba(139, 92, 246, 0.2);
+            border-radius: 4px;
+            color: var(--color-purple);
+        }
+
+        .loading-placeholder {
+            font-size: 0.8125rem;
+            color: var(--color-dark-gray);
+            padding: 12px;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .controls-panel,
+            .viz-sidebar {
+                display: none;
+            }
+
+            .header-tabs {
+                display: none;
+            }
         }
     </style>
 </head>
@@ -684,9 +795,19 @@
         <header class="header">
             <div class="header-brand">
                 <div class="logo">
-                    <span class="material-icons-round">smart_toy</span>
+                    <span class="material-icons-round">library_books</span>
                 </div>
-                <h1>TARA V2</h1>
+                <h1>TARA RAG V2</h1>
+            </div>
+            <div class="header-tabs">
+                <button class="header-tab active" data-tab="chat">
+                    <span class="material-icons-round">chat</span>
+                    Chat
+                </button>
+                <button class="header-tab" data-tab="visualizer">
+                    <span class="material-icons-round">bubble_chart</span>
+                    Hive Mind
+                </button>
             </div>
             <div class="header-status">
                 <div class="status-indicator" id="statusIndicator"></div>
@@ -694,1277 +815,950 @@
             </div>
         </header>
 
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Chat Panel -->
-            <div class="chat-panel">
-                <div class="vad-visualizer" id="vadVisualizer">
-                    <!-- Bars added via JS -->
-                </div>
-                <div class="chat-messages" id="chatMessages">
-                    <div class="empty-state" id="emptyState">
-                        <span class="material-icons-round">chat_bubble_outline</span>
-                        <h3>Start a conversation</h3>
-                        <p>Click "Start Session" then use the microphone or type a message</p>
+        <!-- Chat Tab -->
+        <div class="tab-content active" id="chatTab">
+            <main class="main-content">
+                <div class="chat-panel">
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="empty-state" id="emptyState">
+                            <span class="material-icons-round">chat_bubble_outline</span>
+                            <h3>Knowledge Base Assistant</h3>
+                            <p>Ask questions about Daytona documentation</p>
+                        </div>
+                    </div>
+                    <div class="chat-input-area">
+                        <div class="input-container">
+                            <textarea class="text-input" id="textInput" placeholder="Ask a question..." rows="1"
+                                disabled></textarea>
+                            <button class="send-button" id="sendButton" disabled title="Send message">
+                                <span class="material-icons-round">send</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
+                <aside class="controls-panel">
+                    <div class="panel-section">
+                        <h4 class="section-title">Session</h4>
+                        <button class="session-button start" id="startSession">
+                            <span class="material-icons-round">play_arrow</span>
+                            Start Session
+                        </button>
+                        <button class="session-button end hidden" id="endSession">
+                            <span class="material-icons-round">stop</span>
+                            End Session
+                        </button>
+                    </div>
+                    <div class="panel-section">
+                        <h4 class="section-title">Metrics</h4>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Latency</span>
+                                <span class="info-value" id="lastLatency">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Queries</span>
+                                <span class="info-value" id="totalQueries">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+            </main>
+        </div>
 
-                <!-- Input Area -->
-                <div class="chat-input-area">
-                    <div class="input-container">
-                        <textarea class="text-input" id="textInput" placeholder="Type your message..." rows="1"
-                            disabled></textarea>
-                        <button class="mic-button" id="micButton" disabled title="Toggle microphone">
-                            <span class="material-icons-round">mic</span>
-                        </button>
-                        <button class="send-button" id="sendButton" disabled title="Send message">
-                            <span class="material-icons-round">send</span>
-                        </button>
+        <!-- Hive Mind Visualizer Tab -->
+        <div class="tab-content" id="visualizerTab">
+            <div class="visualizer-container">
+                <div class="viz-canvas-container">
+                    <canvas id="vizCanvas"></canvas>
+                    <div class="viz-tooltip" id="vizTooltip">
+                        <div class="viz-tooltip-title">Issue</div>
+                        <div class="viz-tooltip-issue" id="tooltipIssue"></div>
+                        <div class="viz-tooltip-title">Solution</div>
+                        <div class="viz-tooltip-solution" id="tooltipSolution"></div>
+                        <div class="viz-tooltip-meta">
+                            <span class="viz-tooltip-tag" id="tooltipType"></span>
+                            <span class="viz-tooltip-tag" id="tooltipSegment"></span>
+                        </div>
+                    </div>
+                    <div class="viz-loading hidden" id="vizLoading">
+                        <div class="viz-loading-spinner"></div>
+                        <div>Computing t-SNE projection...</div>
                     </div>
                 </div>
+                <aside class="viz-sidebar">
+                    <div class="viz-header">
+                        <h2>
+                            <span class="material-icons-round">psychology</span>
+                            Hive Mind Explorer
+                        </h2>
+                    </div>
+                    <div class="viz-controls">
+                        <div class="viz-control-group">
+                            <label>Algorithm</label>
+                            <select class="viz-select" id="algorithmSelect">
+                                <option value="tsne" selected>t-SNE (Recommended)</option>
+                                <option value="pca">PCA (Faster)</option>
+                            </select>
+                        </div>
+                        <div class="viz-control-group">
+                            <label>Max Points</label>
+                            <select class="viz-select" id="limitSelect">
+                                <option value="50">50 points</option>
+                                <option value="100" selected>100 points</option>
+                                <option value="200">200 points</option>
+                                <option value="500">500 points</option>
+                            </select>
+                        </div>
+                        <button class="viz-btn" id="loadVizBtn">
+                            <span class="material-icons-round">refresh</span>
+                            Load Visualization
+                        </button>
+                    </div>
+                    <div class="viz-stats">
+                        <div class="viz-stat-item">
+                            <span class="viz-stat-label">Collection</span>
+                            <span class="viz-stat-value" id="statCollection">-</span>
+                        </div>
+                        <div class="viz-stat-item">
+                            <span class="viz-stat-label">Points</span>
+                            <span class="viz-stat-value" id="statPoints">0</span>
+                        </div>
+                        <div class="viz-stat-item">
+                            <span class="viz-stat-label">Dimension</span>
+                            <span class="viz-stat-value" id="statDimension">384</span>
+                        </div>
+                        <div class="viz-stat-item">
+                            <span class="viz-stat-label">Algorithm</span>
+                            <span class="viz-stat-value" id="statAlgorithm">t-SNE</span>
+                        </div>
+                    </div>
+                    <div class="viz-legend">
+                        <div class="viz-legend-title">Customer Segments</div>
+                        <div class="viz-legend-item">
+                            <div class="viz-legend-dot cat-developer"></div>
+                            <span class="viz-legend-label">Developer</span>
+                        </div>
+                        <div class="viz-legend-item">
+                            <div class="viz-legend-dot cat-startup"></div>
+                            <span class="viz-legend-label">Startup</span>
+                        </div>
+                        <div class="viz-legend-item">
+                            <div class="viz-legend-dot cat-enterprise"></div>
+                            <span class="viz-legend-label">Enterprise</span>
+                        </div>
+                        <div class="viz-legend-item">
+                            <div class="viz-legend-dot cat-devops"></div>
+                            <span class="viz-legend-label">DevOps</span>
+                        </div>
+                        <div class="viz-legend-item">
+                            <div class="viz-legend-dot cat-onboarding"></div>
+                            <span class="viz-legend-label">Onboarding</span>
+                        </div>
+                    </div>
+
+                    <!-- Trending Domains -->
+                    <div class="viz-insights" id="insightsPanel">
+                        <div class="viz-legend-title">
+                            <span class="material-icons-round"
+                                style="font-size: 14px; vertical-align: middle;">trending_up</span>
+                            Trending Domains
+                        </div>
+                        <div id="trendingDomains" class="trending-list">
+                            <div class="loading-placeholder">Loading insights...</div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Knowledge -->
+                    <div class="viz-insights" style="margin-top: 16px;">
+                        <div class="viz-legend-title">
+                            <span class="material-icons-round"
+                                style="font-size: 14px; vertical-align: middle;">history</span>
+                            Recent Knowledge
+                        </div>
+                        <div id="recentKnowledge" class="recent-list">
+                            <div class="loading-placeholder">Loading...</div>
+                        </div>
+                    </div>
+                </aside>
             </div>
-
-            <!-- Controls Panel -->
-            <aside class="controls-panel">
-                <!-- Session Control -->
-                <div class="panel-section">
-                    <h4 class="section-title">Identity</h4>
-                    <input type="tel" class="session-input" id="phoneNumber" placeholder="Phone Number (e.g. +1...)" />
-
-                    <h4 class="section-title" style="margin-top: 16px;">Session</h4>
-                    <button class="session-button start" id="startSession">
-                        <span class="material-icons-round">play_arrow</span>
-                        Start Session
-                    </button>
-                    <button class="session-button end hidden" id="endSession">
-                        <span class="material-icons-round">stop</span>
-                        End Session
-                    </button>
-                </div>
-
-                <!-- Mode Toggle -->
-                <div class="panel-section">
-                    <h4 class="section-title">Mode</h4>
-                    <div class="toggle-row">
-                        <span class="toggle-label">
-                            <span class="material-icons-round">bug_report</span>
-                            Mock Mode (Text Only)
-                        </span>
-                        <div class="toggle-switch" id="mockModeToggle"></div>
-                    </div>
-                </div>
-
-                <!-- Session Info -->
-                <div class="panel-section">
-                    <h4 class="section-title">Status</h4>
-                    <div class="info-grid">
-                        <div class="info-item">
-                            <span class="info-label">State</span>
-                            <span class="info-value" id="currentState">Idle</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Session ID</span>
-                            <span class="info-value" id="sessionId">—</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Audio Chunks</span>
-                            <span class="info-value" id="chunkCount">0</span>
-                        </div>
-                    </div>
-
-                    <div class="metrics-grid">
-                        <div class="metric-pill" id="metricLatencyContainer">
-                            <span class="metric-label">Latency</span>
-                            <span class="metric-value" id="avgLatency">0ms</span>
-                        </div>
-                        <div class="metric-pill" id="metricLogProbContainer">
-                            <span class="metric-label">LogProb</span>
-                            <span class="metric-value" id="metricLogProb">N/A</span>
-                        </div>
-                        <div class="metric-pill" id="metricNoSpeechContainer">
-                            <span class="metric-label">NoSpeech</span>
-                            <span class="metric-value" id="metricNoSpeech">N/A</span>
-                        </div>
-                        <div class="metric-pill" id="metricRatioContainer">
-                            <span class="metric-label">Ratio</span>
-                            <span class="metric-value" id="metricCompRatio">N/A</span>
-                        </div>
-                        <div class="metric-pill" id="metricTtftContainer">
-                            <span class="metric-label">TTFT</span>
-                            <span class="metric-value" id="metricTtft">0ms</span>
-                        </div>
-                        <div class="metric-pill" id="metricTtfcContainer">
-                            <span class="metric-label">TTFC</span>
-                            <span class="metric-value" id="metricTtfc">0ms</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Language -->
-                <div class="panel-section">
-                    <h4 class="section-title">Response Language</h4>
-                    <div class="language-toggle">
-                        <span class="lang-label active" id="langEn">EN</span>
-                        <div class="toggle-switch" id="languageToggle"></div>
-                        <span class="lang-label" id="langDe">DE</span>
-                    </div>
-                </div>
-
-                <!-- System Logs -->
-                <div class="panel-section">
-                    <h4 class="section-title">System Logs</h4>
-                    <div class="logs-container" id="logsContainer"></div>
-                </div>
-                <!-- Pod Logs -->
-                <div class="panel-section">
-                    <h4 class="section-title">Pod Logs (Debug)</h4>
-                    <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-                        <button class="session-button start" id="viewOrchLogs"
-                            style="flex: 1; padding: 10px; font-size: 0.75rem;">
-                            <span class="material-icons-round" style="font-size: 16px;">terminal</span>
-                            Orchestrator
-                        </button>
-                        <button class="session-button start" id="viewRagLogs"
-                            style="flex: 1; padding: 10px; font-size: 0.75rem;">
-                            <span class="material-icons-round" style="font-size: 16px;">storage</span>
-                            RAG
-                        </button>
-                    </div>
-                    <div class="logs-container" id="podLogsContainer" style="display: none; max-height: 300px;"></div>
-                    <button class="session-button end" id="closePodLogs"
-                        style="display: none; margin-top: 8px; padding: 8px; font-size: 0.75rem;">
-                        Close Logs
-                    </button>
-                </div>
-            </aside>
-        </main>
+        </div>
     </div>
 
-    <!-- EmailJS SDK for appointment confirmation emails -->
-    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script>
         // ═══════════════════════════════════════════════════════════════════════
-        // EmailJS Configuration for Appointment Confirmations
+        // GLOBAL CONFIGURATION - Must run before anything else!
         // ═══════════════════════════════════════════════════════════════════════
-        // 
-        // To enable email confirmations:
-        // 1. Go to https://www.emailjs.com and create a free account
-        // 2. Connect your email service (Gmail, Outlook, etc.)
-        // 3. Create an email template with these variables:
-        //    - {{to_email}} - Recipient's email
-        //    - {{customer_name}} - Customer's name  
-        //    - {{topic}} - Appointment topic
-        //    - {{timestamp}} - Booking timestamp
-        //    - {{appointment_id}} - Unique appointment ID
-        // 4. Replace the values below with your credentials
-        //
-        const EMAILJS_CONFIG = {
-            publicKey: 'YOUR_PUBLIC_KEY',        // Replace with your EmailJS public key
-            serviceId: 'YOUR_SERVICE_ID',        // Replace with your EmailJS service ID
-            templateId: 'YOUR_TEMPLATE_ID',      // Replace with your EmailJS template ID
-            enabled: false                        // Set to true after configuring
-        };
+        (function () {
+            let basePath = window.location.pathname.replace(/\/+$/, '');
+            if (basePath.endsWith('index.html') || basePath.endsWith('client.html')) {
+                basePath = basePath.substring(0, basePath.lastIndexOf('/'));
+            }
+            // Expose globally
+            window.API_BASE = window.location.protocol + '//' + window.location.host + basePath;
+            console.log('🌍 TARA RAG Configured API_BASE:', window.API_BASE);
+        })();
 
-        // Initialize EmailJS if enabled
-        if (EMAILJS_CONFIG.enabled && EMAILJS_CONFIG.publicKey !== 'YOUR_PUBLIC_KEY') {
-            emailjs.init(EMAILJS_CONFIG.publicKey);
-            console.log('📧 EmailJS initialized for appointment confirmations');
-        }
-    </script>
-
-    <script>
         // ═══════════════════════════════════════════════════════════════════════
-        // TARA Client - Daytona Voice Assistant
-        // Unified WebSocket connection with mock mode support
+        // Tab Navigation
         // ═══════════════════════════════════════════════════════════════════════
+        document.querySelectorAll('.header-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.header-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab + 'Tab').classList.add('active');
 
-        const MIC_SAMPLE_RATE = 16000;      // Standard for STT (Whisper)
-        const PLAYBACK_SAMPLE_RATE = 44100; // Matches Cartesia TTS output
-        const WS_URL = window.location.protocol === 'https:'
-            ? `wss://${window.location.host}/ws`
-            : `ws://${window.location.host}/ws`;
+                if (tab.dataset.tab === 'visualizer') {
+                    // Resize canvas now that tab is visible
+                    setTimeout(() => {
+                        if (window.hiveMindViz) {
+                            window.hiveMindViz.resizeCanvas();
+                            if (!window.vizData) {
+                                // Auto-load on first visit
+                                window.hiveMindViz.loadData();
+                            }
+                        }
+                    }, 50); // Small delay to ensure tab is fully rendered
+                }
+            });
+        });
 
-
-        class TARAClient {
+        // ═══════════════════════════════════════════════════════════════════════
+        // Hive Mind Visualizer
+        // ═══════════════════════════════════════════════════════════════════════
+        class HiveMindVisualizer {
             constructor() {
-                this.ws = null;
-                this.sessionId = null;
-                this.state = 'idle';
-                this.audioContext = null;
-                this.audioQueue = [];
-                this.isProcessingQueue = false;
-                this.isPlayingAudio = false;
-                this.currentSource = null;
-                this.playbackStartTime = null;
-                this.audioStreamComplete = false;  // Track when server finished sending audio
-                this.playbackFallbackTimer = null;  // Fallback timer for audio_complete timeout
-                this.chunkCount = 0;
+                this.canvas = document.getElementById('vizCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.tooltip = document.getElementById('vizTooltip');
+                this.loading = document.getElementById('vizLoading');
+                this.points = [];
+                this.hoveredPoint = null;
+                this.scale = 1;
+                this.offset = { x: 0, y: 0 };
 
-                this.isMicActive = false;
+                this.colors = {
+                    'developer': '#06b6d4',
+                    'startup': '#8b5cf6',
+                    'enterprise': '#F25623',
+                    'devops': '#ec4899',
+                    'onboarding': '#22c55e',
+                    'default': '#3b82f6'
+                };
 
-                // Metrics tracking
-                this.totalLatency = 0;
-                this.successfulResponses = 0;
-                this.chunkCounter = 0;
-
-                // Mode tracking
-                this.mockMode = false;  // Text-only mode
-                this.sessionActive = false;
-                this.fillerLanguage = 'en';  // 'en' or 'de'
-
-                // Agent response buffer for streaming
-                this.agentResponseBuffer = '';
-
-                // Conversation history for context-aware RAG queries
-                this.conversationHistory = [];
-
-                this.nextPlayTime = 0; // Track next playback time for gapless stitching
-
-                // Turn timing metrics
-                this.turnStartTime = null;
-                this.hasTtftForTurn = false;
-                this.hasTtfcForTurn = false;
-
-                this.init();
+                this.setupCanvas();
+                this.setupEvents();
+                this.connectWebSocket();
             }
 
-            init() {
-                // DOM Elements
-                this.statusIndicator = document.getElementById('statusIndicator');
-                this.statusText = document.getElementById('statusText');
+            setupCanvas() {
+                this.resizeCanvas = () => {
+                    const container = this.canvas.parentElement;
+                    const rect = container.getBoundingClientRect();
+
+                    // Only resize if container has dimensions
+                    if (rect.width > 0 && rect.height > 0) {
+                        const dpr = window.devicePixelRatio || 1;
+                        this.canvas.width = rect.width * dpr;
+                        this.canvas.height = rect.height * dpr;
+                        this.canvas.style.width = rect.width + 'px';
+                        this.canvas.style.height = rect.height + 'px';
+                        this.ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+                        this.ctx.scale(dpr, dpr);
+                        this.render();
+                    }
+                };
+
+                // Initial resize (may be 0 if tab hidden)
+                this.resizeCanvas();
+                window.addEventListener('resize', this.resizeCanvas);
+            }
+
+            setupEvents() {
+                document.getElementById('loadVizBtn').addEventListener('click', () => this.loadData());
+
+                this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+                this.canvas.addEventListener('mouseleave', () => this.hideTooltip());
+                this.canvas.addEventListener('wheel', (e) => this.handleZoom(e));
+            }
+
+            connectWebSocket() {
+                try {
+                    const baseUrl = window.API_BASE || '';
+                    let wsUrl;
+
+                    if (baseUrl.startsWith('http')) {
+                        wsUrl = baseUrl.replace('http', 'ws') + '/ws/hive-mind';
+                    } else {
+                        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                        wsUrl = `${protocol}//${window.location.host}${baseUrl}/ws/hive-mind`;
+                    }
+
+                    console.log('🔌 Connecting to Hive Mind WebSocket:', wsUrl);
+                    this.ws = new WebSocket(wsUrl);
+
+                    this.ws.onopen = () => {
+                        console.log('✅ Hive Mind WebSocket connected');
+                    };
+
+                    this.ws.onmessage = (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            if (data.type === 'new_knowledge') {
+                                console.log('✨ New knowledge received via WebSocket:', data.node);
+                                // Refresh to get the new projection
+                                this.loadData();
+                                // Also refresh insights
+                                if (typeof loadHiveMindInsights === 'function') {
+                                    loadHiveMindInsights();
+                                }
+                            }
+                        } catch (e) {
+                            console.error('Error parsing WebSocket message:', e);
+                        }
+                    };
+
+                    this.ws.onclose = () => {
+                        console.log('🔌 Hive Mind WebSocket disconnected. Reconnecting in 5s...');
+                        setTimeout(() => this.connectWebSocket(), 5000);
+                    };
+
+                    this.ws.onerror = (err) => {
+                        console.error('❌ Hive Mind WebSocket error:', err);
+                    };
+                } catch (e) {
+                    console.error('Failed to initialize Hive Mind WebSocket:', e);
+                }
+            }
+
+            async loadData() {
+                const algorithm = document.getElementById('algorithmSelect').value;
+                const limit = document.getElementById('limitSelect').value;
+
+                this.loading.classList.remove('hidden');
+
+                try {
+                    // Use global API_BASE if available, otherwise relative path
+                    const baseUrl = window.API_BASE || '';
+                    const response = await fetch(
+                        `${baseUrl}/api/v1/hive-mind/visualize?algorithm=${algorithm}&limit=${limit}`
+                    );
+
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                    const data = await response.json();
+                    window.vizData = data;
+                    this.points = data.points;
+
+                    // Update stats
+                    document.getElementById('statCollection').textContent = data.collection_name;
+                    document.getElementById('statPoints').textContent = data.total_points;
+                    document.getElementById('statDimension').textContent = data.dimension + '-D';
+                    document.getElementById('statAlgorithm').textContent = data.algorithm.toUpperCase();
+
+                    // Ensure canvas is properly sized before rendering
+                    this.resizeCanvas();
+                } catch (err) {
+                    console.error('Visualization load error:', err);
+                    alert('Failed to load Hive Mind data. Check console for details.');
+                } finally {
+                    this.loading.classList.add('hidden');
+                }
+            }
+
+            render() {
+                const dpr = window.devicePixelRatio || 1;
+                const w = this.canvas.width / dpr;
+                const h = this.canvas.height / dpr;
+
+                // Skip rendering if canvas has no dimensions
+                if (w <= 0 || h <= 0) {
+                    console.log('Canvas has no dimensions, skipping render');
+                    return;
+                }
+
+                // Clear
+                this.ctx.fillStyle = '#171717';
+                this.ctx.fillRect(0, 0, w, h);
+
+                // Grid
+                this.ctx.strokeStyle = '#333';
+                this.ctx.lineWidth = 0.5;
+                const gridSize = 50;
+                for (let x = 0; x < w; x += gridSize) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, 0);
+                    this.ctx.lineTo(x, h);
+                    this.ctx.stroke();
+                }
+                for (let y = 0; y < h; y += gridSize) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, y);
+                    this.ctx.lineTo(w, y);
+                    this.ctx.stroke();
+                }
+
+                if (!this.points.length) {
+                    this.ctx.fillStyle = '#666';
+                    this.ctx.font = '16px Inter, sans-serif';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText('Click "Load Visualization" to fetch Hive Mind data', w / 2, h / 2);
+                    return;
+                }
+
+                // Calculate layout
+                const padding = 80;
+                const scaleX = (w - padding * 2) / 2;
+                const scaleY = (h - padding * 2) / 2;
+                const centerX = w / 2;
+                const centerY = h / 2;
+
+                // Group points by issue_type for semantic connections
+                const typeGroups = {};
+                this.points.forEach(p => {
+                    const type = p.issue_type || 'general';
+                    if (!typeGroups[type]) typeGroups[type] = [];
+                    typeGroups[type].push(p);
+                });
+
+                // Draw semantic connections (same issue_type = related knowledge)
+                Object.values(typeGroups).forEach(group => {
+                    if (group.length > 1) {
+                        // Connect all points in same category
+                        for (let i = 0; i < group.length; i++) {
+                            for (let j = i + 1; j < group.length; j++) {
+                                const p1 = group[i];
+                                const p2 = group[j];
+                                const x1 = centerX + p1.x * scaleX;
+                                const y1 = centerY + p1.y * scaleY;
+                                const x2 = centerX + p2.x * scaleX;
+                                const y2 = centerY + p2.y * scaleY;
+
+                                const color = this.colors[p1.customer_segment] || this.colors.default;
+
+                                // Gradient line
+                                const gradient = this.ctx.createLinearGradient(x1, y1, x2, y2);
+                                gradient.addColorStop(0, color + '40');
+                                gradient.addColorStop(0.5, color + '80');
+                                gradient.addColorStop(1, color + '40');
+
+                                this.ctx.strokeStyle = gradient;
+                                this.ctx.lineWidth = 2;
+                                this.ctx.beginPath();
+                                this.ctx.moveTo(x1, y1);
+                                this.ctx.lineTo(x2, y2);
+                                this.ctx.stroke();
+                            }
+                        }
+                    }
+                });
+
+                // Draw cluster labels
+                const typePositions = {};
+                Object.entries(typeGroups).forEach(([type, points]) => {
+                    // Calculate centroid
+                    const avgX = points.reduce((sum, p) => sum + p.x, 0) / points.length;
+                    const avgY = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+                    typePositions[type] = { x: avgX, y: avgY, count: points.length };
+                });
+
+                // Draw cluster label backgrounds
+                this.ctx.font = '11px Inter, sans-serif';
+                Object.entries(typePositions).forEach(([type, pos]) => {
+                    const x = centerX + pos.x * scaleX;
+                    const y = centerY + pos.y * scaleY - 30;
+                    const label = type.replace(/_/g, ' ').toUpperCase();
+                    const textWidth = this.ctx.measureText(label).width;
+
+                    // Background pill
+                    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    this.ctx.beginPath();
+                    this.ctx.roundRect(x - textWidth / 2 - 8, y - 8, textWidth + 16, 20, 10);
+                    this.ctx.fill();
+
+                    // Label text
+                    this.ctx.fillStyle = '#06b6d4';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(label, x, y + 5);
+
+                    // Count badge
+                    this.ctx.fillStyle = '#06b6d4';
+                    this.ctx.beginPath();
+                    this.ctx.arc(x + textWidth / 2 + 12, y, 10, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.fillStyle = '#000';
+                    this.ctx.font = 'bold 9px Inter, sans-serif';
+                    this.ctx.fillText(pos.count.toString(), x + textWidth / 2 + 12, y + 3);
+                });
+
+                // Draw neural network-style animated pulse effect
+                const time = Date.now() / 1000;
+                this.points.forEach((point, i) => {
+                    const x = centerX + point.x * scaleX;
+                    const y = centerY + point.y * scaleY;
+                    const pulsePhase = (time + i * 0.3) % 2;
+
+                    if (pulsePhase < 1) {
+                        const pulseRadius = 8 + pulsePhase * 30;
+                        const pulseAlpha = 0.3 * (1 - pulsePhase);
+                        const color = this.colors[point.customer_segment] || this.colors.default;
+
+                        this.ctx.beginPath();
+                        this.ctx.strokeStyle = color.replace(')', `, ${pulseAlpha})`).replace('rgb', 'rgba');
+                        this.ctx.lineWidth = 2;
+                        this.ctx.arc(x, y, pulseRadius, 0, Math.PI * 2);
+                        this.ctx.stroke();
+                    }
+                });
+
+                // Draw knowledge nodes
+                this.points.forEach(point => {
+                    const x = centerX + point.x * scaleX;
+                    const y = centerY + point.y * scaleY;
+                    const color = this.colors[point.customer_segment] || this.colors.default;
+                    const isHovered = point === this.hoveredPoint;
+                    const radius = isHovered ? 14 : 10;
+
+                    // Outer glow
+                    const glowGradient = this.ctx.createRadialGradient(x, y, 0, x, y, radius * 3);
+                    glowGradient.addColorStop(0, color);
+                    glowGradient.addColorStop(0.3, color + '60');
+                    glowGradient.addColorStop(1, 'transparent');
+                    this.ctx.fillStyle = glowGradient;
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, radius * 3, 0, Math.PI * 2);
+                    this.ctx.fill();
+
+                    // Inner solid circle
+                    this.ctx.beginPath();
+                    this.ctx.fillStyle = color;
+                    this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+                    this.ctx.fill();
+
+                    // White core (knowledge light)
+                    this.ctx.beginPath();
+                    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                    this.ctx.arc(x - radius / 3, y - radius / 3, radius / 3, 0, Math.PI * 2);
+                    this.ctx.fill();
+
+                    // Hover ring
+                    if (isHovered) {
+                        this.ctx.beginPath();
+                        this.ctx.strokeStyle = '#fff';
+                        this.ctx.lineWidth = 3;
+                        this.ctx.arc(x, y, radius + 4, 0, Math.PI * 2);
+                        this.ctx.stroke();
+                    }
+                });
+
+                // Draw title
+                this.ctx.font = 'bold 14px Inter, sans-serif';
+                this.ctx.fillStyle = '#888';
+                this.ctx.textAlign = 'left';
+                this.ctx.fillText('COLLECTIVE INTELLIGENCE NETWORK', 20, 30);
+
+                // Draw stats
+                this.ctx.font = '12px Inter, sans-serif';
+                this.ctx.fillStyle = '#06b6d4';
+                this.ctx.fillText(`${this.points.length} knowledge nodes • ${Object.keys(typeGroups).length} domains`, 20, 50);
+
+                // Request next frame for animation
+                if (!this._animationFrame) {
+                    this._animationFrame = requestAnimationFrame(() => {
+                        this._animationFrame = null;
+                        this.render();
+                    });
+                }
+            }
+
+            handleMouseMove(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                const w = rect.width;
+                const h = rect.height;
+                const padding = 60;
+                const scaleX = (w - padding * 2) / 2;
+                const scaleY = (h - padding * 2) / 2;
+                const centerX = w / 2;
+                const centerY = h / 2;
+
+                // Find closest point
+                let closest = null;
+                let minDist = 20; // Threshold in pixels
+
+                this.points.forEach(point => {
+                    const x = centerX + point.x * scaleX;
+                    const y = centerY + point.y * scaleY;
+                    const dist = Math.hypot(mouseX - x, mouseY - y);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        closest = point;
+                    }
+                });
+
+                if (closest !== this.hoveredPoint) {
+                    this.hoveredPoint = closest;
+                    this.render();
+
+                    if (closest) {
+                        this.showTooltip(closest, e.clientX, e.clientY);
+                    } else {
+                        this.hideTooltip();
+                    }
+                } else if (closest) {
+                    // Update tooltip position
+                    this.positionTooltip(e.clientX, e.clientY);
+                }
+            }
+
+            showTooltip(point, x, y) {
+                document.getElementById('tooltipIssue').textContent = point.issue;
+                document.getElementById('tooltipSolution').textContent =
+                    point.solution.length > 200 ? point.solution.slice(0, 200) + '...' : point.solution;
+                document.getElementById('tooltipType').textContent = point.issue_type || 'general';
+                document.getElementById('tooltipSegment').textContent = point.customer_segment || 'unknown';
+
+                this.positionTooltip(x, y);
+                this.tooltip.classList.add('visible');
+            }
+
+            positionTooltip(x, y) {
+                const tooltipRect = this.tooltip.getBoundingClientRect();
+                const canvasRect = this.canvas.getBoundingClientRect();
+
+                let left = x - canvasRect.left + 20;
+                let top = y - canvasRect.top - 20;
+
+                // Keep tooltip in bounds
+                if (left + tooltipRect.width > canvasRect.width - 20) {
+                    left = x - canvasRect.left - tooltipRect.width - 20;
+                }
+                if (top + tooltipRect.height > canvasRect.height - 20) {
+                    top = y - canvasRect.top - tooltipRect.height - 20;
+                }
+                if (top < 20) top = 20;
+
+                this.tooltip.style.left = left + 'px';
+                this.tooltip.style.top = top + 'px';
+            }
+
+            hideTooltip() {
+                this.tooltip.classList.remove('visible');
+                this.hoveredPoint = null;
+                this.render();
+            }
+
+            handleZoom(e) {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                this.scale = Math.max(0.5, Math.min(3, this.scale * delta));
+                this.render();
+            }
+        }
+
+        window.hiveMindViz = new HiveMindVisualizer();
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // Insights Loader
+        // ═══════════════════════════════════════════════════════════════════════
+        async function loadHiveMindInsights() {
+            const trendingEl = document.getElementById('trendingDomains');
+            const recentEl = document.getElementById('recentKnowledge');
+
+            try {
+                // Use global API_BASE if available
+                const baseUrl = window.API_BASE || '';
+                const response = await fetch(`${baseUrl}/api/v1/hive-mind/insights?limit=5`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const data = await response.json();
+
+                // Render trending domains
+                if (data.trending_domains && data.trending_domains.length > 0) {
+                    trendingEl.innerHTML = data.trending_domains.map(domain => `
+                        <div class="trending-item">
+                            <span class="trending-item-name">${domain.domain}</span>
+                            <span class="trending-item-count">${domain.count}</span>
+                        </div>
+                        <div class="trending-item-bar" style="width: ${domain.percentage}%"></div>
+                    `).join('');
+                } else {
+                    trendingEl.innerHTML = '<div class="loading-placeholder">No domains yet</div>';
+                }
+
+                // Render recent knowledge
+                if (data.recent_knowledge && data.recent_knowledge.length > 0) {
+                    recentEl.innerHTML = data.recent_knowledge.slice(0, 5).map(item => `
+                        <div class="recent-item" title="${item.solution}">
+                            <div class="recent-item-issue">${item.issue}</div>
+                            <div class="recent-item-meta">
+                                ${item.issue_type ? `<span class="recent-item-tag">${item.issue_type.replace(/_/g, ' ')}</span>` : ''}
+                                ${item.customer_segment ? `<span class="recent-item-tag">${item.customer_segment}</span>` : ''}
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    recentEl.innerHTML = '<div class="loading-placeholder">No knowledge yet</div>';
+                }
+
+                console.log(`📊 Insights loaded: ${data.total_knowledge} nodes, ${data.unique_domains} domains`);
+
+            } catch (err) {
+                console.error('Failed to load insights:', err);
+                trendingEl.innerHTML = '<div class="loading-placeholder">Failed to load</div>';
+                recentEl.innerHTML = '<div class="loading-placeholder">Failed to load</div>';
+            }
+        }
+
+        // Load insights when switching to visualizer tab
+        const originalTabHandler = document.querySelectorAll('.header-tab')[1];
+        if (originalTabHandler) {
+            originalTabHandler.addEventListener('click', () => {
+                setTimeout(loadHiveMindInsights, 100);
+            });
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // RAG Client Logic
+        // ═══════════════════════════════════════════════════════════════════════
+
+        const QUERY_ENDPOINT = `${window.API_BASE}/api/v1/query`;
+        const HEALTH_ENDPOINT = `${window.API_BASE}/health`;
+
+        class RAGClient {
+            constructor() {
+                this.sessionId = null;
+                this.history = [];
+                this.sessionActive = false;
+                this.metrics = { queries: 0 };
+
+                this.setupUI();
+                this.checkHealth();
+            }
+
+            setupUI() {
                 this.chatMessages = document.getElementById('chatMessages');
-                this.emptyState = document.getElementById('emptyState');
                 this.textInput = document.getElementById('textInput');
-                this.micButton = document.getElementById('micButton');
                 this.sendButton = document.getElementById('sendButton');
                 this.startSessionBtn = document.getElementById('startSession');
                 this.endSessionBtn = document.getElementById('endSession');
-                this.currentStateEl = document.getElementById('currentState');
-                this.sessionIdEl = document.getElementById('sessionId');
-                this.chunkCountDisplay = document.getElementById('chunkCount'); // Renamed from chunkCountEl
-                this.logsContainer = document.getElementById('logsContainer');
-                this.languageToggle = document.getElementById('languageToggle');
-                this.mockModeToggle = document.getElementById('mockModeToggle');
-                this.langEn = document.getElementById('langEn');
-                this.langDe = document.getElementById('langDe');
-                this.phoneNumberInput = document.getElementById('phoneNumber');
+                this.emptyState = document.getElementById('emptyState');
+                this.statusIndicator = document.getElementById('statusIndicator');
+                this.statusText = document.getElementById('statusText');
+                this.lastLatencyEl = document.getElementById('lastLatency');
+                this.totalQueriesEl = document.getElementById('totalQueries');
 
-                // New UI Elements
-                this.vadVisualizer = document.getElementById('vadVisualizer');
-                this.avgLatencyEl = document.getElementById('avgLatency');
-                this.metricLogProbEl = document.getElementById('metricLogProb');
-                this.metricNoSpeechEl = document.getElementById('metricNoSpeech');
-                this.metricCompRatioEl = document.getElementById('metricCompRatio');
-                this.metricTtftEl = document.getElementById('metricTtft');
-                this.metricTtfcEl = document.getElementById('metricTtfc');
-
-                // Initialize VAD bars (40 bars)
-                if (this.vadVisualizer) {
-                    this.vadVisualizer.innerHTML = '';
-                    for (let i = 0; i < 40; i++) {
-                        const bar = document.createElement('div');
-                        bar.className = 'vad-bar';
-                        bar.style.height = '4px';
-                        this.vadVisualizer.appendChild(bar);
-                    }
-                }
-
-                // Load saved phone number
-                const savedPhone = localStorage.getItem('TARA_phone_number');
-                if (savedPhone) {
-                    this.phoneNumberInput.value = savedPhone;
-                }
-
-                // Save phone number on change
-                this.phoneNumberInput.addEventListener('change', () => {
-                    localStorage.setItem('TARA_phone_number', this.phoneNumberInput.value);
-                });
-
-                // Event listeners
-                this.startSessionBtn.onclick = () => this.connect();
+                this.startSessionBtn.onclick = () => this.startSession();
                 this.endSessionBtn.onclick = () => this.endSession();
-                this.micButton.onclick = () => this.toggleMicrophone();
-                this.sendButton.onclick = () => this.sendTextInput();
+                this.sendButton.onclick = () => this.sendMessage();
 
                 this.textInput.onkeydown = (e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
-                        this.sendTextInput();
+                        this.sendMessage();
                     }
                 };
 
-                this.textInput.oninput = () => {
-                    this.textInput.style.height = 'auto';
-                    this.textInput.style.height = Math.min(this.textInput.scrollHeight, 120) + 'px';
-                };
-
-                this.languageToggle.onclick = () => this.toggleLanguage();
-                this.mockModeToggle.onclick = () => this.toggleMockMode();
-
-                this.addLog('Ready to connect', 'info');
-            }
-
-            // ───────────────────────────────────────────────────────────────────
-            // Connection
-            // ───────────────────────────────────────────────────────────────────
-
-            connect() {
-                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-                    this.addLog('Already connected', 'warning');
-                    return;
-                }
-
-                this.updateStatus('connecting', 'Connecting...');
-                this.addLog('Connecting to TARA...', 'info');
-
-                // Add phone number to URL if present
-                const phone = this.phoneNumberInput.value.trim();
-                let url = WS_URL;
-                if (phone) {
-                    url += `?user_id=${encodeURIComponent(phone)}`;
-                    this.addLog(`Identity: ${phone}`, 'info');
-                }
-
-                this.ws = new WebSocket(url);
-
-                this.ws.onopen = async () => {
-                    this.addLog('WebSocket connected', 'success');
-                    this.updateStatus('connected', 'Connected');
-
-                    // Initialize AudioContext early (on user gesture via Start button)
-                    await this.initAudio();
-
-                    this.startSessionBtn.classList.add('hidden');
-                    this.endSessionBtn.classList.remove('hidden');
-                    this.textInput.disabled = false;
-                    this.sendButton.disabled = false;
-                    this.phoneNumberInput.disabled = true;
-
-                    // Enable mic only if not in mock mode
-                    if (!this.mockMode) {
-                        this.micButton.disabled = false;
-                    }
-
-                    // Send session start with mode and language information
-                    this.send({
-                        type: 'start_session',
-                        mode: 'conversation',
-                        stt_mode: this.mockMode ? 'text' : 'audio',
-                        tts_mode: this.mockMode ? 'text' : 'audio',
-                        language: this.fillerLanguage
-                    });
-
-                    this.sessionActive = true;
-                };
-
-                this.ws.onmessage = async (event) => {
-                    try {
-                        const data = JSON.parse(event.data);
-                        await this.handleMessage(data);
-                    } catch (e) {
-                        console.error('Message handling error:', e);
-                    }
-                };
-
-                this.ws.onerror = () => {
-                    this.addLog('Connection error', 'error');
-                    this.updateStatus('error', 'Error');
-                };
-
-                this.ws.onclose = () => {
-                    this.addLog('Disconnected', 'warning');
-                    this.updateStatus('disconnected', 'Disconnected');
-                    this.resetUI();
+                this.textInput.oninput = function () {
+                    this.style.height = 'auto';
+                    this.style.height = Math.min(this.scrollHeight, 120) + 'px';
                 };
             }
 
-            send(data) {
-                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-                    this.ws.send(JSON.stringify(data));
-                }
-            }
-
-            endSession() {
-                if (this.isMicActive) {
-                    this.stopMicrophone();
-                }
-                this.send({ type: 'end_session' });
-                if (this.ws) {
-                    this.ws.close();
-                }
-                this.resetUI();
-            }
-
-            resetUI() {
-                this.ws = null;
-                this.sessionId = null;
-                this.sessionActive = false;
-                this.nextPlayTime = 0; // Reset playback time
-
-                this.startSessionBtn.classList.remove('hidden');
-                this.endSessionBtn.classList.add('hidden');
-                this.micButton.disabled = true;
-                this.sendButton.disabled = true;
-                this.textInput.disabled = true;
-                this.phoneNumberInput.disabled = false;
-
-                this.sessionIdEl.textContent = '—';
-                this.currentStateEl.textContent = 'Idle';
-                this.currentStateEl.className = 'info-value';
-
-                // Reset metrics
-                this.chunkCounter = 0;
-                this.totalLatency = 0;
-                this.successfulResponses = 0;
-                if (this.avgLatencyEl) this.avgLatencyEl.textContent = '0ms';
-                if (this.chunkCountDisplay) this.chunkCountDisplay.textContent = '0';
-                if (this.metricLogProbEl) this.metricLogProbEl.textContent = 'N/A';
-                if (this.metricNoSpeechEl) this.metricNoSpeechEl.textContent = 'N/A';
-                if (this.metricCompRatioEl) this.metricCompRatioEl.textContent = 'N/A';
-                if (this.metricTtftEl) this.metricTtftEl.textContent = '0ms';
-                if (this.metricTtfcEl) this.metricTtfcEl.textContent = '0ms';
-
-                // Reset VAD bars
-                if (this.vadVisualizer) {
-                    const bars = this.vadVisualizer.children;
-                    for (let i = 0; i < bars.length; i++) {
-                        bars[i].style.height = '4px';
-                        bars[i].style.background = 'var(--color-dark-gray)';
-                    }
-                }
-            }
-
-            // ───────────────────────────────────────────────────────────────────
-            // Mode Toggles
-            // ───────────────────────────────────────────────────────────────────
-
-            toggleMockMode() {
-                if (this.sessionActive) {
-                    this.addLog('End session to change mode', 'warning');
-                    return;
-                }
-
-                this.mockMode = !this.mockMode;
-                this.mockModeToggle.classList.toggle('active', this.mockMode);
-
-                if (this.mockMode) {
-                    this.micButton.classList.add('hidden');
-                    this.addLog('Mock mode enabled (text-only)', 'info');
-                } else {
-                    this.micButton.classList.remove('hidden');
-                    this.addLog('Audio mode enabled', 'info');
-                }
-            }
-
-            toggleLanguage() {
-                this.fillerLanguage = this.fillerLanguage === 'en' ? 'de' : 'en';
-                this.updateLanguageUI();
-
-                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-                    this.send({
-                        type: 'change_language',
-                        language: this.fillerLanguage
-                    });
-                    this.addLog(`Language set to ${this.fillerLanguage.toUpperCase()}`, 'info');
-                }
-            }
-
-            updateLanguageUI() {
-                if (this.fillerLanguage === 'en') {
-                    this.languageToggle.classList.remove('active');
-                    this.langEn.classList.add('active');
-                    this.langDe.classList.remove('active');
-                } else {
-                    this.languageToggle.classList.add('active');
-                    this.langEn.classList.remove('active');
-                    this.langDe.classList.add('active');
-                }
-            }
-
-            // ───────────────────────────────────────────────────────────────────
-            // Message Handling
-            // ───────────────────────────────────────────────────────────────────
-
-            async handleMessage(data) {
-                const { type } = data;
-
-                switch (type) {
-                    case 'session_ready':
-                        this.sessionId = data.session_id;
-                        this.sessionIdEl.textContent = this.sessionId.substring(0, 12) + '...';
-                        this.addLog(`Session: ${this.sessionId.substring(0, 16)}...`, 'success');
-                        break;
-
-                    case 'state_update':
-                        this.state = data.state;
-                        this.updateStateDisplay(data.state);
-                        // Auto-start microphone when transitioning to LISTENING (if not in mock mode)
-                        if (data.state === 'listening' && !this.mockMode && !this.isMicActive) {
-                            this.startMicrophone();
-                        }
-                        break;
-
-                    case 'transcript':
-                        if (data.text && data.text.trim()) {
-                            if (data.is_final) {
-                                this.addMessage(data.text, 'user');
-                                // Mark turn start for TTFT/TTFC
-                                this.turnStartTime = performance.now();
-                                this.hasTtftForTurn = false;
-                                this.hasTtfcForTurn = false;
-                            }
-                            this.updatePerformanceMetrics(data);
-                        }
-                        break;
-
-                    case 'agent_response':
-                        if (data.text && data.text.trim()) {
-                            if (data.is_streaming) {
-                                // Record TTFT on first token
-                                if (this.turnStartTime && !this.hasTtftForTurn) {
-                                    const ttft = Math.round(performance.now() - this.turnStartTime);
-                                    this.metricTtftEl.textContent = `${ttft}ms`;
-                                    this.hasTtftForTurn = true;
-                                }
-
-                                this.agentResponseBuffer += data.text;
-                                this.updateAgentMessage(this.agentResponseBuffer);
-                            } else {
-                                // Non-streaming: complete message
-                                if (this.agentResponseBuffer) {
-                                    // Finalize streaming message
-                                    this.finalizeAgentMessage();
-                                } else {
-                                    this.addMessage(data.text, 'agent');
-                                }
-                            }
-                        }
-                        if (data.is_complete || data.is_final) {
-                            if (this.agentResponseBuffer) {
-                                this.finalizeAgentMessage();
-                            }
-                            this.agentResponseBuffer = '';
-                        }
-                        break;
-
-                    case 'audio_chunk':
-                        // Handle both 'data' and 'audio' fields for compatibility
-                        const audioB64 = data.data || data.audio;
-                        if (data.is_final) {
-                            this.addLog('Audio stream complete from server', 'info');
-                            this.audioStreamComplete = true;
-                            // Check if we can finalize now
-                            this.checkPlaybackComplete();
-                        } else if (audioB64) {
-                            // Record TTFC on first audio chunk
-                            if (this.turnStartTime && !this.hasTtfcForTurn) {
-                                const ttfc = Math.round(performance.now() - this.turnStartTime);
-                                this.metricTtfcEl.textContent = `${ttfc}ms`;
-                                this.hasTtfcForTurn = true;
-                            }
-                            await this.processAudioChunk(audioB64);
-                        }
-                        break;
-
-                    case 'audio_complete':
-                        this.addLog('Server signaled audio complete', 'info');
-                        this.audioStreamComplete = true;
-                        // Check if we can finalize now
-                        this.checkPlaybackComplete();
-                        break;
-
-                    case 'language_changed':
-                        this.addLog(`Language: ${data.language}`, 'success');
-                        break;
-
-                    case 'appointment_complete':
-                        // FSM appointment booking successful - send confirmation email
-                        this.addLog('Appointment booked! Sending confirmation email...', 'success');
-                        this.sendAppointmentEmail(data.appointment_data);
-                        break;
-
-                    case 'ping':
-                        // Respond to keep-alive ping
-                        this.send({ type: 'pong', timestamp: Date.now() / 1000 });
-                        break;
-                }
-            }
-
-            updateStateDisplay(state) {
-                this.currentStateEl.textContent = state.charAt(0).toUpperCase() + state.slice(1);
-                this.currentStateEl.className = 'info-value';
-
-                if (state === 'listening') {
-                    this.currentStateEl.classList.add('state-listening');
-                } else if (state === 'speaking') {
-                    this.currentStateEl.classList.add('state-speaking');
-                } else if (state === 'thinking') {
-                    this.currentStateEl.classList.add('state-thinking');
-                }
-            }
-
-            // ───────────────────────────────────────────────────────────────────
-            // Chat Messages
-            // ───────────────────────────────────────────────────────────────────
-
-            addMessage(text, sender) {
-                this.emptyState.classList.add('hidden');
-
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `message ${sender}`;
-                messageDiv.innerHTML = `
-                    <div class="content">${this.escapeHtml(text)}</div>
-                    <div class="timestamp">${new Date().toLocaleTimeString()}</div>
-                `;
-
-                this.chatMessages.appendChild(messageDiv);
-                this.scrollToBottom();
-                return messageDiv;
-            }
-
-            updateAgentMessage(text) {
-                this.emptyState.classList.add('hidden');
-
-                let streamingMsg = this.chatMessages.querySelector('.message.agent.streaming');
-                if (!streamingMsg) {
-                    streamingMsg = document.createElement('div');
-                    streamingMsg.className = 'message agent streaming';
-                    streamingMsg.innerHTML = `<div class="content"></div>`;
-                    this.chatMessages.appendChild(streamingMsg);
-                }
-
-                streamingMsg.querySelector('.content').textContent = text;
-                this.scrollToBottom();
-            }
-
-            finalizeAgentMessage() {
-                const streamingMsg = this.chatMessages.querySelector('.message.agent.streaming');
-                if (streamingMsg) {
-                    streamingMsg.classList.remove('streaming');
-                    const timestamp = document.createElement('div');
-                    timestamp.className = 'timestamp';
-                    timestamp.textContent = new Date().toLocaleTimeString();
-                    streamingMsg.appendChild(timestamp);
-                }
-            }
-
-            scrollToBottom() {
-                this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
-            }
-
-            escapeHtml(text) {
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML;
-            }
-
-            // ───────────────────────────────────────────────────────────────────
-            // Text Input
-            // ───────────────────────────────────────────────────────────────────
-
-            async sendTextInput() {
-                const text = this.textInput.value.trim();
-                if (!text) return;
-
-                // Add user message to chat
-                this.addMessage(text, 'user');
-                this.textInput.value = '';
-                this.textInput.style.height = 'auto';
-
-                // Mark turn start for TTFT/TTFC
-                this.turnStartTime = performance.now();
-                this.hasTtftForTurn = false;
-                this.hasTtfcForTurn = false;
-
-                if (this.mockMode) {
-                    // MOCK MODE: Send directly to RAG API via HTTP
-                    await this.sendToRAGDirect(text);
-                } else {
-                    // AUDIO MODE: Send via WebSocket
-                    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-                        this.addLog('Not connected', 'error');
-                        return;
-                    }
-                    this.send({
-                        type: 'text_input',
-                        text: text,
-                        timestamp: Date.now() / 1000
-                    });
-                    this.addLog('Sent via WebSocket: ' + text.substring(0, 40) + (text.length > 40 ? '...' : ''), 'info');
-                }
-            }
-
-            // ───────────────────────────────────────────────────────────────────
-            // EmailJS - Appointment Confirmation
-            // ───────────────────────────────────────────────────────────────────
-
-            async sendAppointmentEmail(appointmentData) {
-                // Check if EmailJS is configured
-                if (!EMAILJS_CONFIG.enabled) {
-                    this.addLog('EmailJS not configured - skipping email', 'warning');
-                    console.warn('EmailJS not configured. Set EMAILJS_CONFIG.enabled = true and add your credentials.');
-                    return;
-                }
-
-                if (!appointmentData || !appointmentData.email) {
-                    this.addLog('No appointment data for email', 'error');
-                    return;
-                }
-
+            async checkHealth() {
                 try {
-                    const templateParams = {
-                        to_email: appointmentData.email,
-                        customer_name: appointmentData.name || 'Valued Customer',
-                        topic: appointmentData.query || 'Daytona Consultation',
-                        timestamp: appointmentData.timestamp || new Date().toISOString(),
-                        appointment_id: appointmentData.id || 'N/A'
-                    };
-
-                    this.addLog(`📧 Sending confirmation to ${appointmentData.email}...`, 'info');
-
-                    const response = await emailjs.send(
-                        EMAILJS_CONFIG.serviceId,
-                        EMAILJS_CONFIG.templateId,
-                        templateParams
-                    );
-
-                    if (response.status === 200) {
-                        this.addLog('✅ Confirmation email sent!', 'success');
-                        this.addMessage(`📧 Confirmation email sent to ${appointmentData.email}`, 'assistant');
+                    this.updateStatus('connecting', 'Checking health...');
+                    const res = await fetch(HEALTH_ENDPOINT);
+                    if (res.ok) {
+                        this.updateStatus('connected', 'Service Ready');
                     } else {
-                        throw new Error(`EmailJS returned status ${response.status}`);
+                        this.updateStatus('error', 'Service Unhealthy');
                     }
-                } catch (error) {
-                    this.addLog(`❌ Email failed: ${error.text || error.message}`, 'error');
-                    console.error('EmailJS error:', error);
-                }
-            }
-
-            // ───────────────────────────────────────────────────────────────────
-            // Direct RAG API (Mock Mode)
-            // ───────────────────────────────────────────────────────────────────
-
-            async sendToRAGDirect(query) {
-                this.sendButton.disabled = true;
-                this.updateStatus('connecting', 'Processing...');
-                this.addLog('Sending to RAG...', 'info');
-
-                const startTime = Date.now();
-
-                try {
-                    // Build history context from conversation
-                    const historyContext = this.buildHistoryContext();
-
-                    // Map language for RAG
-                    const lang = this.fillerLanguage === 'de' ? 'german' : 'english';
-
-                    // Call RAG streaming endpoint directly
-                    const response = await fetch('/api/rag/stream_query', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            query: query,
-                            history_context: historyContext,
-                            language: lang
-                        })
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-                    }
-
-                    // Stream the response
-                    let fullResponse = '';
-                    const reader = response.body.getReader();
-                    const decoder = new TextDecoder();
-                    let buffer = '';
-
-                    // Create streaming message placeholder
-                    this.agentResponseBuffer = '';
-
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-
-                        buffer += decoder.decode(value, { stream: true });
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop(); // Keep incomplete line
-
-                        for (const line of lines) {
-                            if (!line.trim()) continue;
-                            try {
-                                const data = JSON.parse(line);
-                                if (data.text) {
-                                    fullResponse += data.text;
-                                    this.agentResponseBuffer = fullResponse;
-                                    this.updateAgentMessage(fullResponse);
-                                }
-                                if (data.is_final) {
-                                    this.finalizeAgentMessage();
-                                }
-                            } catch (e) {
-                                // Skip parse errors
-                            }
-                        }
-                    }
-
-                    // Finalize if not already done
-                    if (this.agentResponseBuffer) {
-                        this.finalizeAgentMessage();
-                    }
-
-                    // Update conversation history
-                    this.conversationHistory.push({
-                        user: query,
-                        agent: fullResponse
-                    });
-
-                    const responseTime = Date.now() - startTime;
-                    this.addLog(`Response: ${responseTime}ms`, 'success');
-                    this.updateStatus('connected', 'Connected');
-
-                } catch (error) {
-                    console.error('RAG query error:', error);
-                    this.addMessage(`Error: ${error.message}`, 'agent');
-                    this.addLog(`Error: ${error.message}`, 'error');
-                    this.updateStatus('error', 'Error');
-                } finally {
-                    this.sendButton.disabled = false;
-                }
-            }
-
-            buildHistoryContext() {
-                if (this.conversationHistory.length === 0) return null;
-                return this.conversationHistory
-                    .slice(-5)
-                    .map(ex => `User: ${ex.user}\nAgent: ${ex.agent}`)
-                    .join('\n\n');
-            }
-
-            // ───────────────────────────────────────────────────────────────────
-            // Microphone
-            // ───────────────────────────────────────────────────────────────────
-
-            toggleMicrophone() {
-                if (this.isMicActive) {
-                    this.stopMicrophone();
-                } else {
-                    this.startMicrophone();
-                }
-            }
-
-            async startMicrophone() {
-                if (this.mockMode) {
-                    this.addLog('Mic disabled in mock mode', 'warning');
-                    return;
-                }
-
-                try {
-                    this.mediaStream = await navigator.mediaDevices.getUserMedia({
-                        audio: {
-                            sampleRate: MIC_SAMPLE_RATE,
-                            channelCount: 1,
-                            echoCancellation: true,
-                            noiseSuppression: true
-                        }
-                    });
-                    this.micAudioContext = new AudioContext({ sampleRate: MIC_SAMPLE_RATE });
-                    const source = this.micAudioContext.createMediaStreamSource(this.mediaStream);
-                    this.processor = this.micAudioContext.createScriptProcessor(2048, 1, 1);
-
-                    source.connect(this.processor);
-                    this.processor.connect(this.micAudioContext.destination);
-
-                    // Voice activity detection for barge-in
-                    const VAD_THRESHOLD = 0.02;
-                    let consecutiveVoiceFrames = 0;
-                    const VOICE_FRAMES_FOR_BARGE_IN = 3;
-
-                    this.processor.onaudioprocess = (e) => {
-                        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
-                        if (!this.isMicActive) return;
-
-                        const inputData = e.inputBuffer.getChannelData(0);
-                        const pcmData = new Int16Array(inputData.length);
-
-                        // Calculate Peak for VAD animation
-                        let peak = 0;
-                        for (let i = 0; i < inputData.length; i++) {
-                            const abs = Math.abs(inputData[i]);
-                            if (abs > peak) peak = abs;
-                        }
-                        this.updateVAD(peak * 128);
-
-                        // Calculate RMS for VAD logic
-                        let sum = 0;
-                        for (let i = 0; i < inputData.length; i++) {
-                            pcmData[i] = Math.max(-1, Math.min(1, inputData[i])) * 0x7FFF;
-                            sum += inputData[i] * inputData[i];
-                        }
-                        const rms = Math.sqrt(sum / inputData.length);
-
-                        // Barge-in detection
-                        if (rms > VAD_THRESHOLD) {
-                            consecutiveVoiceFrames++;
-                            if (this.isPlayingAudio && consecutiveVoiceFrames >= VOICE_FRAMES_FOR_BARGE_IN) {
-                                this.interrupt();
-                                consecutiveVoiceFrames = 0;
-                            }
-                        } else {
-                            consecutiveVoiceFrames = 0;
-                        }
-
-                        // Send as RAW BINARY (Orchestrator now supports this for efficiency)
-                        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-                            this.ws.send(pcmData.buffer);
-                        }
-                    };
-
-                    this.isMicActive = true;
-                    this.micButton.classList.add('active');
-                    this.addLog('Microphone active', 'success');
-
-                } catch (error) {
-                    this.addLog('Microphone access denied: ' + error.message, 'error');
-                    console.error('Microphone error:', error);
-                }
-            }
-
-            stopMicrophone() {
-                if (this.mediaStream) {
-                    this.mediaStream.getTracks().forEach(track => track.stop());
-                    this.mediaStream = null;
-                }
-                if (this.processor) {
-                    this.processor.disconnect();
-                    this.processor = null;
-                }
-                if (this.micAudioContext) {
-                    this.micAudioContext.close();
-                    this.micAudioContext = null;
-                }
-
-                this.isMicActive = false;
-                this.micButton.classList.remove('active');
-
-                // Clear VAD bars
-                if (this.vadVisualizer) {
-                    const bars = this.vadVisualizer.children;
-                    for (let i = 0; i < bars.length; i++) {
-                        bars[i].style.height = '4px';
-                        bars[i].style.background = 'var(--color-dark-gray)';
-                    }
-                }
-
-                this.addLog('Microphone stopped', 'info');
-            }
-
-            updateVAD(level) {
-                if (!this.vadVisualizer) return;
-                const bars = this.vadVisualizer.children;
-                if (!bars.length) return;
-
-                const normalizedLevel = Math.min(100, (level / 128) * 100);
-
-                // Shift bars left
-                for (let i = 0; i < bars.length - 1; i++) {
-                    bars[i].style.height = bars[i + 1].style.height;
-                }
-                // Add new bar at end
-                const lastBar = bars[bars.length - 1];
-                lastBar.style.height = `${Math.max(4, normalizedLevel)}px`;
-                lastBar.style.background = level > 30 ? 'var(--color-orange)' : 'var(--color-dark-gray)';
-            }
-
-            updatePerformanceMetrics(data) {
-                if (data.latency_ms) {
-                    this.totalLatency += data.latency_ms;
-                    this.successfulResponses++;
-                    this.avgLatencyEl.textContent = `${Math.round(this.totalLatency / this.successfulResponses)}ms`;
-                }
-
-                this.chunkCounter++;
-                this.chunkCountDisplay.textContent = this.chunkCounter;
-
-                if (data.avg_logprob !== undefined) {
-                    this.metricLogProbEl.textContent = data.avg_logprob.toFixed(3);
-                    this.metricLogProbEl.closest('.metric-pill').className = `metric-pill ${data.avg_logprob > -0.5 ? 'success' : 'warning'}`;
-                }
-
-                if (data.no_speech_prob !== undefined) {
-                    this.metricNoSpeechEl.textContent = (data.no_speech_prob * 100).toFixed(1) + '%';
-                    this.metricNoSpeechEl.closest('.metric-pill').className = `metric-pill ${data.no_speech_prob < 0.1 ? 'success' : 'warning'}`;
-                }
-
-                if (data.compression_ratio !== undefined) {
-                    this.metricCompRatioEl.textContent = data.compression_ratio.toFixed(2);
-                    this.metricCompRatioEl.closest('.metric-pill').className = `metric-pill ${data.compression_ratio < 2.4 ? 'success' : 'warning'}`;
-                }
-            }
-
-            arrayBufferToBase64(buffer) {
-                const bytes = new Uint8Array(buffer);
-                let binary = '';
-                for (let i = 0; i < bytes.byteLength; i++) {
-                    binary += String.fromCharCode(bytes[i]);
-                }
-                return btoa(binary);
-            }
-
-            interrupt() {
-                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-                    this.send({ type: 'interrupt', timestamp: Date.now() / 1000 });
-                    this.addLog('Interrupted playback', 'warning');
-                }
-                this.stopAudioPlayback();
-            }
-
-            stopAudioPlayback() {
-                this.isPlayingAudio = false;
-                if (this.currentSource) {
-                    try {
-                        this.currentSource.stop();
-                    } catch (e) { }
-                    this.currentSource = null;
-                }
-                this.nextPlayTime = 0; // Reset nextPlayTime on interruption
-            }
-
-            // ───────────────────────────────────────────────────────────────────
-            // Audio Playback (Raw PCM from TTS)
-            // ───────────────────────────────────────────────────────────────────
-
-            async initAudio() {
-                if (!this.audioContext) {
-                    this.audioContext = new AudioContext({ sampleRate: PLAYBACK_SAMPLE_RATE });
-                    this.nextPlayTime = this.audioContext.currentTime;
-                }
-                if (this.audioContext.state === 'suspended') {
-                    await this.audioContext.resume();
-                    this.addLog('Audio context resumed', 'info');
-                }
-            }
-
-            async processAudioChunk(base64Data) {
-                if (!base64Data) return;
-
-                try {
-                    await this.initAudio();
-
-                    // Decode Base64 to binary string
-                    const binaryString = atob(base64Data);
-                    const len = binaryString.length;
-
-                    // Create Uint8Array from binary string
-                    const bytes = new Uint8Array(len);
-                    for (let i = 0; i < len; i++) {
-                        bytes[i] = binaryString.charCodeAt(i);
-                    }
-
-                    // Convert to Float32 (assuming pcm_f32le from server)
-                    // The server sends straight bytes, so we need a DataView or similar to read floats
-                    // Alternatively, if the server sends raw bytes of floats:
-                    const float32Data = new Float32Array(bytes.buffer);
-
-                    // Create AudioBuffer
-                    const audioBuffer = this.audioContext.createBuffer(1, float32Data.length, PLAYBACK_SAMPLE_RATE);
-                    audioBuffer.getChannelData(0).set(float32Data);
-
-                    // Schedule playback (Gapless)
-                    const source = this.audioContext.createBufferSource();
-                    source.buffer = audioBuffer;
-                    source.connect(this.audioContext.destination);
-
-                    source.onended = () => {
-                        this.checkPlaybackComplete();
-                    };
-
-                    // Schedule accurately
-                    const currentTime = this.audioContext.currentTime;
-                    // Provide a small buffer (0.1s) if we fell behind, otherwise strict scheduling
-                    const startAt = Math.max(currentTime, this.nextPlayTime);
-
-                    // If we're starting fresh or had a gap, reset nextPlayTime to avoiding fast-forwarding
-                    if (startAt > this.nextPlayTime + 0.5) {
-                        // Gap detected (or start), play immediately
-                        this.nextPlayTime = startAt;
-                    }
-
-                    source.start(this.nextPlayTime);
-                    // Advance time
-                    this.nextPlayTime += audioBuffer.duration;
-
-                    this.chunkCountDisplay.textContent = this.chunkCount;
-
                 } catch (e) {
-                    console.error('Audio processing error:', e);
-                    this.addLog(`Audio error: ${e.message}`, 'error');
+                    this.updateStatus('error', 'Disconnected');
                 }
             }
 
-            checkPlaybackComplete() {
-                // Called when audio_complete received - check if playback is done
-                if (this.playbackFallbackTimer) {
-                    clearTimeout(this.playbackFallbackTimer);
-                    this.playbackFallbackTimer = null;
-                }
-                if (this.audioStreamComplete && this.audioQueue.length === 0 && !this.isProcessingQueue) {
-                    this.finalizePlayback();
-                }
-            }
-
-            finalizePlayback() {
-                if (!this.isPlayingAudio) return;  // Already finalized
-
-                // Clear any pending fallback timer
-                if (this.playbackFallbackTimer) {
-                    clearTimeout(this.playbackFallbackTimer);
-                    this.playbackFallbackTimer = null;
-                }
-
-                const duration = this.playbackStartTime ? Date.now() - this.playbackStartTime : 0;
-                this.addLog(`Playback complete (${duration}ms)`, 'info');
-
-                this.isPlayingAudio = false;
-                this.playbackStartTime = null;
-                this.audioStreamComplete = false;  // Reset for next response
-
-                // Notify server that playback is done
-                this.send({
-                    type: 'playback_done',
-                    duration_ms: duration,
-                    timestamp: Date.now() / 1000
-                });
-            }
-
-            playAudioBuffer(buffer) {
-                return new Promise((resolve) => {
-                    if (!this.audioContext) {
-                        resolve();
-                        return;
-                    }
-
-                    this.currentSource = this.audioContext.createBufferSource();
-                    this.currentSource.buffer = buffer;
-                    this.currentSource.connect(this.audioContext.destination);
-                    this.currentSource.onended = () => {
-                        this.currentSource = null;
-                        resolve();
-                    };
-                    this.currentSource.start();
-                });
-            }
-
-            notifyPlaybackDone() {
-                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-                    this.send({ type: 'playback_done', timestamp: Date.now() / 1000 });
-                }
-            }
-
-            // ───────────────────────────────────────────────────────────────────
-            // Utility
-            // ───────────────────────────────────────────────────────────────────
-
-            updateStatus(status, text) {
-                this.statusIndicator.className = 'status-indicator ' + status;
+            updateStatus(state, text) {
+                this.statusIndicator.className = `status-indicator ${state}`;
                 this.statusText.textContent = text;
             }
 
-            addLog(message, type = 'info') {
-                const logItem = document.createElement('div');
-                logItem.className = `log-item ${type}`;
-                logItem.innerHTML = `<span class="log-time">${new Date().toLocaleTimeString()}</span>${message}`;
+            startSession() {
+                this.sessionId = `sess_${Date.now()}`;
+                this.sessionActive = true;
+                this.history = [];
 
-                this.logsContainer.insertBefore(logItem, this.logsContainer.firstChild);
+                this.startSessionBtn.classList.add('hidden');
+                this.endSessionBtn.classList.remove('hidden');
+                this.textInput.disabled = false;
+                this.sendButton.disabled = false;
+                this.emptyState.classList.add('hidden');
 
-                // Keep only last 50 logs
-                while (this.logsContainer.children.length > 50) {
-                    this.logsContainer.removeChild(this.logsContainer.lastChild);
-                }
-            }
-        }
-
-        // Initialize client
-        const client = new TARAClient();
-
-        // Pod Logs Streaming
-        let podLogsEventSource = null;
-        const podLogsContainer = document.getElementById('podLogsContainer');
-        const viewOrchLogsBtn = document.getElementById('viewOrchLogs');
-        const viewRagLogsBtn = document.getElementById('viewRagLogs');
-        const closePodLogsBtn = document.getElementById('closePodLogs');
-
-        function streamPodLogs(podName) {
-            // Close existing stream
-            if (podLogsEventSource) {
-                podLogsEventSource.close();
+                this.updateStatus('connected', 'Session Active');
+                this.appendMessage('system', 'Session started. How can I help you today?');
             }
 
-            // Clear container
-            podLogsContainer.innerHTML = '';
-            podLogsContainer.style.display = 'block';
-            closePodLogsBtn.style.display = 'block';
+            endSession() {
+                this.sessionActive = false;
+                this.sessionId = null;
 
-            // Create EventSource for SSE
-            const url = `/api/logs/stream?pod=${podName}`;
-            podLogsEventSource = new EventSource(url);
+                this.startSessionBtn.classList.remove('hidden');
+                this.endSessionBtn.classList.add('hidden');
+                this.textInput.disabled = true;
+                this.sendButton.disabled = true;
+                this.emptyState.classList.remove('hidden');
+                this.chatMessages.innerHTML = '';
+                this.chatMessages.appendChild(this.emptyState);
 
-            podLogsEventSource.onmessage = (event) => {
+                this.updateStatus('connected', 'Service Ready');
+            }
+
+            async sendMessage() {
+                const text = this.textInput.value.trim();
+                if (!text || !this.sessionActive) return;
+
+                this.textInput.value = '';
+                this.textInput.style.height = 'auto';
+                this.appendMessage('user', text);
+                this.updateStatus('connecting', 'Thinking...');
+
+                const startTime = performance.now();
+
                 try {
-                    const data = JSON.parse(event.data);
+                    const payload = {
+                        query: text,
+                        history_context: this.history,
+                        context: { session_id: this.sessionId }
+                    };
 
-                    if (data.error) {
-                        const errorItem = document.createElement('div');
-                        errorItem.className = 'log-item error';
-                        errorItem.textContent = `Error: ${data.error}`;
-                        podLogsContainer.appendChild(errorItem);
-                        return;
-                    }
+                    const response = await fetch(QUERY_ENDPOINT, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
 
-                    if (data.log) {
-                        const logItem = document.createElement('div');
-                        logItem.className = 'log-item';
-                        logItem.textContent = data.log;
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-                        // Auto-scroll to bottom
-                        podLogsContainer.appendChild(logItem);
-                        podLogsContainer.scrollTop = podLogsContainer.scrollHeight;
+                    const data = await response.json();
+                    const latency = Math.round(performance.now() - startTime);
 
-                        // Keep only last 200 lines
-                        while (podLogsContainer.children.length > 200) {
-                            podLogsContainer.removeChild(podLogsContainer.firstChild);
-                        }
-                    }
+                    this.metrics.queries++;
+                    this.totalQueriesEl.textContent = this.metrics.queries;
+                    this.lastLatencyEl.textContent = `${latency}ms`;
+
+                    this.history.push({ role: 'user', content: text });
+                    this.history.push({ role: 'assistant', content: data.answer });
+
+                    // Pass full data object for rich rendering
+                    this.appendMessage('agent', data);
+                    this.updateStatus('connected', 'Session Active');
+
                 } catch (e) {
-                    console.error('Error parsing log event:', e);
+                    console.error('Query error:', e);
+                    this.appendMessage('agent', 'Sorry, I encountered an error connecting to the service.');
+                    this.updateStatus('error', 'Connection Error');
                 }
-            };
-
-            podLogsEventSource.onerror = (error) => {
-                console.error('EventSource error:', error);
-                const errorItem = document.createElement('div');
-                errorItem.className = 'log-item error';
-                errorItem.textContent = 'Connection lost. Click button to reconnect.';
-                podLogsContainer.appendChild(errorItem);
-                podLogsEventSource.close();
-                podLogsEventSource = null;
-            };
-        }
-
-        function closePodLogs() {
-            if (podLogsEventSource) {
-                podLogsEventSource.close();
-                podLogsEventSource = null;
             }
-            podLogsContainer.style.display = 'none';
-            closePodLogsBtn.style.display = 'none';
-            podLogsContainer.innerHTML = '';
+
+            appendMessage(role, content) {
+                const div = document.createElement('div');
+                div.className = `message ${role}`;
+
+                if (typeof content === 'string') {
+                    // Simple text message
+                    div.textContent = content;
+                } else if (role === 'agent' && typeof content === 'object') {
+                    // Rich agent response with metrics
+                    const textDiv = document.createElement('div');
+                    textDiv.style.marginBottom = '8px';
+                    // Preserve whitespace/newlines
+                    textDiv.style.whiteSpace = 'pre-wrap';
+                    textDiv.textContent = content.answer;
+                    div.appendChild(textDiv);
+
+                    // Metadata Section
+                    const metaDiv = document.createElement('div');
+                    metaDiv.style.fontSize = '0.75rem';
+                    metaDiv.style.opacity = '0.85';
+                    metaDiv.style.borderTop = '1px solid rgba(0,0,0,0.1)'; // Dark text on light bg
+                    // For dark mode/agent messages (which are gray/white depending on exact css?)
+                    // Agent messages are: background: var(--color-background) -> #F5F5F5 (Light Gray)
+                    // Text color: var(--color-black)
+
+                    metaDiv.style.paddingTop = '8px';
+                    metaDiv.style.marginTop = '8px';
+                    metaDiv.style.display = 'flex';
+                    metaDiv.style.flexDirection = 'column';
+                    metaDiv.style.gap = '4px';
+
+                    // 1. Stats Row
+                    let stats = [];
+                    if (content.confidence) {
+                        const confPct = (content.confidence * 100).toFixed(0);
+                        stats.push(`Confidence: <b>${confPct}%</b>`);
+                    }
+                    if (content.timing_breakdown) {
+                        const t = content.timing_breakdown;
+                        if (t.total_ms) stats.push(`Latency: <b>${t.total_ms.toFixed(0)}ms</b>`);
+                        // If TTFT is available
+                        if (t.first_chunk_ms) stats.push(`TTFT: <b>${t.first_chunk_ms.toFixed(0)}ms</b>`);
+                    }
+
+                    if (stats.length > 0) {
+                        const statsEl = document.createElement('div');
+                        statsEl.innerHTML = stats.join(' • ');
+                        metaDiv.appendChild(statsEl);
+                    }
+
+                    // 2. Sources Row
+                    if (content.sources && content.sources.length > 0) {
+                        const sourcesEl = document.createElement('div');
+                        sourcesEl.style.display = 'flex';
+                        sourcesEl.style.gap = '4px';
+                        sourcesEl.style.alignItems = 'center';
+
+                        const icon = document.createElement('span');
+                        icon.className = 'material-icons-round';
+                        icon.style.fontSize = '12px';
+                        icon.textContent = 'description';
+                        sourcesEl.appendChild(icon);
+
+                        const text = document.createElement('span');
+                        // Show first 3 sources, clean up filenames
+                        const cleanSources = content.sources
+                            .slice(0, 3)
+                            .map(s => s.split('/').pop())
+                            .join(', ');
+                        text.textContent = cleanSources + (content.sources.length > 3 ? ` +${content.sources.length - 3}` : '');
+                        sourcesEl.appendChild(text);
+
+                        metaDiv.appendChild(sourcesEl);
+                    }
+
+                    // 3. Hive Mind Info (if available in metadata)
+                    if (content.metadata && content.metadata.hive_mind_context) {
+                        const hmEl = document.createElement('div');
+                        hmEl.innerHTML = `<span style="color:#8b5cf6">●</span> Hive Mind Enhanced`;
+                        metaDiv.appendChild(hmEl);
+                    }
+
+                    div.appendChild(metaDiv);
+                }
+
+                const time = document.createElement('div');
+                time.className = 'timestamp';
+                time.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                div.appendChild(time);
+
+                this.chatMessages.appendChild(div);
+                this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+            }
         }
 
-        viewOrchLogsBtn.addEventListener('click', () => streamPodLogs('orchestrator'));
-        viewRagLogsBtn.addEventListener('click', () => streamPodLogs('rag'));
-        closePodLogsBtn.addEventListener('click', closePodLogs);
-
+        window.ragClient = new RAGClient();
     </script>
 </body>
 

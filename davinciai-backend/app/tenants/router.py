@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.database import get_db, Tenant, Agent, User
@@ -27,8 +26,6 @@ class AgentResponse(BaseModel):
     language_primary: str
     language_secondary: Optional[str] = None
     websocket_url: Optional[str] = None
-    location: Optional[str] = None
-    created_at: Optional[datetime] = None
     is_active: bool
     stats: Optional[dict] = {"total_calls": 0, "total_minutes": 0, "success_rate": 0.0}
 
@@ -79,8 +76,6 @@ async def list_tenant_agents(tenant_id: str, db: AsyncSession = Depends(get_db))
             "language_primary": agent.language_primary,
             "language_secondary": agent.language_secondary,
             "websocket_url": agent.websocket_url,
-            "location": agent.location,
-            "created_at": agent.created_at,
             "is_active": agent.is_active,
             "stats": {"total_calls": 0, "total_minutes": 0, "success_rate": 0.0}
         }

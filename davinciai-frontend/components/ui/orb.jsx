@@ -72,11 +72,6 @@ function Scene({
     const targetColor2Ref = useRef(new THREE.Color(colors[1]))
     const animSpeedRef = useRef(0.1)
 
-    // Load perlin noise texture
-    const perlinNoiseTexture = useTexture(
-        "https://storage.googleapis.com/eleven-public-cdn/images/perlin-noise.png"
-    )
-
     const agentRef = useRef(agentState)
     const modeRef = useRef(volumeMode)
     const curInRef = useRef(0)
@@ -168,15 +163,10 @@ function Scene({
     })
 
     const uniforms = useMemo(() => {
-        if (perlinNoiseTexture) {
-            perlinNoiseTexture.wrapS = THREE.RepeatWrapping
-            perlinNoiseTexture.wrapT = THREE.RepeatWrapping
-        }
         return {
             uColor1: new THREE.Uniform(new THREE.Color(initialColorsRef.current[0])),
             uColor2: new THREE.Uniform(new THREE.Color(initialColorsRef.current[1])),
             uOffsets: { value: offsets },
-            uPerlinTexture: new THREE.Uniform(perlinNoiseTexture),
             uTime: new THREE.Uniform(0),
             uAnimation: new THREE.Uniform(0.1),
             uInverted: new THREE.Uniform(1),
@@ -184,7 +174,7 @@ function Scene({
             uOutputVolume: new THREE.Uniform(0),
             uOpacity: new THREE.Uniform(0),
         }
-    }, [perlinNoiseTexture, offsets])
+    }, [offsets])
 
     return (
         <mesh ref={circleRef}>
@@ -234,7 +224,6 @@ uniform vec3 uColor2;
 uniform float uInputVolume;
 uniform float uOutputVolume;
 uniform float uOpacity;
-uniform sampler2D uPerlinTexture;
 varying vec2 vUv;
 
 const float PI = 3.14159265358979323846;
@@ -293,7 +282,9 @@ float smoothRing(vec3 decomposed, float time) {
 }
 
 float flow(vec3 decomposed, float time) {
-    return mix(texture(uPerlinTexture, vec2(time, decomposed.x / 2.0)).r, texture(uPerlinTexture, vec2(time, decomposed.y / 2.0)).r, decomposed.z);
+    float n1 = noise2D(vec2(time, decomposed.x / 2.0));
+    float n2 = noise2D(vec2(time, decomposed.y / 2.0));
+    return mix(n1, n2, decomposed.z);
 }
 
 void main() {
@@ -316,7 +307,7 @@ void main() {
     float a, b;
     vec4 ovalColor;
     for (int i = 0; i < 7; i++) {
-        float noise = texture(uPerlinTexture, vec2(mod(centers[i] + uTime * 0.05, 1.0), 0.5)).r;
+        float noise = noise2D(vec2(mod(centers[i] + uTime * 0.05, 1.0), 0.5));
         a = 0.5 + noise * 0.3;
         b = noise * mix(3.5, 2.5, uInputVolume);
         bool reverseGradient = (i % 2 == 1);

@@ -3,11 +3,13 @@ Metrics Router - PROTOTYPE VERSION WITH MOCK DATA
 Provides call metrics, analytics, and real-time data
 """
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends, status
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime, timedelta
 import random
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.database import get_db, Agent, CallLog
 
 router = APIRouter()
 
@@ -92,7 +94,47 @@ class LiveCallResponse(BaseModel):
     status: str
     sentiment: str
 
-# ============= ROUTES =============
+class SessionReport(BaseModel):
+    session_id: str
+    user_id: str
+    agent_name: str
+    start_time: float
+    end_time: float
+    duration_seconds: float
+    total_turns: int
+    avg_ttft_ms: float
+    avg_ttfc_ms: float
+    status: str
+
+@router.post("/session-report", status_code=status.HTTP_201_CREATED)
+async def receive_session_report(report: SessionReport, db: AsyncSession = Depends(get_db)):
+    """
+    Direct endpoint for WSS providers to submit a full session summary after disconnect.
+    """
+    # 1. Identify Agent (lookup by name or internal mapping)
+    # For now, we'll assume agent_id is passed or mapped
+    # In production, use session_id to lookup active agent record
+    
+    # 2. Save the log
+    new_call = CallLog(
+        id=report.session_id,
+        agent_id="agent-demo-001", # Should be resolved from session_id lookup
+        duration_seconds=int(report.duration_seconds),
+        status=report.status,
+        ttft_ms=int(report.avg_ttft_ms),
+        ttfc_ms=int(report.avg_ttfc_ms),
+        cost_euros=(report.duration_seconds / 60) * 0.15,
+        start_time=datetime.fromtimestamp(report.start_time),
+        end_time=datetime.fromtimestamp(report.end_time)
+    )
+    
+    db.add(new_call)
+    await db.commit()
+    
+    # 3. Trigger Real-time update (e.g., via WebSocket or Redis Pub/Sub)
+    # logger.info(f"Broadcast: Call {report.session_id} completed. refreshing frontend.")
+    
+    return {"status": "processed", "call_id": report.session_id}
 
 @router.get("/calls", response_model=List[CallLogResponse])
 async def get_call_logs(

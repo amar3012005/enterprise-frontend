@@ -1,9 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ChevronDown } from "lucide-react";
-import HiveMind from "./HiveMind";
-
+import { ChevronDown, Network } from "lucide-react";
+import HiveMindRAG from "./HiveMindRAG";
+import { useTheme } from "@/context/ThemeContext";
 
 interface AgentVisualizerProps {
     agentName: string;
@@ -14,6 +14,9 @@ interface AgentVisualizerProps {
 }
 
 export default function AgentVisualizer({ agentName, agentDescription, totalCalls, location, createdAt }: AgentVisualizerProps) {
+    const { theme } = useTheme();
+    const isDark = theme === 'dark';
+
     // Calculate days active
     const daysActive = createdAt ? Math.max(1, Math.floor((new Date().getTime() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24))) : 1;
 
@@ -21,82 +24,90 @@ export default function AgentVisualizer({ agentName, agentDescription, totalCall
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {/* Main Visualizer Card */}
             <div style={{
-                backgroundColor: '#000',
+                backgroundColor: isDark ? '#000' : '#fff',
                 borderRadius: '32px',
-                padding: '48px',
+                padding: '0',
                 height: '600px',
                 position: 'relative',
                 display: 'flex',
                 flexDirection: 'column',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
-                color: '#fff'
+                boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.2)' : '0 4px 20px rgba(0,0,0,0.05)',
+                color: isDark ? '#fff' : '#1a1a1a',
+                border: isDark ? 'none' : '1px solid #eee',
+                transition: 'all 0.3s ease',
+                overflow: 'hidden'
             }}>
-                {/* Header */}
-                <div style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                        <h1 style={{ fontSize: '48px', fontWeight: 600, margin: '0 0 8px 0', color: '#fff' }}>{agentName}</h1>
-                        <p style={{ color: '#888', fontSize: '16px', margin: 0 }}>{agentDescription}</p>
-                    </div>
+                {/* Header Overlay */}
+                <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    padding: '32px 40px',
+                    zIndex: 10,
+                    background: 'linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 70%, transparent 100%)',
+                    pointerEvents: 'none'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', pointerEvents: 'auto' }}>
+                        <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                                <Network size={28} color="#ffffff" />
+                                <h1 style={{ fontSize: '36px', fontWeight: 700, margin: 0, color: '#fff', letterSpacing: '-0.02em' }}>{agentName}</h1>
+                            </div>
+                            <p style={{ color: '#888', fontSize: '14px', margin: 0 }}>{agentDescription}</p>
+                        </div>
 
-                    {/* Live Indicator */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px' }}>
-                        <div style={{
-                            width: '8px',
-                            height: '8px',
-                            backgroundColor: '#10b981',
-                            borderRadius: '50%',
-                            boxShadow: '0 0 8px #10b981',
-                            animation: 'pulse 2s infinite'
-                        }} />
-                        <span style={{ color: '#10b981', fontSize: '14px', fontWeight: 600, letterSpacing: '0.5px' }}>
-                            LIVE <span style={{ color: '#666', fontWeight: 400 }}>(-since {daysActive} days)</span>
-                        </span>
-                        <style jsx>{`
-                            @keyframes pulse {
-                                0% { transform: scale(0.95); opacity: 0.7; }
-                                50% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 12px #10b981; }
-                                100% { transform: scale(0.95); opacity: 0.7; }
-                            }
-                        `}</style>
+                        {/* Live Indicator */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{
+                                width: '8px',
+                                height: '8px',
+                                backgroundColor: '#ffffff',
+                                borderRadius: '50%',
+                                boxShadow: '0 0 12px rgba(255,255,255,0.5)',
+                                animation: 'pulse 2s infinite'
+                            }} />
+                            <span style={{ color: '#ffffff', fontSize: '12px', fontWeight: 600, letterSpacing: '0.05em', fontFamily: 'JetBrains Mono, monospace' }}>
+                                HIVEMIND ACTIVE
+                            </span>
+                            <span style={{ color: '#666', fontSize: '12px', fontFamily: 'JetBrains Mono, monospace' }}>
+                                ({daysActive}d uptime)
+                            </span>
+                            <style jsx>{`
+                                @keyframes pulse {
+                                    0% { transform: scale(0.95); opacity: 0.7; }
+                                    50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 16px rgba(255,255,255,0.4); }
+                                    100% { transform: scale(0.95); opacity: 0.7; }
+                                }
+                            `}</style>
+                        </div>
                     </div>
                 </div>
 
-                {/* Agent Visual */}
-                <div style={{
-                    flex: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: '16px',
-                    overflow: 'hidden',
-                    margin: '0' // Removed vertical margin to center perfectly in remaining space
-                }}>
-                    <HiveMind
-                        width={1000} // Wider spread
-                        height={550} // Taller spread
-                        nodeCount={400} // Higher density for larger area
-                        connectionDistance={90} // Longer connections
-                        nodeColor="rgba(255, 255, 255, 0.9)"
-                        lineColor="rgba(255, 255, 255, 0.15)"
-                        backgroundColor="#000"
-                    />
+                {/* HiveMind RAG Visualization - Full Canvas */}
+                <HiveMindRAG
+                    showStats={true}
+                    showTooltip={true}
+                    autoLoad={true}
+                    compact={false}
+                />
 
-                    {/* Time Range Controls */}
-                    <div style={{
-                        position: 'absolute',
-                        bottom: '32px',
-                        left: '32px',
-                        display: 'flex',
-                        gap: '8px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        padding: '4px',
-                        borderRadius: '8px',
-                        backdropFilter: 'blur(10px)'
-                    }}>
-                        <TimeRangeButton label="1D" active />
-                        <TimeRangeButton label="1W" />
-                        <TimeRangeButton label="1M" />
-                    </div>
+                {/* Time Range Controls */}
+                <div style={{
+                    position: 'absolute',
+                    bottom: '24px',
+                    left: '24px',
+                    display: 'flex',
+                    gap: '8px',
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    padding: '4px',
+                    borderRadius: '8px',
+                    backdropFilter: 'blur(10px)',
+                    zIndex: 10
+                }}>
+                    <TimeRangeButton label="1D" active />
+                    <TimeRangeButton label="1W" />
+                    <TimeRangeButton label="1M" />
                 </div>
             </div>
 
@@ -114,59 +125,49 @@ export default function AgentVisualizer({ agentName, agentDescription, totalCall
     );
 }
 
-function StatusTag({ label, active = false }: { label: string, active?: boolean }) {
-    return (
-        <div style={{
-            width: '24px',
-            height: '24px',
-            borderRadius: '50%',
-            backgroundColor: active ? '#10b981' : '#1a1a1a',
-            border: active ? 'none' : '1px solid #333',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '12px',
-            fontWeight: 'bold',
-            color: '#fff'
-        }}>{label}</div>
-    );
-}
-
 function InfoCard({ label, value, highlightedValue, cardInfo }: any) {
+    const { theme } = useTheme();
+    const isDark = theme === 'dark';
+
     return (
         <div style={{
-            backgroundColor: '#111',
+            backgroundColor: isDark ? '#111' : '#fff',
             borderRadius: '12px',
             padding: '16px',
             position: 'relative',
-            border: '1px solid #222'
+            border: isDark ? '1px solid #222' : '1px solid #eee',
+            boxShadow: isDark ? 'none' : '0 2px 8px rgba(0,0,0,0.05)',
+            transition: 'all 0.3s ease'
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                 <span style={{ fontSize: '12px', color: '#666' }}>{label}</span>
-                <ChevronDown size={14} style={{ color: '#444' }} />
+                <ChevronDown size={14} style={{ color: isDark ? '#444' : '#ccc' }} />
             </div>
             {highlightedValue ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#ddd' }}>{value.split(highlightedValue)[0]}</span>
-                    <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#fff' }}>{highlightedValue}</span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: isDark ? '#ddd' : '#333' }}>{value.split(highlightedValue)[0]}</span>
+                    <span style={{ fontSize: '16px', fontWeight: 'bold', color: isDark ? '#fff' : '#000' }}>{highlightedValue}</span>
                 </div>
             ) : cardInfo ? (
                 <div>
-                    <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px', color: '#ddd' }}>{value}</div>
+                    <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px', color: isDark ? '#ddd' : '#333' }}>{value}</div>
                     <div style={{ fontSize: '12px', color: '#666' }}>{cardInfo}</div>
                 </div>
             ) : (
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#ddd' }}>{value}</div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: isDark ? '#ddd' : '#333' }}>{value}</div>
             )}
         </div>
     );
 }
 
 function TimeRangeButton({ label, active = false }: { label: string, active?: boolean }) {
+    const { theme } = useTheme();
+    const isDark = theme === 'dark';
+
     return (
         <button style={{
-            background: active ? '#fff' : 'transparent',
-            color: active ? '#000' : '#888',
+            background: active ? (isDark ? '#fff' : '#000') : 'transparent',
+            color: active ? (isDark ? '#000' : '#fff') : (isDark ? '#888' : '#666'),
             border: 'none',
             borderRadius: '6px',
             padding: '4px 12px',

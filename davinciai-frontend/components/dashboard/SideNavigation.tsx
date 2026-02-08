@@ -1,105 +1,157 @@
 "use client";
 
-import { User, Activity, LayoutDashboard, Phone, LogOut, BarChart3 } from "lucide-react";
+import { User, LayoutDashboard, Phone, LogOut, BarChart3, Users, Network } from "lucide-react";
 import { useRouter, useParams, usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useTheme } from "@/context/ThemeContext";
 
 interface SideNavigationProps {
     onLogout: () => void;
+    agentId?: string;
 }
 
-export default function SideNavigation({ onLogout }: SideNavigationProps) {
+const ROUTES = {
+    DASHBOARD: '/enterprise/dashboard',
+    AGENTS: '/enterprise/dashboard/agents',
+    HIVEMIND: '/enterprise/dashboard/hivemind',
+    ANALYTICS: '/enterprise/dashboard/analytics',
+    CALLS: '/enterprise/dashboard/calls',
+    SETTINGS: '/enterprise/dashboard/settings',
+} as const;
+
+export default function SideNavigation({ onLogout, agentId: propAgentId }: SideNavigationProps) {
     const router = useRouter();
     const params = useParams();
     const pathname = usePathname();
-    const agentId = params.agent_id as string;
+    const urlAgentId = params.agent_id as string;
+    const agentId = propAgentId || urlAgentId;
+    const { theme } = useTheme();
+    const isDark = theme === 'dark';
 
-    const navigateTo = (path: string) => {
-        router.push(`/enterprise/${path}/${agentId}`);
-    };
+    useEffect(() => {
+        if (agentId && !pathname?.startsWith(ROUTES.AGENTS) &&
+            !pathname?.startsWith(ROUTES.HIVEMIND) &&
+            !pathname?.startsWith(ROUTES.ANALYTICS) &&
+            !pathname?.startsWith(ROUTES.CALLS) &&
+            !pathname?.startsWith(ROUTES.SETTINGS)) {
+        }
+    }, [pathname, agentId]);
 
-    // Determine active route
-    const isActive = (route: string) => pathname?.includes(route);
+    const isActive = useCallback((route: keyof typeof ROUTES): boolean => {
+        if (!pathname) return false;
+
+        switch (route) {
+            case 'DASHBOARD':
+                return pathname === `${ROUTES.DASHBOARD}/${agentId}`;
+            case 'AGENTS':
+                return pathname === ROUTES.AGENTS;
+            case 'HIVEMIND':
+                return pathname === ROUTES.HIVEMIND;
+            case 'ANALYTICS':
+                return pathname === ROUTES.ANALYTICS;
+            case 'CALLS':
+                return pathname === ROUTES.CALLS;
+            case 'SETTINGS':
+                return pathname === ROUTES.SETTINGS;
+            default:
+                return false;
+        }
+    }, [pathname, agentId]);
+
+    const navigateTo = useCallback((route: keyof typeof ROUTES) => {
+        const targetRoute = ROUTES[route];
+        if (route === 'DASHBOARD') {
+            if (agentId) {
+                router.push(`${ROUTES.DASHBOARD}/${agentId}`);
+            } else {
+                // If no agent selected, fallback to agents list or pick first available
+                router.push(ROUTES.AGENTS);
+            }
+        } else {
+            router.push(targetRoute);
+        }
+    }, [router, agentId]);
+
+    const navItems = [
+        { key: 'DASHBOARD' as const, icon: LayoutDashboard, label: 'Dashboard' },
+        { key: 'AGENTS' as const, icon: Users, label: 'Voice Agents' },
+        { key: 'HIVEMIND' as const, icon: Network, label: 'HiveMind' },
+        { key: 'ANALYTICS' as const, icon: BarChart3, label: 'Analytics' },
+        { key: 'CALLS' as const, icon: Phone, label: 'Call History' },
+        { key: 'SETTINGS' as const, icon: User, label: 'Settings' },
+    ];
 
     return (
         <div style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: '12px',
-            position: 'sticky',
-            top: '24px'
+            alignItems: 'center',
+            gap: '8px',
+            height: '100%',
+            justifyContent: 'flex-start'
         }}>
-            <SideIconButton
-                icon={<LayoutDashboard size={20} />}
-                onClick={() => navigateTo('dashboard')}
-                active={isActive('dashboard')}
-                tooltip="Dashboard"
-            />
-            <SideIconButton
-                icon={<BarChart3 size={20} />}
-                onClick={() => navigateTo('analytics')}
-                active={isActive('analytics')}
-                tooltip="Analytics"
-            />
-            <SideIconButton
-                icon={<Phone size={20} />}
-                onClick={() => navigateTo('calls')}
-                active={isActive('calls')}
-                tooltip="Call History"
-            />
-            <SideIconButton
-                icon={<User size={20} />}
-                onClick={() => navigateTo('settings')}
-                active={isActive('settings')}
-                tooltip="Settings"
-            />
-            <div style={{ height: '100px' }} />
+            {navItems.map(({ key, icon: Icon, label }) => (
+                <SideIconButton
+                    key={key}
+                    icon={<Icon size={20} />}
+                    onClick={() => navigateTo(key)}
+                    active={isActive(key)}
+                    tooltip={label}
+                    isDark={isDark}
+                />
+            ))}
+            <div style={{ flex: 1, minHeight: '50px' }} />
             <SideIconButton
                 icon={<LogOut size={20} />}
                 onClick={onLogout}
                 tooltip="Logout"
                 isLogout
+                isDark={isDark}
             />
         </div>
     );
 }
+
 
 function SideIconButton({
     icon,
     active = false,
     onClick,
     tooltip,
-    isLogout = false
+    isLogout = false,
+    isDark = true
 }: {
-    icon: any,
-    active?: boolean,
-    onClick?: () => void,
-    tooltip?: string,
-    isLogout?: boolean
+    icon: React.ReactNode;
+    active?: boolean;
+    onClick?: () => void;
+    tooltip?: string;
+    isLogout?: boolean;
+    isDark?: boolean;
 }) {
     const [isHovered, setIsHovered] = useState(false);
 
     return (
-        <div style={{ position: 'relative' }}>
+        <div style={{ position: 'relative' }} suppressHydrationWarning={true}>
             <button
+                suppressHydrationWarning={true}
                 onClick={onClick}
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
+                title={tooltip || ''}
+                aria-label={tooltip || ''}
                 style={{
                     width: '60px',
                     height: '60px',
-                    backgroundColor: active ? '#ffffff' : (isHovered ? '#f5f5f5' : 'transparent'),
-                    border: active ? '1px solid #ddd' : (isHovered ? '1px solid #e5e5e5' : 'none'),
+                    backgroundColor: active ? (isDark ? '#ffffff' : '#000') : (isHovered ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)') : 'transparent'),
+                    border: 'none',
                     borderRadius: '16px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: active ? '#000' : (isHovered ? '#000' : '#666'),
+                    color: active ? (isDark ? '#000' : '#fff') : (isHovered ? (isDark ? '#fff' : '#000') : (isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)')),
                     cursor: 'pointer',
                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    boxShadow: active
-                        ? '0 4px 12px rgba(0,0,0,0.08)'
-                        : (isHovered ? '0 2px 8px rgba(0,0,0,0.04)' : 'none'),
+                    boxShadow: active ? (isDark ? '0 4px 12px rgba(255,255,255,0.1)' : '0 4px 12px rgba(0,0,0,0.2)') : 'none',
                     transform: isHovered ? 'scale(1.05)' : 'scale(1)',
                     outline: 'none'
                 }}
@@ -112,7 +164,6 @@ function SideIconButton({
                 </div>
             </button>
 
-            {/* Tooltip */}
             {isHovered && tooltip && (
                 <div style={{
                     position: 'absolute',
@@ -128,7 +179,6 @@ function SideIconButton({
                     whiteSpace: 'nowrap',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                     zIndex: 1000,
-                    animation: 'slideIn 0.2s ease-out',
                     pointerEvents: 'none'
                 }}>
                     {tooltip}
@@ -145,19 +195,8 @@ function SideIconButton({
                     }} />
                 </div>
             )}
-
-            <style jsx>{`
-                @keyframes slideIn {
-                    from {
-                        opacity: 0;
-                        transform: translateY(-50%) translateX(-5px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(-50%) translateX(0);
-                    }
-                }
-            `}</style>
         </div>
     );
 }
+
+export { ROUTES };

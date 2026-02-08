@@ -3,49 +3,58 @@
 import { useRef, useState, useEffect } from "react";
 import { Play, PhoneOff, Activity, Zap, MessageSquare } from "lucide-react";
 import dynamic from "next/dynamic";
+import { useTheme } from "@/context/ThemeContext";
 
 // Dynamic import to avoid SSR issues with Three.js
-const Orb = dynamic(() => import("@/components/ui/orb").then(mod => mod.Orb), {
+const Orb = dynamic<any>(() => import("@/components/ui/orb").then(mod => mod.Orb), {
     ssr: false,
     loading: () => (
         <div style={{
-            width: '100%',
-            height: '100%',
+            width: '200px',
+            height: '200px',
+            borderRadius: '50%',
+            backgroundColor: 'rgba(255,255,255,0.05)',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            background: 'linear-gradient(135deg, #cbd5e1 0%, #e2e8f0 100%)',
-            borderRadius: '50%'
+            justifyContent: 'center'
         }} />
     )
 });
 
-function MetricPill({ icon, label, value, color }: { icon: React.ReactNode, label: string, value: string | number, color: string }) {
+function MetricPill({ icon, label, value, color }: { icon: any, label: string, value: string, color: string }) {
+    const { theme } = useTheme();
+    const isDark = theme === 'dark';
+
     return (
         <div style={{
+            backgroundColor: isDark ? '#111' : '#f5f5f5',
+            padding: '8px 12px',
+            borderRadius: '12px',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
-            backgroundColor: '#fff',
-            padding: '6px 10px',
-            borderRadius: '12px',
-            border: '1px solid #eee',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+            gap: '8px',
+            flex: 1,
+            border: isDark ? '1px solid #222' : '1px solid #eee',
+            boxShadow: isDark ? 'none' : '0 2px 8px rgba(0,0,0,0.05)',
+            transition: 'all 0.3s ease'
         }}>
-            <div style={{ color }}>{icon}</div>
+            <div style={{ color, display: 'flex', alignItems: 'center' }}>{icon}</div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '8px', fontWeight: 700, color: '#999', textTransform: 'uppercase' }}>{label}</span>
-                <span style={{ fontSize: '10px', fontWeight: 600, color: '#1a1a1a' }}>{value}</span>
+                <span style={{ color: '#666', fontSize: '8px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px' }}>{label}</span>
+                <span style={{ color: isDark ? '#fff' : '#1a1a1a', fontSize: '12px', fontWeight: 'bold' }}>{value}</span>
             </div>
         </div>
     );
 }
 
-interface AIAssistantPanelProps {
-    agentId?: string;
-}
+export default function AIAssistantPanel({ agentId }: { agentId: string }) {
+    const { theme } = useTheme();
+    const isDark = theme === 'dark';
+    const [isMounted, setIsMounted] = useState(false);
 
-export default function AIAssistantPanel({ agentId }: AIAssistantPanelProps) {
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
     // Call State
     const [isCallActive, setIsCallActive] = useState(false);
     const [agentState, setAgentState] = useState<'listening' | 'talking' | 'thinking' | null>(null);
@@ -72,6 +81,7 @@ export default function AIAssistantPanel({ agentId }: AIAssistantPanelProps) {
     const lastPlaybackTimeRef = useRef(0);
     const playbackStartTimeRef = useRef<number | null>(null);
     const audioStreamCompleteRef = useRef(false);
+    const audioConfigRef = useRef({ format: 'pcm_f32le', sampleRate: 44100 });
     const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     const callTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -107,13 +117,16 @@ export default function AIAssistantPanel({ agentId }: AIAssistantPanelProps) {
 
         const fetchAgent = async () => {
             try {
-                const response = await fetch(`http://127.0.0.1:8000/api/agents/${agentId}`);
-                if (!response.ok) throw new Error("Failed to fetch agent");
+                const response = await fetch(`/api/agents/${agentId}`);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Failed to fetch agent (${response.status} ${response.statusText}): ${errorText}`);
+                }
                 const data = await response.json();
                 setAgentData(data);
-                console.log("Fetched Agent Data:", data);
+                console.log("AIAssistantPanel: Agent Data Loaded", data);
             } catch (err) {
-                console.error("Error fetching agent data:", err);
+                console.error("AIAssistantPanel: Error loading agent:", err);
             } finally {
                 setIsLoadingAgent(false);
             }
@@ -211,6 +224,7 @@ export default function AIAssistantPanel({ agentId }: AIAssistantPanelProps) {
     const startVoiceCall = async (stream: MediaStream) => {
         setConnectionStatus('connecting');
         setAgentState('thinking');
+        setCallDuration(0);
 
         const customWsUrl = agentData.websocket_url;
         const cartesiaId = agentData.cartesia_agent_id;
@@ -231,13 +245,30 @@ export default function AIAssistantPanel({ agentId }: AIAssistantPanelProps) {
 
         ws.onopen = () => {
             wsConnectedRef.current = true;
+
+            const sessionId = crypto.randomUUID();
+            const storedTenant = typeof window !== 'undefined' ? localStorage.getItem('tenant') : null;
+            const tenantId = storedTenant ? JSON.parse(storedTenant).tenant_id : "unknown";
+
             if (isCustomProtocol) {
+                // Enterprise Orchestration Handshake
                 ws.send(JSON.stringify({
-                    type: 'start_session',
-                    mode: 'conversation',
-                    stt_mode: 'audio',
-                    tts_mode: 'audio',
-                    language: agentData.language_primary === 'English' || agentData.language_primary === 'en' ? 'en' : 'de'
+                    action: 'start_session',
+                    meta: {
+                        session_id: sessionId,
+                        agent_name: agentData.agent_name,
+                        agent_id: agentData.agent_id,
+                        user_id: phone,
+                        tenant_id: tenantId
+                    },
+                    language: agentData.language_primary,
+                    secondary_language: agentData.language_secondary,
+                    flow_config: {
+                        intro_in_primary_lang: agentData.flow_config?.intro_in_primary_lang,
+                        intro_in_secondary_lang: agentData.flow_config?.intro_in_secondary_lang,
+                        stt_mode: agentData.flow_config?.stt_mode || 'audio',
+                        tts_mode: agentData.flow_config?.tts_mode || 'audio'
+                    }
                 }));
             } else {
                 ws.send(JSON.stringify({
@@ -313,11 +344,19 @@ export default function AIAssistantPanel({ agentId }: AIAssistantPanelProps) {
             if (isCustomProtocol) {
                 if (data.type === 'session_ready' || (data.type === 'state_update' && data.state === 'listening')) {
                     wsConnectedRef.current = true;
+
+                    // Capture dynamic audio format and sample rate from backend config
+                    if (data.audio_format || data.format) {
+                        audioConfigRef.current.format = data.audio_format || data.format;
+                    }
+                    if (data.sample_rate) {
+                        audioConfigRef.current.sampleRate = data.sample_rate;
+                    }
+
                     if (connectionStatus !== 'connected') {
                         setConnectionStatus('connected');
                         setIsCallActive(true);
                         setAgentState('listening');
-                        setCallDuration(0);
                         if (!callTimerRef.current) {
                             callTimerRef.current = setInterval(() => setCallDuration(d => d + 1), 1000);
                         }
@@ -379,7 +418,6 @@ export default function AIAssistantPanel({ agentId }: AIAssistantPanelProps) {
                     setConnectionStatus('connected');
                     setIsCallActive(true);
                     setAgentState('listening');
-                    setCallDuration(0);
                     if (!callTimerRef.current) {
                         callTimerRef.current = setInterval(() => setCallDuration(d => d + 1), 1000);
                     }
@@ -416,34 +454,58 @@ export default function AIAssistantPanel({ agentId }: AIAssistantPanelProps) {
         };
     };
 
-    const playAudioChunk = (data: string | ArrayBuffer, isInt16 = false) => {
+    const playAudioChunk = (data: string | ArrayBuffer, forceInt16 = false) => {
         let float32: Float32Array;
+        const format = audioConfigRef.current.format;
+        const sampleRate = audioConfigRef.current.sampleRate;
+
         if (data instanceof ArrayBuffer) {
-            float32 = new Float32Array(data);
+            // Check if we need to convert from Int16 to Float32
+            if (format === 'pcm_s16le' || forceInt16) {
+                const int16 = new Int16Array(data);
+                float32 = new Float32Array(int16.length);
+                for (let i = 0; i < int16.length; i++) {
+                    float32[i] = int16[i] / 32768.0;
+                }
+            } else {
+                float32 = new Float32Array(data);
+            }
         } else {
             const binaryString = atob(data);
             const bytes = new Uint8Array(binaryString.length);
             for (let i = 0; i < binaryString.length; i++) {
                 bytes[i] = binaryString.charCodeAt(i);
             }
-            if (isInt16) {
+            if (format === 'pcm_s16le' || forceInt16) {
                 const int16 = new Int16Array(bytes.buffer);
                 float32 = new Float32Array(int16.length);
                 for (let i = 0; i < int16.length; i++) {
-                    float32[i] = int16[i] / 0x7FFF;
+                    float32[i] = int16[i] / 32768.0;
                 }
             } else {
-                float32 = new Float32Array(bytes.buffer as any);
+                // Default to Float32 (4 bytes per sample)
+                float32 = new Float32Array(bytes.buffer);
             }
         }
 
         if (audioCtxRef.current) {
-            const buffer = audioCtxRef.current.createBuffer(1, float32.length, 44100);
+            const buffer = audioCtxRef.current.createBuffer(1, float32.length, sampleRate);
             buffer.copyToChannel(float32 as any, 0);
+
             const source = audioCtxRef.current.createBufferSource();
             source.buffer = buffer;
             source.connect(audioCtxRef.current.destination);
-            const startAt = Math.max(audioCtxRef.current.currentTime, lastPlaybackTimeRef.current);
+
+            const now = audioCtxRef.current.currentTime;
+
+            // --- Strict Scheduling with Drift Correction ---
+            // If chunks arrive slightly late, play immediately (drift correction)
+            // If they arrive on time/early, queue precisely at the end of the previous chunk
+            let startAt = lastPlaybackTimeRef.current;
+            if (startAt < now) {
+                startAt = now;
+            }
+
             source.start(startAt);
             lastPlaybackTimeRef.current = startAt + buffer.duration;
             source.onended = () => checkPlaybackComplete();
@@ -467,7 +529,12 @@ export default function AIAssistantPanel({ agentId }: AIAssistantPanelProps) {
         }
     };
 
-    const endCall = () => {
+    const endCall = async () => {
+        // Capture data for backend sync before clearing state
+        const finalDuration = callDuration;
+        const finalMetrics = { ...metrics };
+        const finalAgentId = agentId;
+
         if (wsRef.current) {
             if (agentData?.websocket_url && agentData.websocket_url !== "not_set" && wsRef.current.readyState === WebSocket.OPEN) {
                 wsRef.current.send(JSON.stringify({ type: 'interrupt', timestamp: Date.now() / 1000 }));
@@ -475,6 +542,31 @@ export default function AIAssistantPanel({ agentId }: AIAssistantPanelProps) {
             wsRef.current.close();
             wsRef.current = null;
         }
+
+        // Sync with Backend
+        if (finalDuration > 0) {
+            try {
+                const response = await fetch(`/api/metrics`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        agent_id: finalAgentId,
+                        duration_seconds: finalDuration,
+                        status: 'completed',
+                        ttft_ms: finalMetrics.ttft,
+                        ttfc_ms: finalMetrics.ttfc,
+                        compression_ratio: finalMetrics.ratio,
+                        cost_euros: (finalDuration / 60) * 0.15 // Example $0.15/min cost calculation
+                    })
+                });
+                if (response.ok) {
+                    console.log("AIAssistantPanel: Call metrics synced successfully");
+                }
+            } catch (err) {
+                console.error("AIAssistantPanel: Failed to sync call metrics:", err);
+            }
+        }
+
         if (audioCtxRef.current) {
             audioCtxRef.current.close();
             audioCtxRef.current = null;
@@ -490,11 +582,44 @@ export default function AIAssistantPanel({ agentId }: AIAssistantPanelProps) {
         setAgentState(null);
         setMicStream(null);
         setCallDuration(0);
+        setMetrics({
+            latency: 0,
+            logprob: 0,
+            noSpeech: 0,
+            ratio: 0,
+            chunks: 0,
+            ttft: 0,
+            ttfc: 0
+        });
     };
+
+    if (!isMounted || isLoadingAgent || !agentData) {
+        return (
+            <div style={{
+                backgroundColor: isDark ? '#000' : '#fff',
+                borderRadius: '32px',
+                padding: '48px 32px',
+                height: '600px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.3)' : '0 4px 20px rgba(0,0,0,0.05)',
+                border: isDark ? '1px solid #222' : '1px solid #eee',
+                position: 'relative',
+                color: isDark ? '#fff' : '#1a1a1a',
+                transition: 'all 0.3s ease'
+            }}>
+                <div style={{ width: '200px', height: '200px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {!isMounted || isLoadingAgent ? "Loading..." : "Error loading agent"}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div style={{
-            backgroundColor: '#f5f5f5',
+            backgroundColor: isDark ? '#000' : '#fff',
             borderRadius: '32px',
             padding: '48px 32px',
             height: '600px',
@@ -502,11 +627,24 @@ export default function AIAssistantPanel({ agentId }: AIAssistantPanelProps) {
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-            position: 'relative'
+            boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.3)' : '0 4px 20px rgba(0,0,0,0.05)',
+            border: isDark ? '1px solid #222' : '1px solid #eee',
+            position: 'relative',
+            color: isDark ? '#fff' : '#1a1a1a',
+            transition: 'all 0.3s ease'
         }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
-                <div style={{ width: '200px', height: '200px', position: 'relative', marginBottom: '48px' }}>
+                <div style={{
+                    width: '200px',
+                    height: '200px',
+                    position: 'relative',
+                    marginBottom: '48px',
+                    borderRadius: '50%',
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }}>
                     <Orb
                         agentState={agentState}
                         volumeMode="manual"
@@ -520,21 +658,21 @@ export default function AIAssistantPanel({ agentId }: AIAssistantPanelProps) {
                     <div style={{ marginBottom: '12px' }}>
                         <div style={{
                             padding: '6px 16px',
-                            backgroundColor: '#fff',
-                            border: '1px solid #e5e5e5',
+                            backgroundColor: isDark ? '#111' : '#f5f5f5',
+                            border: isDark ? '1px solid #333' : '1px solid #eee',
                             display: 'inline-block',
                             marginBottom: '12px',
                             borderRadius: '4px'
                         }}>
-                            <p style={{ fontSize: '9px', fontWeight: 700, color: '#999', textTransform: 'uppercase', letterSpacing: '0.25em', margin: 0 }}>DAVINCI</p>
+                            <p style={{ fontSize: '9px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.25em', margin: 0 }}>DAVINCI</p>
                         </div>
-                        <h3 style={{ fontSize: '28px', fontWeight: 700, color: '#1a1a1a', textTransform: 'uppercase', letterSpacing: '0.15em', margin: '0 0 16px 0' }}>{agentData?.agent_name || "TARA"}</h3>
+                        <h3 style={{ fontSize: '28px', fontWeight: 700, color: isDark ? '#fff' : '#1a1a1a', textTransform: 'uppercase', letterSpacing: '0.15em', margin: '0 0 16px 0' }}>{agentData?.agent_name || "TARA"}</h3>
                     </div>
 
                     {/* Always show timer */}
                     <p style={{
                         fontSize: '13px',
-                        color: loginMode === 'demo' && callDuration >= DEMO_WARNING_TIME ? '#ef4444' : '#999',
+                        color: loginMode === 'demo' && callDuration >= DEMO_WARNING_TIME ? '#ef4444' : '#666',
                         fontFamily: 'monospace',
                         letterSpacing: '0.1em',
                         margin: 0,
@@ -558,7 +696,7 @@ export default function AIAssistantPanel({ agentId }: AIAssistantPanelProps) {
                     gridTemplateColumns: 'repeat(3, 1fr)',
                     gap: '8px',
                     width: '100%',
-                    maxWidth: '400px',
+                    maxWidth: '320px',
                     marginTop: '32px'
                 }}>
                     <MetricPill icon={<Zap size={10} />} label="TTFT" value={`${metrics.ttft}ms`} color="#22c55e" />
@@ -569,12 +707,12 @@ export default function AIAssistantPanel({ agentId }: AIAssistantPanelProps) {
 
             <div style={{ display: 'flex', gap: '12px', marginTop: 'auto', width: '100%', justifyContent: 'center' }}>
                 {!isCallActive ? (
-                    <button onClick={startCall} style={{ padding: '14px 48px', backgroundColor: '#fff', color: '#000', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em', border: '2px solid #000', borderRadius: '0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.2s' }}>
+                    <button onClick={startCall} style={{ padding: '14px 48px', backgroundColor: isDark ? '#fff' : '#000', color: isDark ? '#000' : '#fff', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.2s' }}>
                         <Play size={14} fill="currentColor" />
                         Start Call
                     </button>
                 ) : (
-                    <button onClick={endCall} style={{ padding: '14px 40px', backgroundColor: '#ef4444', color: '#fff', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em', border: 'none', borderRadius: '0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.2s' }}>
+                    <button onClick={endCall} style={{ padding: '14px 40px', backgroundColor: '#ef4444', color: '#fff', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.2s' }}>
                         <PhoneOff size={13} />
                         End Call
                     </button>

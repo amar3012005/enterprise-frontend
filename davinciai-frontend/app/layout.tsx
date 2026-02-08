@@ -6,19 +6,22 @@ export const metadata: Metadata = {
   description: "Monitor your AI voice agents in real-time. Track performance, analyze sentiment, and optimize conversations.",
 };
 
+import { ThemeProvider } from "@/context/ThemeContext";
+import { AgentProvider } from "@/context/AgentContext";
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      </head>
-      <body className="antialiased bg-[#0a0a0a] text-white">
-        {children}
+    <html lang="en">
+      <body className="antialiased">
+        <ThemeProvider>
+          <AgentProvider>
+            {children}
+          </AgentProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -1,124 +1,77 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
 
-// Import modular components
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import SideNavigation from "@/components/dashboard/SideNavigation";
+
 import AgentVisualizer from "@/components/dashboard/AgentVisualizer";
 import AIAssistantPanel from "@/components/dashboard/AIAssistantPanel";
 import StatsCards from "@/components/dashboard/StatsCards";
+import { useTheme } from "@/context/ThemeContext";
+import { useAgents } from "@/context/AgentContext";
 
 export default function EnterpriseAgentDashboard() {
     const params = useParams();
     const agentId = params.agent_id as string;
-
-    const [agent, setAgent] = useState<any>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [user, setUser] = useState<any>(null);
-    const [tenant, setTenant] = useState<any>(null);
-    const [isMounted, setIsMounted] = useState(false);
+    const router = useRouter();
+    const { theme } = useTheme();
+    const isDark = theme === 'dark';
+    const { agents, loading, selectedAgent, selectAgent } = useAgents();
 
     useEffect(() => {
-        setIsMounted(true);
-    }, []);
-
-    useEffect(() => {
-        if (!isMounted) return;
-
         const token = localStorage.getItem("access_token");
-        const storedUser = localStorage.getItem("user");
         const storedTenant = localStorage.getItem("tenant");
 
-        if (!token || !storedUser || !storedTenant) {
-            window.location.href = "/login";
+        if (!token || !storedTenant) {
+            router.push('/login');
             return;
         }
 
-        setUser(JSON.parse(storedUser));
-        const tenantData = JSON.parse(storedTenant);
-        setTenant(tenantData);
-        fetchAgentData(tenantData.tenant_id);
-    }, [isMounted]);
-
-    const fetchAgentData = async (tenantId: string) => {
-        try {
-            const response = await fetch(`http://127.0.0.1:8000/api/tenants/${tenantId}/agents`);
-            if (!response.ok) throw new Error("Failed to load agent");
-            const data = await response.json();
-            setAgent(data[0]);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setIsLoading(false);
+        const foundAgent = agents.find(a => a.agent_id === agentId);
+        if (foundAgent) {
+            selectAgent(foundAgent);
         }
-    };
+    }, [agents, agentId, router]);
 
-    const logout = () => {
-        localStorage.clear();
-        window.location.href = "/login";
-    };
+    const currentAgent = selectedAgent || agents.find(a => a.agent_id === agentId);
 
-    if (isLoading) {
+    if (loading && agents.length === 0) {
         return (
-            <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-                <div className="w-8 h-8 border-2 border-neutral-700 border-t-blue-500 rounded-full animate-spin" />
+            <div suppressHydrationWarning={true} style={{ minHeight: '100vh', backgroundColor: isDark ? '#0a0a0a' : '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div suppressHydrationWarning={true} style={{ color: isDark ? '#fff' : '#1a1a1a', fontSize: '18px', fontWeight: 500 }}>Loading dashboard...</div>
             </div>
         );
     }
 
-    if (!agent) {
+    if (!currentAgent) {
         return (
-            <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-                <div className="text-neutral-400">No agent found</div>
+            <div suppressHydrationWarning={true} style={{ minHeight: '100vh', backgroundColor: isDark ? '#0a0a0a' : '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ color: isDark ? '#fff' : '#1a1a1a' }}>Loading agent...</div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-[#0a0a0a] px-6 py-6">
-            {/* Main Wrapper */}
-            <div className="max-w-7xl mx-auto">
 
-                {/* Header Component */}
-                <DashboardHeader
-                    tenantName={tenant?.organization_name || "Enterprise"}
-                    onLogout={logout}
+        <div style={{ display: 'grid', gridTemplateColumns: '1.75fr 1fr', gap: 24 }}>
+            <div>
+                <AgentVisualizer
+                    agentName={currentAgent.agent_name}
+                    agentDescription={currentAgent.agent_description || "Enterprise-grade voice agent"}
+                    totalCalls={0}
+                    location={currentAgent.location}
+                    createdAt={currentAgent.created_at}
                 />
+            </div>
 
-                {/* Grid Layout */}
-                <div className="grid grid-cols-12 gap-6 mt-6">
-
-                    {/* Left Column: Side Navigation */}
-                    <div className="col-span-1">
-                        <SideNavigation onLogout={logout} />
-                    </div>
-
-                    {/* Middle Column: Agent Visualizer */}
-                    <div className="col-span-7">
-                        <AgentVisualizer
-                            agentName={agent.agent_name}
-                            agentDescription={agent.agent_description || "Enterprise-grade voice agent"}
-                            totalCalls={0}
-                            location={agent.location}
-                            createdAt={agent.created_at}
-                        />
-
-                    </div>
-
-                    {/* Right Column: AI Assistant */}
-                    <div className="col-span-4">
-                        <AIAssistantPanel agentId={agentId} />
-
-                        {/* Stats Cards Below */}
-                        <StatsCards
-                            totalCalls={agent.stats.total_calls}
-                            successRate={agent.stats.success_rate}
-                        />
-                    </div>
-                </div>
+            <div>
+                <AIAssistantPanel agentId={agentId} />
+                <StatsCards
+                    totalCalls={currentAgent?.stats?.total_calls ?? 0}
+                    successRate={currentAgent?.stats?.success_rate ?? 0}
+                />
             </div>
         </div>
     );
+
 }

@@ -24,7 +24,7 @@ export default function HiveMind({
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const particlesRef = useRef<any[]>([]);
     const mouseRef = useRef({ x: -1000, y: -1000 });
-    const animationFrameRef = useRef<number>();
+    const animationFrameRef = useRef<number | undefined>(undefined);
 
     // Brain shape boundary (simplified polygon normalized 0-1)
     // Points approx tracing a side-view brain shape
