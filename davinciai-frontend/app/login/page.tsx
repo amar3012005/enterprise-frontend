@@ -1,752 +1,554 @@
 "use client";
 
-import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Eye, EyeOff, ArrowRight, Cpu, Shield, Zap, Sun, Moon } from "lucide-react";
 import { apiUrl } from "@/lib/api";
+import { useTheme } from "@/context/ThemeContext";
 
 export default function LoginPage() {
-    const [mode, setMode] = useState<'login' | 'register'>('login');
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [enterpriseName, setEnterpriseName] = useState("");
-    const [fullName, setFullName] = useState("");
-    const [address, setAddress] = useState("");
-    const [mobileNumber, setMobileNumber] = useState("");
-    const [showPassword, setShowPassword] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState("");
-    const [showDemoCreds, setShowDemoCreds] = useState(true);
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === "dark";
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError("");
-        setIsLoading(true);
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [enterpriseName, setEnterpriseName] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [address, setAddress] = useState("");
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [showDemoCreds, setShowDemoCreds] = useState(true);
 
-        try {
-            if (mode === 'login') {
-                // Login logic
-                const response = await fetch(apiUrl("/api/auth/login"), {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ email, password }),
-                });
+  // Apply theme class to document
+  useEffect(() => {
+    document.documentElement.classList.toggle("light", !isDark);
+    document.documentElement.classList.toggle("dark", isDark);
+  }, [isDark]);
 
-                if (!response.ok) {
-                    const errData = await response.json().catch(() => ({}));
-                    throw new Error(errData.detail || "Authentication failed");
-                }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
 
-                const data = await response.json();
-                localStorage.setItem("access_token", data.access_token);
-                localStorage.setItem("user", JSON.stringify(data.user));
-                localStorage.setItem("tenant", JSON.stringify(data.tenant));
+    try {
+      if (mode === "login") {
+        const response = await fetch(apiUrl("/api/auth/login"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
 
-                const agentsResponse = await fetch(apiUrl(`/api/tenants/${data.tenant.tenant_id}/agents`), {
-                    headers: { "Authorization": `Bearer ${data.access_token}` },
-                });
-                if (!agentsResponse.ok) {
-                    throw new Error("Failed to fetch agent data");
-                }
-
-                const agents = await agentsResponse.json();
-                if (agents.length > 0) {
-                    const agentId = agents[0].agent_id;
-                    window.location.href = `/enterprise/dashboard/${agentId}`;
-                } else {
-                    throw new Error("No agent found for this enterprise");
-                }
-            } else {
-                // Register logic
-                const response = await fetch(apiUrl("/api/auth/register"), {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        organization_name: enterpriseName,
-                        email,
-                        password,
-                        full_name: fullName,
-                        phone_number: mobileNumber,
-                        address: address
-                    }),
-                });
-
-                if (!response.ok) {
-                    const errData = await response.json().catch(() => ({}));
-                    throw new Error(errData.detail || "Registration failed");
-                }
-
-                const data = await response.json();
-                localStorage.setItem("access_token", data.access_token);
-                localStorage.setItem("user", JSON.stringify(data.user));
-                localStorage.setItem("tenant", JSON.stringify(data.tenant));
-
-                alert("Registration successful! Redirecting to setup...");
-                window.location.href = "/"; // For now redirect to root or a setup page
-            }
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Operation failed");
-        } finally {
-            setIsLoading(false);
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.detail || "Authentication failed");
         }
-    };
 
-    return (
-        <div style={{
-            minHeight: '100vh',
-            backgroundColor: '#2a2a2a',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '40px',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-        }}>
-            {/* Main Container */}
-            <div style={{
-                width: '100%',
-                maxWidth: '1000px',
-                backgroundColor: '#000000',
-                borderRadius: '16px',
-                overflow: 'hidden',
-                display: 'flex',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-                border: '3px solid #1a1a1a'
-            }}>
-                {/* Left Side - Teal Gradient */}
-                <div style={{
-                    width: '45%',
-                    background: 'linear-gradient(135deg, #2d5f5d 0%, #1a3a38 100%)',
-                    padding: '60px 40px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    position: 'relative'
-                }}>
-                    {/* Radial gradient overlay */}
-                    <div style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        width: '400px',
-                        height: '400px',
-                        background: 'radial-gradient(circle, rgba(45,95,93,0.8) 0%, transparent 70%)',
-                        pointerEvents: 'none'
-                    }} />
+        const data = await response.json();
+        localStorage.setItem("access_token", data.access_token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        localStorage.setItem("tenant", JSON.stringify(data.tenant));
 
-                    {/* Header */}
-                    <div style={{ position: 'relative', zIndex: 1 }}>
-                        <h1 style={{
-                            fontSize: '36px',
-                            fontWeight: 700,
-                            color: '#ffffff',
-                            marginBottom: '12px',
-                            lineHeight: 1.2
-                        }}>
-                            {mode === 'login' ? 'Welcome Back' : 'Get Started'}<br />{mode === 'login' ? 'to DaVinci AI' : 'with Us'}
-                        </h1>
-                        <p style={{
-                            fontSize: '14px',
-                            color: 'rgba(255,255,255,0.8)',
-                            lineHeight: 1.5
-                        }}>
-                            {mode === 'login'
-                                ? 'Sign in to access your voice agent dashboard'
-                                : 'Complete these easy steps to register your account'}
-                        </p>
-                    </div>
+        const agentsResponse = await fetch(
+          apiUrl(`/api/tenants/${data.tenant.tenant_id}/agents`),
+          { headers: { Authorization: `Bearer ${data.access_token}` } }
+        );
+        if (!agentsResponse.ok) {
+          throw new Error("Failed to fetch agent data");
+        }
 
-                    {/* Step Cards - Only show for register */}
-                    {mode === 'register' && (
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(3, 1fr)',
-                            gap: '12px',
-                            position: 'relative',
-                            zIndex: 1
-                        }}>
-                            {/* Step 1 */}
-                            <div style={{
-                                backgroundColor: '#ffffff',
-                                borderRadius: '12px',
-                                padding: '24px 16px',
-                                cursor: 'pointer'
-                            }}>
-                                <div style={{
-                                    width: '32px',
-                                    height: '32px',
-                                    backgroundColor: '#000000',
-                                    borderRadius: '50%',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: '#ffffff',
-                                    fontSize: '14px',
-                                    fontWeight: 700,
-                                    marginBottom: '16px'
-                                }}>
-                                    1
-                                </div>
-                                <p style={{
-                                    fontSize: '12px',
-                                    color: '#000000',
-                                    fontWeight: 500,
-                                    lineHeight: 1.4
-                                }}>
-                                    Sign up your<br />account
-                                </p>
-                            </div>
+        const agents = await agentsResponse.json();
+        if (agents.length > 0) {
+          window.location.href = `/enterprise/dashboard/${agents[0].agent_id}`;
+        } else {
+          throw new Error("No agent found for this enterprise");
+        }
+      } else {
+        const response = await fetch(apiUrl("/api/auth/register"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            organization_name: enterpriseName,
+            email,
+            password,
+            full_name: fullName,
+            phone_number: mobileNumber,
+            address,
+          }),
+        });
 
-                            {/* Step 2 */}
-                            <div style={{
-                                backgroundColor: 'rgba(255,255,255,0.15)',
-                                borderRadius: '12px',
-                                padding: '24px 16px',
-                                cursor: 'pointer'
-                            }}>
-                                <div style={{
-                                    width: '32px',
-                                    height: '32px',
-                                    backgroundColor: 'rgba(255,255,255,0.2)',
-                                    borderRadius: '50%',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: '#ffffff',
-                                    fontSize: '14px',
-                                    fontWeight: 700,
-                                    marginBottom: '16px'
-                                }}>
-                                    2
-                                </div>
-                                <p style={{
-                                    fontSize: '12px',
-                                    color: 'rgba(255,255,255,0.9)',
-                                    fontWeight: 500,
-                                    lineHeight: 1.4
-                                }}>
-                                    Set up your<br />workspace
-                                </p>
-                            </div>
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.detail || "Registration failed");
+        }
 
-                            {/* Step 3 */}
-                            <div style={{
-                                backgroundColor: 'rgba(255,255,255,0.15)',
-                                borderRadius: '12px',
-                                padding: '24px 16px',
-                                cursor: 'pointer'
-                            }}>
-                                <div style={{
-                                    width: '32px',
-                                    height: '32px',
-                                    backgroundColor: 'rgba(255,255,255,0.2)',
-                                    borderRadius: '50%',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: '#ffffff',
-                                    fontSize: '14px',
-                                    fontWeight: 700,
-                                    marginBottom: '16px'
-                                }}>
-                                    3
-                                </div>
-                                <p style={{
-                                    fontSize: '12px',
-                                    color: 'rgba(255,255,255,0.9)',
-                                    fontWeight: 500,
-                                    lineHeight: 1.4
-                                }}>
-                                    Set up your<br />profile
-                                </p>
-                            </div>
-                        </div>
-                    )}
+        const data = await response.json();
+        localStorage.setItem("access_token", data.access_token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        localStorage.setItem("tenant", JSON.stringify(data.tenant));
+
+        window.location.href = "/";
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Operation failed");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fillDemoCreds = () => {
+    setEmail("admin@davinciai.eu");
+    setPassword("password123");
+  };
+
+  return (
+    <div
+      className={`min-h-screen relative overflow-hidden transition-colors duration-300 ${
+        isDark ? "bg-[#0a0a0a]" : "bg-[#f0f0f0]"
+      }`}
+    >
+      {/* Grid pattern background */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: isDark
+            ? "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)"
+            : "linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px)",
+          backgroundSize: "40px 40px",
+        }}
+      />
+
+      {/* Corner brackets decoration */}
+      <div className="absolute top-6 left-6 w-8 h-8 border-t-2 border-l-2 border-[#ff5722] opacity-60" />
+      <div className="absolute top-6 right-6 w-8 h-8 border-t-2 border-r-2 border-[#ff5722] opacity-60" />
+      <div className="absolute bottom-6 left-6 w-8 h-8 border-b-2 border-l-2 border-[#ff5722] opacity-60" />
+      <div className="absolute bottom-6 right-6 w-8 h-8 border-b-2 border-r-2 border-[#ff5722] opacity-60" />
+
+      {/* Theme toggle */}
+      <button
+        onClick={toggleTheme}
+        className={`absolute top-6 right-20 z-50 w-10 h-10 rounded-lg border flex items-center justify-center transition-all duration-200 hover:scale-105 ${
+          isDark
+            ? "bg-[#111] border-[#222] text-white/60 hover:text-[#ff5722] hover:border-[#ff5722]/30"
+            : "bg-white border-[#ddd] text-black/60 hover:text-[#ff5722] hover:border-[#ff5722]/30"
+        }`}
+      >
+        {isDark ? <Sun size={16} /> : <Moon size={16} />}
+      </button>
+
+      {/* Main container */}
+      <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-12">
+        <div
+          className={`w-full max-w-[1080px] rounded-2xl overflow-hidden flex flex-col lg:flex-row border-2 transition-colors duration-300 ${
+            isDark
+              ? "bg-[#0d0d0d] border-[#1a1a1a]"
+              : "bg-white border-[#e0e0e0]"
+          }`}
+          style={{
+            boxShadow: isDark
+              ? "0 25px 80px rgba(0,0,0,0.6)"
+              : "0 25px 80px rgba(0,0,0,0.1)",
+          }}
+        >
+          {/* ═══════════════ LEFT PANEL ═══════════════ */}
+          <div className="lg:w-[45%] relative p-10 lg:p-12 flex flex-col justify-between bg-[#0a0a0a] overflow-hidden min-h-[300px] lg:min-h-0">
+            {/* Background grid on left panel */}
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                backgroundImage:
+                  "linear-gradient(rgba(255,87,34,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,87,34,0.06) 1px, transparent 1px)",
+                backgroundSize: "32px 32px",
+              }}
+            />
+
+            {/* Accent gradient */}
+            <div
+              className="absolute -top-20 -right-20 w-64 h-64 rounded-full pointer-events-none"
+              style={{
+                background:
+                  "radial-gradient(circle, rgba(255,87,34,0.15) 0%, transparent 70%)",
+              }}
+            />
+
+            {/* Top: Brand + Title */}
+            <div className="relative z-10">
+              {/* Brand */}
+              <div className="flex items-center gap-3 mb-10">
+                <div className="w-10 h-10 rounded-lg bg-[#ff5722] flex items-center justify-center">
+                  <Cpu size={20} className="text-white" />
                 </div>
-
-                {/* Right Side - Form */}
-                <div style={{
-                    width: '55%',
-                    backgroundColor: '#000000',
-                    padding: '60px 50px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center'
-                }}>
-                    <h2 style={{
-                        fontSize: '24px',
-                        fontWeight: 700,
-                        color: '#ffffff',
-                        marginBottom: '8px'
-                    }}>
-                        {mode === 'login' ? 'Sign In' : 'Sign Up Account'}
-                    </h2>
-                    <p style={{
-                        fontSize: '13px',
-                        color: '#888888',
-                        marginBottom: '28px'
-                    }}>
-                        {mode === 'login'
-                            ? 'Enter your credentials to access your account'
-                            : 'Enter your personal data to create your account'}
-                    </p>
-
-                    {/* Demo Credentials */}
-                    {mode === 'login' && showDemoCreds && (
-                        <div style={{
-                            backgroundColor: 'rgba(45, 95, 93, 0.05)',
-                            border: '1px solid rgba(45, 95, 93, 0.2)',
-                            borderRadius: '16px',
-                            padding: '20px',
-                            marginBottom: '32px',
-                            position: 'relative',
-                            overflow: 'hidden',
-                            backdropFilter: 'blur(10px)',
-                            boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
-                        }}>
-                            <div style={{
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                bottom: 0,
-                                width: '4px',
-                                background: 'linear-gradient(to bottom, #2d5f5d, #4ade80)'
-                            }} />
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <div style={{ width: '100%' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                                        <div style={{
-                                            width: '20px',
-                                            height: '20px',
-                                            backgroundColor: '#2d5f5d',
-                                            borderRadius: '4px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            fontSize: '10px'
-                                        }}>★</div>
-                                        <h4 style={{ color: '#ffffff', fontSize: '14px', fontWeight: 600, margin: 0 }}>
-                                            Developer Test Access
-                                        </h4>
-                                    </div>
-                                    <div style={{ display: 'grid', gap: '8px' }}>
-                                        <div style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            backgroundColor: 'rgba(255,255,255,0.03)',
-                                            padding: '8px 12px',
-                                            borderRadius: '8px',
-                                            border: '1px solid rgba(255,255,255,0.05)'
-                                        }}>
-                                            <span style={{ fontSize: '12px', color: '#888888' }}>Email:</span>
-                                            <code style={{ fontSize: '12px', color: '#4ade80', fontWeight: 500 }}>admin@davinciai.eu</code>
-                                        </div>
-                                        <div style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            backgroundColor: 'rgba(255,255,255,0.03)',
-                                            padding: '8px 12px',
-                                            borderRadius: '8px',
-                                            border: '1px solid rgba(255,255,255,0.05)'
-                                        }}>
-                                            <span style={{ fontSize: '12px', color: '#888888' }}>Pass:</span>
-                                            <code style={{ fontSize: '12px', color: '#4ade80', fontWeight: 500 }}>password123</code>
-                                        </div>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => setShowDemoCreds(false)}
-                                    style={{
-                                        background: 'rgba(255,255,255,0.05)',
-                                        border: 'none',
-                                        color: '#666666',
-                                        cursor: 'pointer',
-                                        fontSize: '14px',
-                                        width: '24px',
-                                        height: '24px',
-                                        borderRadius: '50%',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        transition: 'all 0.2s',
-                                        marginLeft: '12px'
-                                    }}
-                                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
-                                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'}
-                                >
-                                    ×
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Social Buttons - Only for register */}
-                    {mode === 'register' && (
-                        <>
-                            <div style={{
-                                display: 'grid',
-                                gridTemplateColumns: '1fr 1fr',
-                                gap: '12px',
-                                marginBottom: '24px'
-                            }}>
-                                <button style={{
-                                    backgroundColor: '#ffffff',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    padding: '12px',
-                                    fontSize: '14px',
-                                    fontWeight: 600,
-                                    color: '#000000',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '8px'
-                                }}>
-                                    <svg width="16" height="16" viewBox="0 0 24 24">
-                                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                                    </svg>
-                                    Google
-                                </button>
-                                <button style={{
-                                    backgroundColor: '#ffffff',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    padding: '12px',
-                                    fontSize: '14px',
-                                    fontWeight: 600,
-                                    color: '#000000',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '8px'
-                                }}>
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-                                    </svg>
-                                    Github
-                                </button>
-                            </div>
-
-                            {/* Or Divider */}
-                            <div style={{
-                                position: 'relative',
-                                textAlign: 'center',
-                                marginBottom: '24px'
-                            }}>
-                                <div style={{
-                                    position: 'absolute',
-                                    top: '50%',
-                                    left: 0,
-                                    right: 0,
-                                    height: '1px',
-                                    backgroundColor: '#333333'
-                                }} />
-                                <span style={{
-                                    position: 'relative',
-                                    backgroundColor: '#000000',
-                                    padding: '0 12px',
-                                    fontSize: '13px',
-                                    color: '#666666'
-                                }}>
-                                    Or
-                                </span>
-                            </div>
-                        </>
-                    )}
-
-                    {/* Form */}
-                    <form onSubmit={handleSubmit}>
-                        {/* Register Fields */}
-                        {mode === 'register' && (
-                            <>
-                                {/* Enterprise Name */}
-                                <div style={{ marginBottom: '16px' }}>
-                                    <label style={{
-                                        display: 'block',
-                                        fontSize: '12px',
-                                        color: '#aaaaaa',
-                                        marginBottom: '6px',
-                                        fontWeight: 500
-                                    }}>
-                                        Enterprise Name
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={enterpriseName}
-                                        onChange={(e) => setEnterpriseName(e.target.value)}
-                                        placeholder="eg. Acme Corporation"
-                                        style={{
-                                            width: '100%',
-                                            backgroundColor: '#1a1a1a',
-                                            border: '1px solid #333333',
-                                            borderRadius: '8px',
-                                            padding: '12px 14px',
-                                            fontSize: '14px',
-                                            color: '#ffffff',
-                                            outline: 'none',
-                                            boxSizing: 'border-box'
-                                        }}
-                                        required
-                                    />
-                                </div>
-
-                                {/* Full Name */}
-                                <div style={{ marginBottom: '16px' }}>
-                                    <label style={{
-                                        display: 'block',
-                                        fontSize: '12px',
-                                        color: '#aaaaaa',
-                                        marginBottom: '6px',
-                                        fontWeight: 500
-                                    }}>
-                                        Full Name
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={fullName}
-                                        onChange={(e) => setFullName(e.target.value)}
-                                        placeholder="eg. John Doe"
-                                        style={{
-                                            width: '100%',
-                                            backgroundColor: '#1a1a1a',
-                                            border: '1px solid #333333',
-                                            borderRadius: '8px',
-                                            padding: '12px 14px',
-                                            fontSize: '14px',
-                                            color: '#ffffff',
-                                            outline: 'none',
-                                            boxSizing: 'border-box'
-                                        }}
-                                        required
-                                    />
-                                </div>
-
-                                {/* Address */}
-                                <div style={{ marginBottom: '16px' }}>
-                                    <label style={{
-                                        display: 'block',
-                                        fontSize: '12px',
-                                        color: '#aaaaaa',
-                                        marginBottom: '6px',
-                                        fontWeight: 500
-                                    }}>
-                                        Address
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={address}
-                                        onChange={(e) => setAddress(e.target.value)}
-                                        placeholder="eg. 123 Business Way, City"
-                                        style={{
-                                            width: '100%',
-                                            backgroundColor: '#1a1a1a',
-                                            border: '1px solid #333333',
-                                            borderRadius: '8px',
-                                            padding: '12px 14px',
-                                            fontSize: '14px',
-                                            color: '#ffffff',
-                                            outline: 'none',
-                                            boxSizing: 'border-box'
-                                        }}
-                                        required
-                                    />
-                                </div>
-
-                                {/* Mobile Number */}
-                                <div style={{ marginBottom: '16px' }}>
-                                    <label style={{
-                                        display: 'block',
-                                        fontSize: '12px',
-                                        color: '#aaaaaa',
-                                        marginBottom: '6px',
-                                        fontWeight: 500
-                                    }}>
-                                        Mobile Number
-                                    </label>
-                                    <input
-                                        type="tel"
-                                        value={mobileNumber}
-                                        onChange={(e) => setMobileNumber(e.target.value)}
-                                        placeholder="eg. +1 234 567 8900"
-                                        style={{
-                                            width: '100%',
-                                            backgroundColor: '#1a1a1a',
-                                            border: '1px solid #333333',
-                                            borderRadius: '8px',
-                                            padding: '12px 14px',
-                                            fontSize: '14px',
-                                            color: '#ffffff',
-                                            outline: 'none',
-                                            boxSizing: 'border-box'
-                                        }}
-                                        required
-                                    />
-                                </div>
-                            </>
-                        )}
-
-                        {/* Email */}
-                        <div style={{ marginBottom: '16px' }}>
-                            <label style={{
-                                display: 'block',
-                                fontSize: '12px',
-                                color: '#aaaaaa',
-                                marginBottom: '6px',
-                                fontWeight: 500
-                            }}>
-                                Email
-                            </label>
-                            <input
-                                suppressHydrationWarning={true}
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                placeholder={mode === 'login' ? "you@company.com" : "eg. john@acme.com"}
-                                style={{
-                                    width: '100%',
-                                    backgroundColor: '#1a1a1a',
-                                    border: '1px solid #333333',
-                                    borderRadius: '8px',
-                                    padding: '12px 14px',
-                                    fontSize: '14px',
-                                    color: '#ffffff',
-                                    outline: 'none',
-                                    boxSizing: 'border-box'
-                                }}
-                                required
-                            />
-                        </div>
-
-                        {/* Password */}
-                        <div style={{ marginBottom: '8px' }}>
-                            <label style={{
-                                display: 'block',
-                                fontSize: '12px',
-                                color: '#aaaaaa',
-                                marginBottom: '6px',
-                                fontWeight: 500
-                            }}>
-                                Password
-                            </label>
-                            <div style={{ position: 'relative' }}>
-                                <input
-                                    type={showPassword ? "text" : "password"}
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="Enter your password"
-                                    style={{
-                                        width: '100%',
-                                        backgroundColor: '#1a1a1a',
-                                        border: '1px solid #333333',
-                                        borderRadius: '8px',
-                                        padding: '12px 40px 12px 14px',
-                                        fontSize: '14px',
-                                        color: '#ffffff',
-                                        outline: 'none',
-                                        boxSizing: 'border-box'
-                                    }}
-                                    required
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    style={{
-                                        position: 'absolute',
-                                        right: '12px',
-                                        top: '50%',
-                                        transform: 'translateY(-50%)',
-                                        background: 'none',
-                                        border: 'none',
-                                        color: '#666666',
-                                        cursor: 'pointer',
-                                        padding: 0,
-                                        display: 'flex',
-                                        alignItems: 'center'
-                                    }}
-                                >
-                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                                </button>
-                            </div>
-                            {mode === 'register' && (
-                                <p style={{
-                                    fontSize: '11px',
-                                    color: '#666666',
-                                    marginTop: '6px'
-                                }}>
-                                    Must be at least 8 characters.
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Error */}
-                        {error && (
-                            <div style={{
-                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                                border: '1px solid rgba(239, 68, 68, 0.3)',
-                                borderRadius: '8px',
-                                padding: '12px',
-                                fontSize: '13px',
-                                color: '#ef4444',
-                                marginBottom: '16px'
-                            }}>
-                                {error}
-                            </div>
-                        )}
-
-                        {/* Submit Button */}
-                        <button
-                            type="submit"
-                            disabled={isLoading}
-                            style={{
-                                width: '100%',
-                                backgroundColor: '#ffffff',
-                                border: 'none',
-                                borderRadius: '8px',
-                                padding: '14px',
-                                fontSize: '15px',
-                                fontWeight: 700,
-                                color: '#000000',
-                                cursor: isLoading ? 'not-allowed' : 'pointer',
-                                marginTop: '8px',
-                                marginBottom: '16px',
-                                opacity: isLoading ? 0.6 : 1
-                            }}
-                        >
-                            {isLoading ? (mode === 'login' ? 'Signing in...' : 'Signing up...') : (mode === 'login' ? 'Sign In' : 'Sign Up')}
-                        </button>
-
-                        {/* Toggle Link */}
-                        <p style={{
-                            textAlign: 'center',
-                            fontSize: '13px',
-                            color: '#888888'
-                        }}>
-                            {mode === 'login' ? "Don't have an account?" : "Already have an account?"}{' '}
-                            <button
-                                type="button"
-                                onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
-                                style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    color: '#ffffff',
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                    padding: 0,
-                                    textDecoration: 'underline'
-                                }}
-                            >
-                                {mode === 'login' ? 'Sign Up' : 'Log in'}
-                            </button>
-                        </p>
-                    </form>
+                <div>
+                  <span className="text-white font-bold text-lg tracking-tight block leading-none">
+                    DaVinci
+                  </span>
+                  <span className="text-[#ff5722] text-xs font-mono font-semibold tracking-widest uppercase">
+                    AI
+                  </span>
                 </div>
+              </div>
+
+              {/* Big headline */}
+              <h1 className="text-white text-4xl lg:text-5xl font-extrabold tracking-tight leading-[1.1] mb-4">
+                {mode === "login" ? (
+                  <>
+                    SIGN_
+                    <br />
+                    <span className="text-[#ff5722]">IN</span>
+                  </>
+                ) : (
+                  <>
+                    GET_
+                    <br />
+                    <span className="text-[#ff5722]">STARTED</span>
+                  </>
+                )}
+              </h1>
+
+              <p className="text-white/50 text-sm max-w-[280px] leading-relaxed">
+                {mode === "login"
+                  ? "Access your enterprise voice agent dashboard and analytics."
+                  : "Register your organization and deploy AI voice agents."}
+              </p>
             </div>
+
+            {/* Bottom: Feature pills */}
+            <div className="relative z-10 flex flex-col gap-3 mt-10">
+              {[
+                { icon: Shield, label: "Enterprise Security", tag: "SOC2" },
+                { icon: Zap, label: "Real-time Analytics", tag: "LIVE" },
+                { icon: Cpu, label: "Voice AI Agents", tag: "v2.0" },
+              ].map((item, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg border border-white/5 bg-white/[0.02] backdrop-blur-sm"
+                >
+                  <item.icon size={16} className="text-[#ff5722]" />
+                  <span className="text-white/70 text-sm flex-1">
+                    {item.label}
+                  </span>
+                  <span className="text-[10px] font-mono font-semibold text-[#ff5722] bg-[#ff5722]/10 px-2 py-0.5 rounded">
+                    {item.tag}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ═══════════════ RIGHT PANEL (FORM) ═══════════════ */}
+          <div
+            className={`lg:w-[55%] p-10 lg:p-12 flex flex-col justify-center transition-colors duration-300 ${
+              isDark ? "bg-[#0d0d0d]" : "bg-white"
+            }`}
+          >
+            {/* Tab switcher */}
+            <div className="flex gap-1 mb-8">
+              <button
+                type="button"
+                onClick={() => setMode("login")}
+                className={`px-5 py-2 text-sm font-semibold rounded-lg border transition-all duration-200 ${
+                  mode === "login"
+                    ? "bg-[#ff5722] text-white border-[#ff5722]"
+                    : isDark
+                      ? "bg-transparent text-white/40 border-white/10 hover:text-white/60 hover:border-white/20"
+                      : "bg-transparent text-black/40 border-black/10 hover:text-black/60 hover:border-black/20"
+                }`}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("register")}
+                className={`px-5 py-2 text-sm font-semibold rounded-lg border transition-all duration-200 ${
+                  mode === "register"
+                    ? "bg-[#ff5722] text-white border-[#ff5722]"
+                    : isDark
+                      ? "bg-transparent text-white/40 border-white/10 hover:text-white/60 hover:border-white/20"
+                      : "bg-transparent text-black/40 border-black/10 hover:text-black/60 hover:border-black/20"
+                }`}
+              >
+                Register
+              </button>
+            </div>
+
+            {/* Demo Credentials (login only) */}
+            {mode === "login" && showDemoCreds && (
+              <div
+                className={`relative mb-6 rounded-xl overflow-hidden border transition-colors duration-300 ${
+                  isDark
+                    ? "bg-[#ff5722]/5 border-[#ff5722]/15"
+                    : "bg-[#ff5722]/5 border-[#ff5722]/20"
+                }`}
+              >
+                {/* Left accent bar */}
+                <div className="absolute top-0 left-0 bottom-0 w-1 bg-gradient-to-b from-[#ff5722] to-[#ff8a65]" />
+
+                <div className="pl-5 pr-4 py-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono font-bold text-[#ff5722] bg-[#ff5722]/10 px-2 py-0.5 rounded uppercase">
+                        Demo
+                      </span>
+                      <span
+                        className={`text-xs font-medium ${
+                          isDark ? "text-white/60" : "text-black/60"
+                        }`}
+                      >
+                        Test Credentials
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setShowDemoCreds(false)}
+                      className={`text-xs w-6 h-6 rounded flex items-center justify-center transition-colors ${
+                        isDark
+                          ? "text-white/30 hover:text-white/60 hover:bg-white/5"
+                          : "text-black/30 hover:text-black/60 hover:bg-black/5"
+                      }`}
+                    >
+                      x
+                    </button>
+                  </div>
+
+                  <div className="grid gap-2">
+                    {[
+                      { label: "Email", value: "admin@davinciai.eu" },
+                      { label: "Pass", value: "password123" },
+                    ].map((cred) => (
+                      <div
+                        key={cred.label}
+                        className={`flex items-center justify-between px-3 py-2 rounded-lg border ${
+                          isDark
+                            ? "bg-white/[0.02] border-white/5"
+                            : "bg-black/[0.02] border-black/5"
+                        }`}
+                      >
+                        <span
+                          className={`text-xs ${
+                            isDark ? "text-white/30" : "text-black/30"
+                          }`}
+                        >
+                          {cred.label}
+                        </span>
+                        <code className="text-xs font-mono text-[#ff5722] font-medium">
+                          {cred.value}
+                        </code>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={fillDemoCreds}
+                    className="mt-3 w-full py-2 text-xs font-semibold font-mono rounded-lg border border-[#ff5722]/20 text-[#ff5722] bg-[#ff5722]/5 hover:bg-[#ff5722]/10 transition-colors"
+                  >
+                    AUTO-FILL CREDENTIALS
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Error message */}
+            {error && (
+              <div
+                className={`mb-4 px-4 py-3 rounded-lg border text-sm font-medium ${
+                  isDark
+                    ? "bg-red-500/10 border-red-500/20 text-red-400"
+                    : "bg-red-50 border-red-200 text-red-600"
+                }`}
+              >
+                {error}
+              </div>
+            )}
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              {/* Register-only fields */}
+              {mode === "register" && (
+                <>
+                  <InputField
+                    label="Enterprise Name"
+                    type="text"
+                    value={enterpriseName}
+                    onChange={setEnterpriseName}
+                    placeholder="Acme Corporation"
+                    isDark={isDark}
+                    required
+                  />
+                  <InputField
+                    label="Full Name"
+                    type="text"
+                    value={fullName}
+                    onChange={setFullName}
+                    placeholder="John Doe"
+                    isDark={isDark}
+                    required
+                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <InputField
+                      label="Address"
+                      type="text"
+                      value={address}
+                      onChange={setAddress}
+                      placeholder="123 Business St"
+                      isDark={isDark}
+                      required
+                    />
+                    <InputField
+                      label="Mobile"
+                      type="tel"
+                      value={mobileNumber}
+                      onChange={setMobileNumber}
+                      placeholder="+1 234 567 8900"
+                      isDark={isDark}
+                      required
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Email */}
+              <InputField
+                label="Email"
+                type="email"
+                value={email}
+                onChange={setEmail}
+                placeholder="you@company.com"
+                isDark={isDark}
+                required
+              />
+
+              {/* Password */}
+              <div>
+                <label
+                  className={`block text-xs font-medium font-mono uppercase tracking-wider mb-2 ${
+                    isDark ? "text-white/40" : "text-black/40"
+                  }`}
+                >
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    className={`w-full px-4 py-3 pr-11 rounded-lg border text-sm transition-all duration-200 outline-none ${
+                      isDark
+                        ? "bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-[#ff5722]/40 focus:bg-white/[0.05]"
+                        : "bg-black/[0.02] border-black/10 text-black placeholder:text-black/25 focus:border-[#ff5722]/40 focus:bg-white"
+                    }`}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded transition-colors ${
+                      isDark
+                        ? "text-white/30 hover:text-white/60"
+                        : "text-black/30 hover:text-black/60"
+                    }`}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="group relative w-full mt-2 py-3.5 rounded-lg bg-[#ff5722] text-white font-bold text-sm tracking-wide transition-all duration-200 hover:bg-[#e64a19] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isLoading ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    {mode === "login" ? "SIGN IN" : "CREATE ACCOUNT"}
+                    <ArrowRight
+                      size={16}
+                      className="transition-transform group-hover:translate-x-1"
+                    />
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Toggle mode link */}
+            <p
+              className={`text-center text-sm mt-6 ${
+                isDark ? "text-white/30" : "text-black/30"
+              }`}
+            >
+              {mode === "login"
+                ? "Don't have an account?"
+                : "Already have an account?"}{" "}
+              <button
+                type="button"
+                onClick={() => setMode(mode === "login" ? "register" : "login")}
+                className="text-[#ff5722] font-semibold hover:underline underline-offset-2"
+              >
+                {mode === "login" ? "Register" : "Sign In"}
+              </button>
+            </p>
+
+            {/* Footer */}
+            <div
+              className={`mt-8 pt-6 border-t flex items-center justify-between text-[11px] font-mono ${
+                isDark
+                  ? "border-white/5 text-white/20"
+                  : "border-black/5 text-black/20"
+              }`}
+            >
+              <span>DaVinci AI v2.0</span>
+              <span>enterprise.davinciai.eu</span>
+            </div>
+          </div>
         </div>
-    );
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════ Reusable Input Field ═══════════════ */
+function InputField({
+  label,
+  type,
+  value,
+  onChange,
+  placeholder,
+  isDark,
+  required,
+}: {
+  label: string;
+  type: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  isDark: boolean;
+  required?: boolean;
+}) {
+  return (
+    <div>
+      <label
+        className={`block text-xs font-medium font-mono uppercase tracking-wider mb-2 ${
+          isDark ? "text-white/40" : "text-black/40"
+        }`}
+      >
+        {label}
+      </label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={`w-full px-4 py-3 rounded-lg border text-sm transition-all duration-200 outline-none ${
+          isDark
+            ? "bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-[#ff5722]/40 focus:bg-white/[0.05]"
+            : "bg-black/[0.02] border-black/10 text-black placeholder:text-black/25 focus:border-[#ff5722]/40 focus:bg-white"
+        }`}
+        required={required}
+      />
+    </div>
+  );
 }
