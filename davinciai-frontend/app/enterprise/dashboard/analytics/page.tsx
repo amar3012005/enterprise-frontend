@@ -27,6 +27,7 @@ import {
 
 import { useTheme } from "@/context/ThemeContext";
 import { useAgents } from "@/context/AgentContext";
+import { apiFetch } from "@/lib/api";
 
 
 
@@ -258,8 +259,8 @@ export default function EnterpriseDashboardAnalyticsPage() {
 
         try {
             const [analyticsRes, walletRes] = await Promise.all([
-                fetch(`http://localhost:8000/api/metrics/analytics${selectedAgent ? `?agent_id=${selectedAgent.agent_id}` : ""}`),
-                fetch(`http://localhost:8000/api/wallet/${tenantData.tenant_id}`)
+                apiFetch(`/api/metrics/analytics${selectedAgent ? `?agent_id=${selectedAgent.agent_id}` : ""}`),
+                apiFetch(`/api/wallet/${tenantData.tenant_id}`),
             ]);
 
             if (analyticsRes.ok) {

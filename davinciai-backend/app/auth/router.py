@@ -10,6 +10,7 @@ from passlib.context import CryptContext
 
 from app.config import settings
 from app.database import get_db, User, Tenant
+from app.auth.dependencies import get_current_user as get_current_user_dep
 
 router = APIRouter()
 
@@ -177,9 +178,25 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
     )
 
 @router.get("/me")
-async def get_current_user():
-    """Get current user info (requires authentication header)"""
+async def get_me(
+    user: User = Depends(get_current_user_dep),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get current authenticated user info."""
+    result = await db.execute(select(Tenant).where(Tenant.tenant_id == user.tenant_id))
+    tenant = result.scalars().first()
+
     return {
-        "message": "This endpoint requires JWT authentication",
-        "note": "Add middleware for JWT verification in production"
+        "user": {
+            "user_id": user.user_id,
+            "email": user.email,
+            "full_name": user.full_name,
+            "role": user.role,
+            "login_mode": user.login_mode.value,
+        },
+        "tenant": {
+            "tenant_id": tenant.tenant_id,
+            "organization_name": tenant.organization_name,
+            "subdomain": tenant.subdomain,
+        } if tenant else None,
     }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { apiUrl } from "@/lib/api";
 
 export default function LoginPage() {
     const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -24,7 +25,7 @@ export default function LoginPage() {
         try {
             if (mode === 'login') {
                 // Login logic
-                const response = await fetch("http://127.0.0.1:8000/api/auth/login", {
+                const response = await fetch(apiUrl("/api/auth/login"), {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ email, password }),
@@ -40,7 +41,9 @@ export default function LoginPage() {
                 localStorage.setItem("user", JSON.stringify(data.user));
                 localStorage.setItem("tenant", JSON.stringify(data.tenant));
 
-                const agentsResponse = await fetch(`http://127.0.0.1:8000/api/tenants/${data.tenant.tenant_id}/agents`);
+                const agentsResponse = await fetch(apiUrl(`/api/tenants/${data.tenant.tenant_id}/agents`), {
+                    headers: { "Authorization": `Bearer ${data.access_token}` },
+                });
                 if (!agentsResponse.ok) {
                     throw new Error("Failed to fetch agent data");
                 }
@@ -54,7 +57,7 @@ export default function LoginPage() {
                 }
             } else {
                 // Register logic
-                const response = await fetch("http://127.0.0.1:8000/api/auth/register", {
+                const response = await fetch(apiUrl("/api/auth/register"), {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({

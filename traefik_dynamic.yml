@@ -1,0 +1,4 @@
+tls:
+  certificates:
+    - certFile: /etc/letsencrypt/live/api.enterprise.davinciai.eu/fullchain.pem
+      keyFile: /etc/letsencrypt/live/api.enterprise.davinciai.eu/privkey.pem

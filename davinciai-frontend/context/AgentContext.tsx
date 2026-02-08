@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { apiFetch } from '@/lib/api';
 
 interface Agent {
     agent_id: string;
@@ -103,8 +104,8 @@ export function AgentProvider({ children }: { children: ReactNode }) {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-            const response = await fetch(`http://localhost:8000/api/tenants/${tenantData.tenant_id}/agents`, {
-                signal: controller.signal
+            const response = await apiFetch(`/api/tenants/${tenantData.tenant_id}/agents`, {
+                signal: controller.signal,
             });
             clearTimeout(timeoutId);
 

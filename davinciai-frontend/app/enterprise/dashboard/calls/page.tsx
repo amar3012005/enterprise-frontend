@@ -21,6 +21,7 @@ import {
 
 import { useTheme } from "@/context/ThemeContext";
 import { useAgents } from "@/context/AgentContext";
+import { apiFetch } from "@/lib/api";
 
 interface CallLog {
     call_id: string;
@@ -106,8 +107,8 @@ export default function EnterpriseDashboardCallsPage() {
 
     const fetchCalls = useCallback(async () => {
         try {
-            const response = await fetch(
-                `http://localhost:8000/api/metrics/calls${selectedAgent ? `?agent_id=${selectedAgent.agent_id}` : ""}` +
+            const response = await apiFetch(
+                `/api/metrics/calls${selectedAgent ? `?agent_id=${selectedAgent.agent_id}` : ""}` +
                 `${selectedAgent ? "&" : "?"}limit=50`
             );
 

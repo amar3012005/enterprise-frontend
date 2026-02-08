@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, Enum, Integer, Float
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, Enum, Integer, Float, Numeric
 from sqlalchemy.orm import relationship
 import uuid
 import enum
@@ -20,7 +20,7 @@ class Tenant(Base):
     address = Column(Text, nullable=True)
     plan_tier = Column(String, default="enterprise")
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     users = relationship("User", back_populates="tenant")
 
@@ -35,7 +35,7 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     role = Column(String, default="admin")
     login_mode = Column(Enum(LoginMode), default=LoginMode.DEMO, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     tenant = relationship("Tenant", back_populates="users")
 
@@ -45,15 +45,16 @@ class Wallet(Base):
 
     wallet_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id = Column(String, ForeignKey("tenants.tenant_id"), nullable=False)
-    balance = Column(Float, default=0.0)
+    balance = Column(Numeric(10, 2), default=0.0)
     currency = Column(String, default="EUR")
     is_auto_recharge_enabled = Column(Boolean, default=False)
-    auto_recharge_amount = Column(Float, default=0.0)
-    low_balance_threshold = Column(Float, default=10.0)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    auto_recharge_amount = Column(Numeric(10, 2), default=0.0)
+    low_balance_threshold = Column(Numeric(10, 2), default=10.0)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     tenant = relationship("Tenant", back_populates="wallets")
     agents = relationship("Agent", back_populates="wallet")
+    transactions = relationship("Transaction", back_populates="wallet", order_by="Transaction.created_at.desc()")
 
 
 class Agent(Base):
@@ -92,11 +93,11 @@ class Agent(Base):
     # --- Routing & Billing ---
     cartesia_agent_id = Column(String, nullable=True) # Legacy support
     configuration = Column(Text, nullable=True) # Legacy support
-    cost_per_minute = Column(Float, default=0.15)
+    cost_per_minute = Column(Numeric(10, 4), default=0.1500)
     routing_tier = Column(String, default="standard") # standard, premium, dedicated
 
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     tenant = relationship("Tenant", back_populates="agents")
     wallet = relationship("Wallet", back_populates="agents")
@@ -108,8 +109,8 @@ class CallLog(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     agent_id = Column(String, ForeignKey("agents.agent_id"), nullable=False)
-    start_time = Column(DateTime, default=datetime.utcnow)
-    end_time = Column(DateTime, nullable=True)
+    start_time = Column(DateTime(timezone=True), default=datetime.utcnow)
+    end_time = Column(DateTime(timezone=True), nullable=True)
     duration_seconds = Column(Integer, default=0)
     status = Column(String, default="completed")  # completed, failed, interrupted
     caller_id = Column(String, nullable=True)
@@ -117,9 +118,25 @@ class CallLog(Base):
     ttfc_ms = Column(Integer, nullable=True)
     compression_ratio = Column(Float, nullable=True)
     sentiment_score = Column(Float, nullable=True)
-    cost_euros = Column(Float, default=0.0)
+    cost_euros = Column(Numeric(10, 4), default=0.0)
 
     agent = relationship("Agent", back_populates="calls")
+
+
+class Transaction(Base):
+    __tablename__ = "transactions"
+
+    transaction_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    wallet_id = Column(String, ForeignKey("wallets.wallet_id"), nullable=False)
+    tenant_id = Column(String, ForeignKey("tenants.tenant_id"), nullable=False)
+    type = Column(String, nullable=False)  # topup, deduction, refund
+    amount_euros = Column(Numeric(10, 4), nullable=False)
+    description = Column(Text, nullable=True)
+    reference_id = Column(String, nullable=True)  # call_log id or stripe payment id
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+
+    wallet = relationship("Wallet", back_populates="transactions")
+
 
 # Update Tenant relations
 Tenant.agents = relationship("Agent", back_populates="tenant")

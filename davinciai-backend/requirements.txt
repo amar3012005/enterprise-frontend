@@ -9,9 +9,8 @@ sqlalchemy==2.0.25
 asyncpg==0.29.0
 alembic==1.13.1
 
-# Redis
+# Redis (5.x includes native async via redis.asyncio)
 redis==5.0.1
-aioredis==2.0.1
 
 # Authentication
 python-jose[cryptography]==3.3.0
