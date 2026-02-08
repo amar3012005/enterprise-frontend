@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 // Server-side only — NOT baked into client bundle.
 // Can be changed at runtime without rebuilding the image.
-const API_URL = process.env.API_URL || "http://127.0.0.1:8000";
+const API_URL = process.env.API_URL || "https://api.enterprise.davinciai.eu:8450";
 
 const nextConfig: NextConfig = {
   output: "standalone",
