@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TARA Visual Co-Pilot - Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+        
+        .feature-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+        }
+        
+        .feature-card p {
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+        
+        .demo-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 40px;
+        }
+        
+        .demo-section h2 {
+            margin-bottom: 30px;
+            font-size: 2rem;
+        }
+        
+        .buttons-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .demo-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .demo-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .instructions {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 30px;
+            margin-top: 40px;
+        }
+        
+        .instructions h3 {
+            margin-bottom: 20px;
+        }
+        
+        .instructions ol {
+            padding-left: 20px;
+            line-height: 2;
+        }
+        
+        .instructions li {
+            opacity: 0.9;
+        }
+        
+        .highlight-test {
+            background: rgba(255, 215, 0, 0.3);
+            border: 2px solid #ffd700;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 40px;
+            opacity: 0.7;
+        }
+        
+        /* Scroll target sections */
+        .scroll-target {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .scroll-target h2 {
+            font-size: 2.5rem;
+        }
+    </style>
+</head>
+<body data-tara-widget>
+    <div class="container">
+        <header id="top">
+            <h1>🏛️ TARA Visual Co-Pilot</h1>
+            <p class="subtitle">Voice-controlled AI navigation for web pages</p>
+        </header>
+
+        <div class="features">
+            <div class="feature-card">
+                <h3>🎤 Voice Triggered</h3>
+                <p>DOM is captured only when you speak, not constantly. Zero idle CPU usage.</p>
+            </div>
+            <div class="feature-card">
+                <h3>👻 Ghost Cursor</h3>
+                <p>See where TARA is about to click before it happens. No more jumpscares!</p>
+            </div>
+            <div class="feature-card">
+                <h3>🎨 WebGL Orb</h3>
+                <p>Beautiful fluid animations that react to your voice and TARA's responses.</p>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>🧪 Interactive Demo Elements</h2>
+            <p>These elements can be controlled by TARA. Try speaking commands like:</p>
+            <ul style="margin: 20px 0; line-height: 2; opacity: 0.9;">
+                <li>"Scroll to the pricing section"</li>
+                <li>"Click the submit button"</li>
+                <li>"Highlight the contact form"</li>
+                <li>"Show me the features"</li>
+            </ul>
+            
+            <div class="buttons-grid">
+                <button id="submit-btn" class="demo-btn">Submit Form</button>
+                <button id="contact-btn" class="demo-btn">Contact Us</button>
+                <button id="pricing-btn" class="demo-btn">View Pricing</button>
+                <button id="learn-more-btn" class="demo-btn">Learn More</button>
+                <button id="demo-btn-1" class="demo-btn">Demo Button 1</button>
+                <button id="demo-btn-2" class="demo-btn">Demo Button 2</button>
+            </div>
+
+            <div id="highlight-target" class="highlight-test">
+                <h4>🎯 Highlight Target</h4>
+                <p>This box can be highlighted by TARA using the golden glow effect.</p>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3>📖 How to Test TARA</h3>
+            <ol>
+                <li>Wait for the TARA orb to appear in the bottom-right corner</li>
+                <li>Click the orb to open the control panel</li>
+                <li>Click "Start Call" to begin (requires microphone permission)</li>
+                <li>Speak naturally - TARA will capture the page context when you start talking</li>
+                <li>Try commands like "Scroll down" or "Click the submit button"</li>
+                <li>Watch the ghost cursor move before actions!</li>
+                <li>Click "End Call" when done</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Scroll targets for testing -->
+    <div id="features-section" class="scroll-target">
+        <h2>✨ Features Section</h2>
+    </div>
+    
+    <div id="pricing-section" class="scroll-target">
+        <h2>💎 Pricing Section</h2>
+    </div>
+    
+    <div id="contact-section" class="scroll-target">
+        <h2>📧 Contact Section</h2>
+    </div>
+
+    <footer>
+        <p>Built with ❤️ by DaVinci AI | Voice-Triggered DOM Sync Technology</p>
+    </footer>
+
+    <!-- Load TARA Widget -->
+    <script src="./tara-widget.js"></script>
+    <script>
+        // Manual initialization with custom config
+        window.tara = new TaraWidget({
+            wsUrl: 'wss://api.davinciai.eu',
+            agentId: 'demo-agent',
+            position: 'bottom-right'
+        });
+        
+        console.log('✨ TARA Demo Page Loaded');
+        console.log('Click the orb and "Start Call" to test voice commands');
+    </script>
+</body>
+</html>
