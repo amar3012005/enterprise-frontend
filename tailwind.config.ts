@@ -10,14 +10,13 @@ const config: Config = {
     theme: {
         extend: {
             colors: {
-                // Enterprise Color Palette - Industrial Futurism
                 primary: {
                     50: "#e6f1ff",
                     100: "#cce2ff",
                     200: "#99c5ff",
                     300: "#66a7ff",
                     400: "#338fff",
-                    500: "#0066ff", // Electric Blue
+                    500: "#0066ff",
                     600: "#0052cc",
                     700: "#003d99",
                     800: "#002966",
@@ -30,20 +29,20 @@ const config: Config = {
                     200: "#99f4ff",
                     300: "#66e7ff",
                     400: "#33e7ff",
-                    500: "#00d9ff", // Cyan Accent
+                    500: "#00d9ff",
                     600: "#00addb",
                     700: "#0082a3",
                     800: "#00576b",
                     900: "#002c33",
                 },
                 success: {
-                    500: "#00ff88", // Neon Green
+                    500: "#00ff88",
                 },
                 danger: {
-                    500: "#ff3366", // Cyber Pink/Red
+                    500: "#ff3366",
                 },
                 neutral: {
-                    950: "#0a0e1a", // Deep Midnight
+                    950: "#0a0e1a",
                     900: "#111827",
                     800: "#1f2937",
                 }

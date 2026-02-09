@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { Play, PhoneOff, Activity, Zap, MessageSquare } from "lucide-react";
+import { Play, PhoneOff, Activity, Zap, MessageSquare, Brain } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useTheme } from "@/context/ThemeContext";
 import { apiFetch } from "@/lib/api";
@@ -68,7 +68,8 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
         ratio: 0,
         chunks: 0,
         ttft: 0,
-        ttfc: 0
+        ttfc: 0,
+        agentIq: 0
     });
     const [micStream, setMicStream] = useState<MediaStream | null>(null);
 
@@ -369,7 +370,7 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
                     }
                 } else if (data.type === 'transcript') {
                     if (data.is_final && data.text && data.text.trim()) {
-                        // Mark turn start for TTFT/TTFC (matching reference client.html line 1212)
+                        // Mark turn start for TTFT/TTFC
                         markTurnStart();
                     }
                     setMetrics(prev => ({
@@ -383,7 +384,7 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
                 } else if (data.type === 'agent_response') {
                     if (data.text && data.text.trim()) {
                         if (data.is_streaming) {
-                            // Record TTFT on first token (matching reference client.html line 1225)
+                            // Record TTFT on first token
                             if (turnStartTimeRef.current && !hasTtftForTurnRef.current) {
                                 const ttft = Math.round(performance.now() - turnStartTimeRef.current);
                                 setMetrics(prev => ({ ...prev, ttft }));
@@ -398,7 +399,7 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
                     audioStreamCompleteRef.current = false;
                     const audioB64 = data.data || data.audio;
                     if (audioB64) {
-                        // Record TTFC on first audio chunk (matching reference client.html line 1261)
+                        // Record TTFC on first audio chunk
                         if (turnStartTimeRef.current && !hasTtfcForTurnRef.current) {
                             const ttfc = Math.round(performance.now() - turnStartTimeRef.current);
                             setMetrics(prev => ({ ...prev, ttfc }));
@@ -413,6 +414,10 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
                     setAgentIsSpeaking(false);
                     lastPlaybackTimeRef.current = audioCtxRef.current?.currentTime || 0;
                     playbackStartTimeRef.current = null;
+                } else if (data.type === 'agent_iq' || data.type === 'metrics_update') {
+                    if (data.agent_iq !== undefined) {
+                        setMetrics(prev => ({ ...prev, agentIq: data.agent_iq }));
+                    }
                 } else if (data.type === 'ping') {
                     if (ws.readyState === WebSocket.OPEN) {
                         ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() / 1000 }));
@@ -505,8 +510,6 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
             const now = audioCtxRef.current.currentTime;
 
             // --- Strict Scheduling with Drift Correction ---
-            // If chunks arrive slightly late, play immediately (drift correction)
-            // If they arrive on time/early, queue precisely at the end of the previous chunk
             let startAt = lastPlaybackTimeRef.current;
             if (startAt < now) {
                 startAt = now;
@@ -562,12 +565,9 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
                         ttft_ms: finalMetrics.ttft,
                         ttfc_ms: finalMetrics.ttfc,
                         compression_ratio: finalMetrics.ratio,
-                        cost_euros: (finalDuration / 60) * 0.15 // Example $0.15/min cost calculation
+                        cost_euros: (finalDuration / 60) * 0.15
                     })
                 });
-                if (response.ok) {
-                    console.log("AIAssistantPanel: Call metrics synced successfully");
-                }
             } catch (err) {
                 console.error("AIAssistantPanel: Failed to sync call metrics:", err);
             }
@@ -595,7 +595,8 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
             ratio: 0,
             chunks: 0,
             ttft: 0,
-            ttfc: 0
+            ttfc: 0,
+            agentIq: 0
         });
     };
 
@@ -675,7 +676,6 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
                         <h3 style={{ fontSize: '28px', fontWeight: 700, color: isDark ? '#fff' : '#1a1a1a', textTransform: 'uppercase', letterSpacing: '0.15em', margin: '0 0 16px 0' }}>{agentData?.agent_name || "TARA"}</h3>
                     </div>
 
-                    {/* Always show timer */}
                     <p style={{
                         fontSize: '13px',
                         color: loginMode === 'demo' && callDuration >= DEMO_WARNING_TIME ? '#ef4444' : '#666',
@@ -694,8 +694,6 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
                     </p>
                 </div>
 
-                {/* Voice-only interaction - no text display */}
-
                 {/* Performance Metrics */}
                 <div style={{
                     display: 'grid',
@@ -707,7 +705,7 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
                 }}>
                     <MetricPill icon={<Zap size={10} />} label="TTFT" value={`${metrics.ttft}ms`} color="#22c55e" />
                     <MetricPill icon={<Activity size={10} />} label="TTFC" value={`${metrics.ttfc}ms`} color="#3b82f6" />
-                    <MetricPill icon={<MessageSquare size={10} />} label="Ratio" value={metrics.ratio.toFixed(2)} color="#f59e0b" />
+                    <MetricPill icon={<Brain size={10} />} label="Agent IQ" value={`${Math.round(metrics.agentIq * 100)}%`} color="#a855f7" />
                 </div>
             </div>
 

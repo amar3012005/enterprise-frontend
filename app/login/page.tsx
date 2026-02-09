@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Eye, EyeOff, ArrowRight, Cpu, Shield, Zap, Sun, Moon } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Eye, EyeOff, ArrowRight, Mail, Lock, User, Building, Phone, MapPin, Cpu, Sparkles } from "lucide-react";
 import { apiUrl } from "@/lib/api";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -21,12 +21,25 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showDemoCreds, setShowDemoCreds] = useState(true);
+  const [isLeftHovered, setIsLeftHovered] = useState(false);
+  const [isRightHovered, setIsRightHovered] = useState(false);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const leftPanelRef = useRef<HTMLDivElement>(null);
 
-  // Apply theme class to document
   useEffect(() => {
     document.documentElement.classList.toggle("light", !isDark);
     document.documentElement.classList.toggle("dark", isDark);
   }, [isDark]);
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (leftPanelRef.current) {
+      const rect = leftPanelRef.current.getBoundingClientRect();
+      setMousePosition({
+        x: ((e.clientX - rect.left) / rect.width) * 100,
+        y: ((e.clientY - rect.top) / rect.height) * 100,
+      });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,425 +100,304 @@ export default function LoginPage() {
   };
 
   const fillDemoCreds = () => {
-    setEmail("admin@davinciai.eu");
-    setPassword("password123");
+    setEmail("b23313@students.iitmandi.ac.in");
+    setPassword("528369");
   };
 
   return (
-    <div
-      className={`min-h-screen relative overflow-hidden transition-colors duration-300 ${
-        isDark ? "bg-[#0a0a0a]" : "bg-[#f0f0f0]"
-      }`}
-    >
-      {/* Grid pattern background */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage: isDark
-            ? "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)"
-            : "linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px)",
-          backgroundSize: "40px 40px",
-        }}
-      />
+    <div className={`min-h-screen w-full flex items-center justify-center p-4 lg:p-8 transition-all duration-700 ${isDark ? "bg-[#0a0a0a]" : "bg-[#f0f2f5]"}`}>
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className={`absolute -top-[30%] -left-[20%] w-[70%] h-[70%] rounded-full blur-[150px] opacity-10 transition-all duration-1000 ${isDark ? "bg-[#ff5722]" : "bg-[#ff8a65]"}`} style={{ transform: `translate(${mousePosition.x * 0.1}px, ${mousePosition.y * 0.1}px)` }} />
+        <div className={`absolute top-[30%] -right-[20%] w-[60%] h-[60%] rounded-full blur-[150px] opacity-8 transition-all duration-1000 ${isDark ? "bg-blue-600" : "bg-blue-400"}`} style={{ transform: `translate(${-mousePosition.x * 0.05}px, ${-mousePosition.y * 0.05}px)` }} />
+      </div>
 
-      {/* Corner brackets decoration */}
-      <div className="absolute top-6 left-6 w-8 h-8 border-t-2 border-l-2 border-[#ff5722] opacity-60" />
-      <div className="absolute top-6 right-6 w-8 h-8 border-t-2 border-r-2 border-[#ff5722] opacity-60" />
-      <div className="absolute bottom-6 left-6 w-8 h-8 border-b-2 border-l-2 border-[#ff5722] opacity-60" />
-      <div className="absolute bottom-6 right-6 w-8 h-8 border-b-2 border-r-2 border-[#ff5722] opacity-60" />
-
-      {/* Theme toggle */}
       <button
         onClick={toggleTheme}
-        className={`absolute top-6 right-20 z-50 w-10 h-10 rounded-lg border flex items-center justify-center transition-all duration-200 hover:scale-105 ${
-          isDark
-            ? "bg-[#111] border-[#222] text-white/60 hover:text-[#ff5722] hover:border-[#ff5722]/30"
-            : "bg-white border-[#ddd] text-black/60 hover:text-[#ff5722] hover:border-[#ff5722]/30"
-        }`}
+        className={`absolute top-6 right-6 z-50 p-3 rounded-full border backdrop-blur-md transition-all duration-500 hover:scale-110 hover:rotate-180 ${isDark
+          ? "bg-[#1a1a1a] border-[#333] text-gray-300 hover:text-white hover:border-white/30"
+          : "bg-white border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-400"
+          }`}
       >
-        {isDark ? <Sun size={16} /> : <Moon size={16} />}
+        {isDark ? (
+          <svg className="w-5 h-5 transition-transform duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+        ) : (
+          <svg className="w-5 h-5 transition-transform duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+        )}
       </button>
 
-      {/* Main container */}
-      <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-12">
+      <div className={`relative z-10 w-full max-w-6xl h-auto min-h-[650px] flex flex-col lg:flex-row overflow-hidden rounded-2xl shadow-2xl transition-all duration-700 ${isDark ? "bg-[#111] border-[#222]" : "bg-white border-gray-200"}`}>
         <div
-          className={`w-full max-w-[1080px] rounded-2xl overflow-hidden flex flex-col lg:flex-row border-2 transition-colors duration-300 ${
-            isDark
-              ? "bg-[#0d0d0d] border-[#1a1a1a]"
-              : "bg-white border-[#e0e0e0]"
-          }`}
-          style={{
-            boxShadow: isDark
-              ? "0 25px 80px rgba(0,0,0,0.6)"
-              : "0 25px 80px rgba(0,0,0,0.1)",
-          }}
+          ref={leftPanelRef}
+          onMouseEnter={() => setIsLeftHovered(true)}
+          onMouseLeave={() => setIsLeftHovered(false)}
+          onMouseMove={handleMouseMove}
+          className={`relative w-full lg:w-5/12 overflow-hidden transition-all duration-700 ease-out ${isDark ? "bg-[#0d0d0d]" : "bg-gradient-to-br from-gray-100 to-gray-200"}`}
         >
-          {/* ═══════════════ LEFT PANEL ═══════════════ */}
-          <div className="lg:w-[45%] relative p-10 lg:p-12 flex flex-col justify-between bg-[#0a0a0a] overflow-hidden min-h-[300px] lg:min-h-0">
-            {/* Background grid on left panel */}
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                backgroundImage:
-                  "linear-gradient(rgba(255,87,34,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,87,34,0.06) 1px, transparent 1px)",
-                backgroundSize: "32px 32px",
-              }}
+          <div className="absolute inset-0">
+            <img
+              src="/Images/login_page.jpeg"
+              alt="DaVinci AI Platform"
+              className={`w-full h-full object-cover transition-all duration-1000 ${isLeftHovered ? "scale-110" : "scale-100"}`}
             />
+          </div>
 
-            {/* Accent gradient */}
+          <div className={`absolute inset-0 transition-all duration-700 ${isDark ? "bg-gradient-to-b from-black/60 via-black/40 to-black/70" : "bg-gradient-to-b from-black/40 via-black/20 to-black/60"}`} />
+
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-8 z-10">
             <div
-              className="absolute -top-20 -right-20 w-64 h-64 rounded-full pointer-events-none"
-              style={{
-                background:
-                  "radial-gradient(circle, rgba(255,87,34,0.15) 0%, transparent 70%)",
-              }}
-            />
-
-            {/* Top: Brand + Title */}
-            <div className="relative z-10">
-              {/* Brand */}
-              <div className="flex items-center gap-3 mb-10">
-                <div className="w-10 h-10 rounded-lg bg-[#ff5722] flex items-center justify-center">
-                  <Cpu size={20} className="text-white" />
-                </div>
-                <div>
-                  <span className="text-white font-bold text-lg tracking-tight block leading-none">
-                    DaVinci
-                  </span>
-                  <span className="text-[#ff5722] text-xs font-mono font-semibold tracking-widest uppercase">
-                    AI
-                  </span>
-                </div>
-              </div>
-
-              {/* Big headline */}
-              <h1 className="text-white text-4xl lg:text-5xl font-extrabold tracking-tight leading-[1.1] mb-4">
-                {mode === "login" ? (
-                  <>
-                    SIGN_
-                    <br />
-                    <span className="text-[#ff5722]">IN</span>
-                  </>
-                ) : (
-                  <>
-                    GET_
-                    <br />
-                    <span className="text-[#ff5722]">STARTED</span>
-                  </>
-                )}
-              </h1>
-
-              <p className="text-white/50 text-sm max-w-[280px] leading-relaxed">
-                {mode === "login"
-                  ? "Access your enterprise voice agent dashboard and analytics."
-                  : "Register your organization and deploy AI voice agents."}
-              </p>
+              className={`mb-8 transition-all duration-700 transform ${isLeftHovered ? "scale-110 translate-y-0" : "scale-100 translate-y-2"}`}
+            >
+              <img
+                src="/Images/davinci-logo.svg"
+                alt="DaVinci AI Logo"
+                width={120}
+                height={120}
+                className={`drop-shadow-2xl ${isLeftHovered ? "filter brightness-125" : ""}`}
+              />
             </div>
 
-            {/* Bottom: Feature pills */}
-            <div className="relative z-10 flex flex-col gap-3 mt-10">
-              {[
-                { icon: Shield, label: "Enterprise Security", tag: "SOC2" },
-                { icon: Zap, label: "Real-time Analytics", tag: "LIVE" },
-                { icon: Cpu, label: "Voice AI Agents", tag: "v2.0" },
-              ].map((item, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg border border-white/5 bg-white/[0.02] backdrop-blur-sm"
-                >
-                  <item.icon size={16} className="text-[#ff5722]" />
-                  <span className="text-white/70 text-sm flex-1">
-                    {item.label}
-                  </span>
-                  <span className="text-[10px] font-mono font-semibold text-[#ff5722] bg-[#ff5722]/10 px-2 py-0.5 rounded">
-                    {item.tag}
-                  </span>
-                </div>
-              ))}
+            <h1
+              className={`text-5xl lg:text-6xl font-bold tracking-tight transition-all duration-700 transform ${isLeftHovered ? "scale-105 opacity-100" : "scale-100 opacity-90"} ${isDark ? "text-white" : "text-white"}`}
+              style={{
+                textShadow: "0 4px 30px rgba(0,0,0,0.3)",
+              }}
+            >
+              DaVinci
+            </h1>
+
+            <p className={`mt-4 text-lg lg:text-xl tracking-widest uppercase transition-all duration-700 ${isLeftHovered ? "opacity-100" : "opacity-70"} ${isDark ? "text-white/80" : "text-white/90"}`}>
+              Enterprise Platform
+            </p>
+
+            <div className={`mt-12 flex items-center gap-3 px-6 py-3 rounded-full backdrop-blur-sm transition-all duration-500 ${isLeftHovered ? "bg-white/10 scale-100" : "bg-white/5 scale-95 opacity-0"} ${isDark ? "border border-white/10" : "border border-white/20"}`}>
+              <Sparkles className={`w-5 h-5 ${isDark ? "text-amber-400" : "text-amber-300"}`} />
+              <span className="text-sm font-medium text-white">Next-Gen AI Voice Agents</span>
             </div>
           </div>
 
-          {/* ═══════════════ RIGHT PANEL (FORM) ═══════════════ */}
-          <div
-            className={`lg:w-[55%] p-10 lg:p-12 flex flex-col justify-center transition-colors duration-300 ${
-              isDark ? "bg-[#0d0d0d]" : "bg-white"
-            }`}
-          >
-            {/* Tab switcher */}
-            <div className="flex gap-1 mb-8">
+          <div className={`absolute bottom-8 left-8 right-8 transition-all duration-500 ${isLeftHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+            <p className={`text-sm text-center ${isDark ? "text-white/60" : "text-white/70"}`}>
+              Trusted by enterprise leaders worldwide
+            </p>
+          </div>
+        </div>
+
+        <div
+          className={`relative w-full lg:w-7/12 p-8 lg:p-16 flex flex-col justify-center transition-all duration-700 ease-out ${isDark ? "bg-[#0a0a0a]" : "bg-white"}`}
+          onMouseEnter={() => setIsRightHovered(true)}
+          onMouseLeave={() => setIsRightHovered(false)}
+        >
+          <div className={`w-full max-w-md mx-auto transition-all duration-500 ${isRightHovered ? "opacity-100 translate-x-0" : "opacity-90 translate-x-2"}`}>
+            <div className="mb-10">
+              <h2 className={`text-3xl font-bold tracking-tight mb-2 ${isDark ? "text-white" : "text-gray-900"}`}>
+                {mode === "login" ? "Welcome back" : "Create account"}
+              </h2>
+              <p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                {mode === "login" ? "Enter your credentials to access your dashboard" : "Start your journey with DaVinci AI"}
+              </p>
+            </div>
+
+            <div className={`flex p-1 rounded-xl mb-8 w-fit mx-auto lg:mx-0 ${isDark ? "bg-[#151515] border border-[#222]" : "bg-gray-100 border border-gray-200"}`}>
               <button
-                type="button"
                 onClick={() => setMode("login")}
-                className={`px-5 py-2 text-sm font-semibold rounded-lg border transition-all duration-200 ${
-                  mode === "login"
-                    ? "bg-[#ff5722] text-white border-[#ff5722]"
-                    : isDark
-                      ? "bg-transparent text-white/40 border-white/10 hover:text-white/60 hover:border-white/20"
-                      : "bg-transparent text-black/40 border-black/10 hover:text-black/60 hover:border-black/20"
-                }`}
+                className={`px-8 py-2.5 rounded-lg text-sm font-semibold tracking-wide transition-all duration-300 transform ${mode === "login"
+                  ? "bg-[#ff5722] text-white shadow-lg shadow-orange-500/20 scale-105"
+                  : `${isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900"} hover:scale-102`
+                  }`}
               >
                 Sign In
               </button>
               <button
-                type="button"
                 onClick={() => setMode("register")}
-                className={`px-5 py-2 text-sm font-semibold rounded-lg border transition-all duration-200 ${
-                  mode === "register"
-                    ? "bg-[#ff5722] text-white border-[#ff5722]"
-                    : isDark
-                      ? "bg-transparent text-white/40 border-white/10 hover:text-white/60 hover:border-white/20"
-                      : "bg-transparent text-black/40 border-black/10 hover:text-black/60 hover:border-black/20"
-                }`}
+                className={`px-8 py-2.5 rounded-lg text-sm font-semibold tracking-wide transition-all duration-300 transform ${mode === "register"
+                  ? "bg-[#ff5722] text-white shadow-lg shadow-orange-500/20 scale-105"
+                  : `${isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900"} hover:scale-102`
+                  }`}
               >
                 Register
               </button>
             </div>
 
-            {/* Demo Credentials (login only) */}
-            {mode === "login" && showDemoCreds && (
-              <div
-                className={`relative mb-6 rounded-xl overflow-hidden border transition-colors duration-300 ${
-                  isDark
-                    ? "bg-[#ff5722]/5 border-[#ff5722]/15"
-                    : "bg-[#ff5722]/5 border-[#ff5722]/20"
-                }`}
-              >
-                {/* Left accent bar */}
-                <div className="absolute top-0 left-0 bottom-0 w-1 bg-gradient-to-b from-[#ff5722] to-[#ff8a65]" />
-
-                <div className="pl-5 pr-4 py-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono font-bold text-[#ff5722] bg-[#ff5722]/10 px-2 py-0.5 rounded uppercase">
-                        Demo
-                      </span>
-                      <span
-                        className={`text-xs font-medium ${
-                          isDark ? "text-white/60" : "text-black/60"
-                        }`}
-                      >
-                        Test Credentials
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => setShowDemoCreds(false)}
-                      className={`text-xs w-6 h-6 rounded flex items-center justify-center transition-colors ${
-                        isDark
-                          ? "text-white/30 hover:text-white/60 hover:bg-white/5"
-                          : "text-black/30 hover:text-black/60 hover:bg-black/5"
-                      }`}
-                    >
-                      x
-                    </button>
-                  </div>
-
-                  <div className="grid gap-2">
-                    {[
-                      { label: "Email", value: "admin@davinciai.eu" },
-                      { label: "Pass", value: "password123" },
-                    ].map((cred) => (
-                      <div
-                        key={cred.label}
-                        className={`flex items-center justify-between px-3 py-2 rounded-lg border ${
-                          isDark
-                            ? "bg-white/[0.02] border-white/5"
-                            : "bg-black/[0.02] border-black/5"
-                        }`}
-                      >
-                        <span
-                          className={`text-xs ${
-                            isDark ? "text-white/30" : "text-black/30"
-                          }`}
-                        >
-                          {cred.label}
-                        </span>
-                        <code className="text-xs font-mono text-[#ff5722] font-medium">
-                          {cred.value}
-                        </code>
-                      </div>
-                    ))}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={fillDemoCreds}
-                    className="mt-3 w-full py-2 text-xs font-semibold font-mono rounded-lg border border-[#ff5722]/20 text-[#ff5722] bg-[#ff5722]/5 hover:bg-[#ff5722]/10 transition-colors"
-                  >
-                    AUTO-FILL CREDENTIALS
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Error message */}
             {error && (
-              <div
-                className={`mb-4 px-4 py-3 rounded-lg border text-sm font-medium ${
-                  isDark
-                    ? "bg-red-500/10 border-red-500/20 text-red-400"
-                    : "bg-red-50 border-red-200 text-red-600"
-                }`}
-              >
+              <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-sm flex items-center gap-3 animate-in slide-in-from-top-2">
+                <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
                 {error}
               </div>
             )}
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              {/* Register-only fields */}
+            {mode === "login" && showDemoCreds && (
+              <div className={`mb-8 p-5 rounded-xl border relative overflow-hidden transition-all duration-300 hover:shadow-lg ${isDark ? "bg-[#151515] border-[#222]" : "bg-gray-50 border-gray-200"}`}>
+                <div className="absolute top-0 left-0 w-1 h-full bg-[#ff5722]" />
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[#ff5722] text-white">
+                      Demo
+                    </span>
+                    <span className={`text-xs font-semibold ${isDark ? "text-gray-300" : "text-gray-700"}`}>
+                      Test Credentials
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setShowDemoCreds(false)}
+                    className={`p-1.5 rounded-lg transition-colors ${isDark ? "hover:bg-white/10 text-gray-500" : "hover:bg-black/5 text-gray-400"}`}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className={`p-3 rounded-lg border ${isDark ? "bg-[#0a0a0a] border-[#333]" : "bg-white border-gray-200"}`}>
+                    <div className={`text-[10px] uppercase font-mono mb-1 ${isDark ? "text-gray-500" : "text-gray-400"}`}>Email</div>
+                    <div className={`text-xs font-mono truncate ${isDark ? "text-orange-400" : "text-orange-600"}`}>b23313@students.iitmandi.ac.in</div>
+                  </div>
+                  <div className={`p-3 rounded-lg border ${isDark ? "bg-[#0a0a0a] border-[#333]" : "bg-white border-gray-200"}`}>
+                    <div className={`text-[10px] uppercase font-mono mb-1 ${isDark ? "text-gray-500" : "text-gray-400"}`}>Password</div>
+                    <div className={`text-xs font-mono ${isDark ? "text-orange-400" : "text-orange-600"}`}>528369</div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={fillDemoCreds}
+                  className="mt-4 w-full py-2.5 text-xs font-semibold uppercase tracking-wide rounded-lg bg-[#ff5722] text-white hover:bg-[#f4511e] transition-all duration-300 hover:shadow-lg hover:shadow-orange-500/20 active:scale-[0.98]"
+                >
+                  Auto-Fill Credentials
+                </button>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-5">
               {mode === "register" && (
-                <>
-                  <InputField
-                    label="Enterprise Name"
-                    type="text"
-                    value={enterpriseName}
-                    onChange={setEnterpriseName}
-                    placeholder="Acme Corporation"
-                    isDark={isDark}
-                    required
-                  />
-                  <InputField
-                    label="Full Name"
-                    type="text"
-                    value={fullName}
-                    onChange={setFullName}
-                    placeholder="John Doe"
-                    isDark={isDark}
-                    required
-                  />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="md:col-span-2">
                     <InputField
-                      label="Address"
-                      type="text"
-                      value={address}
-                      onChange={setAddress}
-                      placeholder="123 Business St"
+                      label="Enterprise Name"
+                      value={enterpriseName}
+                      onChange={setEnterpriseName}
+                      placeholder="Acme Inc."
+                      icon={<Building size={16} />}
                       isDark={isDark}
-                      required
-                    />
-                    <InputField
-                      label="Mobile"
-                      type="tel"
-                      value={mobileNumber}
-                      onChange={setMobileNumber}
-                      placeholder="+1 234 567 8900"
-                      isDark={isDark}
-                      required
                     />
                   </div>
                   <InputField
-                    label="Agent WebSocket URL"
-                    type="url"
-                    value={agentWebsocketUrl}
-                    onChange={setAgentWebsocketUrl}
-                    placeholder="wss://demo.davinciai.eu:8443"
+                    label="Full Name"
+                    value={fullName}
+                    onChange={setFullName}
+                    placeholder="John Doe"
+                    icon={<User size={16} />}
                     isDark={isDark}
                   />
-                  <p
-                    className={`-mt-2 text-[10px] font-mono ${
-                      isDark ? "text-white/25" : "text-black/25"
-                    }`}
-                  >
-                    Optional — defaults to wss://&#123;enterprise&#125;.davinciai.eu:8443
-                  </p>
-                </>
+                  <InputField
+                    label="Phone"
+                    value={mobileNumber}
+                    onChange={setMobileNumber}
+                    placeholder="+1 (555) 000-0000"
+                    icon={<Phone size={16} />}
+                    isDark={isDark}
+                  />
+                  <div className="md:col-span-2">
+                    <InputField
+                      label="Address"
+                      value={address}
+                      onChange={setAddress}
+                      placeholder="123 Innovation Dr, Tech City"
+                      icon={<MapPin size={16} />}
+                      isDark={isDark}
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <InputField
+                      label="Agent WebSocket URL (Optional)"
+                      value={agentWebsocketUrl}
+                      onChange={setAgentWebsocketUrl}
+                      placeholder="wss://demo.davinciai.eu:8443"
+                      icon={<Cpu size={16} />}
+                      isDark={isDark}
+                    />
+                  </div>
+                </div>
               )}
 
-              {/* Email */}
-              <InputField
-                label="Email"
-                type="email"
-                value={email}
-                onChange={setEmail}
-                placeholder="you@company.com"
-                isDark={isDark}
-                required
-              />
+              <div className="space-y-5">
+                <InputField
+                  label="Email Address"
+                  type="email"
+                  value={email}
+                  onChange={setEmail}
+                  placeholder="name@company.com"
+                  icon={<Mail size={16} />}
+                  isDark={isDark}
+                />
 
-              {/* Password */}
-              <div>
-                <label
-                  className={`block text-xs font-medium font-mono uppercase tracking-wider mb-2 ${
-                    isDark ? "text-white/40" : "text-black/40"
-                  }`}
-                >
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    className={`w-full px-4 py-3 pr-11 rounded-lg border text-sm transition-all duration-200 outline-none ${
-                      isDark
-                        ? "bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-[#ff5722]/40 focus:bg-white/[0.05]"
-                        : "bg-black/[0.02] border-black/10 text-black placeholder:text-black/25 focus:border-[#ff5722]/40 focus:bg-white"
-                    }`}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded transition-colors ${
-                      isDark
-                        ? "text-white/30 hover:text-white/60"
-                        : "text-black/30 hover:text-black/60"
-                    }`}
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
+                <div className="space-y-1.5">
+                  <label className={`text-xs font-semibold uppercase tracking-wider ml-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                    Password
+                  </label>
+                  <div className="relative group">
+                    <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-all duration-300 ${isDark ? "text-gray-500 group-focus-within:text-[#ff5722]" : "text-gray-400 group-focus-within:text-[#ff5722]"}`}>
+                      <Lock size={16} />
+                    </div>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      className={`w-full pl-10 pr-12 py-3.5 rounded-xl border text-sm outline-none transition-all duration-300 ${isDark
+                        ? "bg-[#111] border-[#222] text-white placeholder:text-gray-600 focus:border-[#ff5722] focus:bg-[#161616] focus:shadow-lg focus:shadow-orange-500/10"
+                        : "bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-[#ff5722] focus:bg-white focus:shadow-lg focus:shadow-orange-500/10"
+                        }`}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className={`absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-all duration-300 ${isDark ? "text-gray-500 hover:text-white hover:bg-white/10" : "text-gray-400 hover:text-gray-700 hover:bg-black/5"}`}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Submit */}
+              {mode === "login" && (
+                <div className="flex justify-end">
+                  <button type="button" className={`text-sm transition-colors duration-300 hover:text-[#ff5722] ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                    Forgot password?
+                  </button>
+                </div>
+              )}
+
               <button
                 type="submit"
                 disabled={isLoading}
-                className="group relative w-full mt-2 py-3.5 rounded-lg bg-[#ff5722] text-white font-bold text-sm tracking-wide transition-all duration-200 hover:bg-[#e64a19] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-4 rounded-xl bg-[#ff5722] text-white font-bold text-sm uppercase tracking-wider shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 hover:bg-[#ff7043] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-2 group"
               >
                 {isLoading ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    {mode === "login" ? "SIGN IN" : "CREATE ACCOUNT"}
-                    <ArrowRight
-                      size={16}
-                      className="transition-transform group-hover:translate-x-1"
-                    />
+                    <span className="transition-all duration-300 group-hover:translate-x-1">
+                      {mode === "login" ? "Sign In" : "Create Account"}
+                    </span>
+                    <ArrowRight size={18} className="transition-all duration-300 group-hover:translate-x-1" />
                   </>
                 )}
               </button>
             </form>
 
-            {/* Toggle mode link */}
-            <p
-              className={`text-center text-sm mt-6 ${
-                isDark ? "text-white/30" : "text-black/30"
-              }`}
-            >
-              {mode === "login"
-                ? "Don't have an account?"
-                : "Already have an account?"}{" "}
-              <button
-                type="button"
-                onClick={() => setMode(mode === "login" ? "register" : "login")}
-                className="text-[#ff5722] font-semibold hover:underline underline-offset-2"
-              >
-                {mode === "login" ? "Register" : "Sign In"}
-              </button>
-            </p>
-
-            {/* Footer */}
-            <div
-              className={`mt-8 pt-6 border-t flex items-center justify-between text-[11px] font-mono ${
-                isDark
-                  ? "border-white/5 text-white/20"
-                  : "border-black/5 text-black/20"
-              }`}
-            >
-              <span>DaVinci AI v2.0</span>
-              <span>enterprise.davinciai.eu</span>
+            <div className="mt-8 text-center">
+              <p className={`text-sm ${isDark ? "text-gray-500" : "text-gray-400"}`}>
+                By continuing, you agree to DaVinci AI&apos;s
+                <a href="#" className="hover:text-[#ff5722] transition-colors duration-300 ml-1">Terms of Service</a> and
+                <a href="#" className="hover:text-[#ff5722] transition-colors duration-300 ml-1">Privacy Policy</a>.
+              </p>
             </div>
           </div>
         </div>
@@ -514,45 +406,29 @@ export default function LoginPage() {
   );
 }
 
-/* ═══════════════ Reusable Input Field ═══════════════ */
-function InputField({
-  label,
-  type,
-  value,
-  onChange,
-  placeholder,
-  isDark,
-  required,
-}: {
-  label: string;
-  type: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-  isDark: boolean;
-  required?: boolean;
-}) {
+function InputField({ label, type = "text", value, onChange, placeholder, icon, isDark }: any) {
   return (
-    <div>
-      <label
-        className={`block text-xs font-medium font-mono uppercase tracking-wider mb-2 ${
-          isDark ? "text-white/40" : "text-black/40"
-        }`}
-      >
+    <div className="space-y-1.5">
+      <label className={`text-xs font-semibold uppercase tracking-wider ml-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
         {label}
       </label>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className={`w-full px-4 py-3 rounded-lg border text-sm transition-all duration-200 outline-none ${
-          isDark
-            ? "bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-[#ff5722]/40 focus:bg-white/[0.05]"
-            : "bg-black/[0.02] border-black/10 text-black placeholder:text-black/25 focus:border-[#ff5722]/40 focus:bg-white"
-        }`}
-        required={required}
-      />
+      <div className="relative group">
+        {icon && (
+          <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-all duration-300 ${isDark ? "text-gray-500 group-focus-within:text-[#ff5722]" : "text-gray-400 group-focus-within:text-[#ff5722]"}`}>
+            {icon}
+          </div>
+        )}
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className={`w-full ${icon ? "pl-10" : "pl-4"} pr-4 py-3.5 rounded-xl border text-sm outline-none transition-all duration-300 ${isDark
+            ? "bg-[#111] border-[#222] text-white placeholder:text-gray-600 focus:border-[#ff5722] focus:bg-[#161616] focus:shadow-lg focus:shadow-orange-500/10"
+            : "bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-[#ff5722] focus:bg-white focus:shadow-lg focus:shadow-orange-500/10"
+            }`}
+        />
+      </div>
     </div>
   );
 }

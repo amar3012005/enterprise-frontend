@@ -11,7 +11,10 @@ import {
     Zap,
     ArrowUpRight,
     ArrowDownRight,
-    RefreshCw
+    RefreshCw,
+    Brain,
+    AlertTriangle,
+    Flame
 } from "lucide-react";
 import {
     AreaChart,
@@ -42,6 +45,9 @@ interface AnalyticsData {
     cost_breakdown: {
         [key: string]: { calls: number; cost: number };
     };
+    leads_today: number;
+    churn_risks_today: number;
+    avg_agent_iq: number;
 }
 
 interface WalletData {
@@ -422,27 +428,18 @@ export default function EnterpriseDashboardAnalyticsPage() {
                 <StatCard
                     label="Total Calls"
                     value={analytics?.total_calls_today || 0}
+                    unit="Sessions"
                     icon={Phone}
                     trend="up"
-                    trendValue="+12% from yesterday"
-                    isDark={isDark}
-                    delay={0}
-                />
-                <StatCard
-                    label="Minutes Used"
-                    value={analytics?.total_minutes_today || 0}
-                    unit="min"
-                    icon={Clock}
-                    trend="up"
-                    trendValue="+8% from yesterday"
+                    trendValue="+12%"
                     isDark={isDark}
                     delay={0.1}
                 />
                 <StatCard
-                    label="Success Rate"
-                    value={Math.round((analytics?.success_rate || 0) * 100)}
-                    unit="%"
-                    icon={TrendingUp}
+                    label="Hot Leads Found"
+                    value={analytics?.leads_today || 0}
+                    unit="Leads"
+                    icon={Flame}
                     isDark={isDark}
                     delay={0.2}
                 />

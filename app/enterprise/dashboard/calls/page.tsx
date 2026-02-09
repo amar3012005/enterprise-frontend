@@ -15,7 +15,10 @@ import {
     ChevronDown,
     TrendingUp,
     TrendingDown,
-    Minus
+    Minus,
+    Brain,
+    AlertTriangle,
+    Flame
 } from "lucide-react";
 
 
@@ -30,6 +33,11 @@ interface CallLog {
     status: "completed" | "failed" | "interrupted";
     start_time: string;
     sentiment_score: number;
+    is_churn_risk: boolean;
+    is_hot_lead: boolean;
+    priority_level: string;
+    agent_iq: number;
+    frustration_velocity: string;
 }
 
 // Status badge component
@@ -367,7 +375,7 @@ export default function EnterpriseDashboardCallsPage() {
                 {/* Table Header */}
                 < div style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr 120px 100px 120px 100px 80px",
+                    gridTemplateColumns: "1fr 120px 100px 120px 100px 120px 80px",
                     gap: 16,
                     padding: "16px 24px",
                     borderBottom: isDark ? "1px solid #1a1a1a" : "1px solid #eee",
@@ -378,6 +386,7 @@ export default function EnterpriseDashboardCallsPage() {
                     <TableHeader>Duration</TableHeader>
                     <TableHeader>Status</TableHeader>
                     <TableHeader>Sentiment</TableHeader>
+                    <TableHeader>Signals</TableHeader>
                     <TableHeader>Cost</TableHeader>
                 </div >
 
@@ -392,7 +401,7 @@ export default function EnterpriseDashboardCallsPage() {
                                 transition={{ delay: index * 0.05 }}
                                 style={{
                                     display: "grid",
-                                    gridTemplateColumns: "1fr 120px 100px 120px 100px 80px",
+                                    gridTemplateColumns: "1fr 120px 100px 120px 100px 120px 80px",
                                     gap: 16,
                                     padding: "16px 24px",
                                     borderBottom: isDark ? "1px solid #1a1a1a" : "1px solid #eee",
@@ -464,6 +473,26 @@ export default function EnterpriseDashboardCallsPage() {
 
                                 {/* Sentiment */}
                                 <SentimentIndicator score={call.sentiment_score} isDark={isDark} />
+
+                                {/* Signals */}
+                                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                    {call.is_churn_risk && (
+                                        <div title="Churn Risk" style={{ color: "#ef4444" }}><AlertTriangle size={14} /></div>
+                                    )}
+                                    {call.is_hot_lead && (
+                                        <div title="Hot Lead" style={{ color: "#ff5722" }}><Flame size={14} /></div>
+                                    )}
+                                    <div style={{
+                                        fontSize: '10px',
+                                        fontWeight: 700,
+                                        color: call.priority_level === 'HIGH' || call.priority_level === 'URGENT' ? '#ef4444' : '#666',
+                                        backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                                        padding: '2px 6px',
+                                        borderRadius: '4px'
+                                    }}>
+                                        {call.priority_level}
+                                    </div>
+                                </div>
 
                                 {/* Cost */}
                                 <div style={{
