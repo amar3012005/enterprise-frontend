@@ -48,7 +48,7 @@ function MetricPill({ icon, label, value, color }: { icon: any, label: string, v
     );
 }
 
-export default function AIAssistantPanel({ agentId }: { agentId: string }) {
+export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: string; fallbackAgent?: any }) {
     const { theme } = useTheme();
     const isDark = theme === 'dark';
     const [isMounted, setIsMounted] = useState(false);
@@ -112,7 +112,7 @@ export default function AIAssistantPanel({ agentId }: { agentId: string }) {
 
     const VOICE_API_KEY = process.env.NEXT_PUBLIC_VOICE_API_KEY || "sk_car_ChbYsPTQzZjruzRRPLy2zK";
 
-    // Fetch Agent Data from Database
+    // Fetch Agent Data from Database (falls back to prop data for demo agents)
     useEffect(() => {
         if (!agentId) return;
 
@@ -120,21 +120,26 @@ export default function AIAssistantPanel({ agentId }: { agentId: string }) {
             try {
                 const response = await apiFetch(`/api/agents/${agentId}`);
                 if (!response.ok) {
-                    // Agent not found in DB (e.g. demo agent) — silently skip
-                    console.warn("AIAssistantPanel: Agent not in DB, using fallback mode");
+                    // Agent not in DB — use fallback data (e.g. demo TARA agent)
+                    if (fallbackAgent?.websocket_url) {
+                        setAgentData(fallbackAgent);
+                    }
                     return;
                 }
                 const data = await response.json();
                 setAgentData(data);
             } catch (err) {
-                console.warn("AIAssistantPanel: Could not load agent:", err);
+                // Network error — use fallback if available
+                if (fallbackAgent?.websocket_url) {
+                    setAgentData(fallbackAgent);
+                }
             } finally {
                 setIsLoadingAgent(false);
             }
         };
 
         fetchAgent();
-    }, [agentId]);
+    }, [agentId, fallbackAgent]);
 
     // Retrieve login mode from localStorage
     useEffect(() => {

@@ -14,6 +14,7 @@ const DEMO_TARA_AGENT = {
     agent_id: "agent-demo-001",
     agent_name: "TARA",
     agent_description: "Demo AI Voice Agent — Task-Aware Responsive Assistant",
+    websocket_url: "wss://demo.davinciai.eu:8443",
     location: "EU-West",
     created_at: new Date().toISOString(),
     stats: { total_calls: 142, total_minutes: 487, success_rate: 94.2 },
@@ -76,7 +77,7 @@ export default function EnterpriseAgentDashboard() {
             </div>
 
             <div>
-                <AIAssistantPanel agentId={agentId} />
+                <AIAssistantPanel agentId={agentId} fallbackAgent={currentAgent} />
                 <StatsCards
                     totalCalls={currentAgent?.stats?.total_calls ?? 0}
                     successRate={currentAgent?.stats?.success_rate ?? 0}
