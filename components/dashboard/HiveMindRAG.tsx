@@ -5,8 +5,17 @@ import { motion, AnimatePresence } from "framer-motion";
 import { RefreshCw, Zap, Brain, Database } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 
-// API Configuration
-const RAG_API_BASE = "https://rag.demo.davinciai.eu";
+// Derive RAG API base URL from tenant subdomain
+function getRagBaseUrl(): string | null {
+    if (typeof window === "undefined") return null;
+    try {
+        const tenant = localStorage.getItem("tenant");
+        if (!tenant) return null;
+        const { subdomain } = JSON.parse(tenant);
+        if (!subdomain) return null;
+        return `https://rag.${subdomain}.davinciai.eu:8444`;
+    } catch { return null; }
+}
 
 interface KnowledgePoint {
     id: string;
@@ -81,11 +90,16 @@ export default function HiveMindRAG({
 
     const loadVisualization = useCallback(async () => {
         if (propPoints) return;
+        const ragBase = getRagBaseUrl();
+        if (!ragBase) {
+            setConnectionStatus("disconnected");
+            return;
+        }
         setLoading(true);
         setConnectionStatus("connecting");
 
         try {
-            const response = await fetch(`${RAG_API_BASE}/api/v1/hive-mind/visualize?algorithm=tsne&limit=250`);
+            const response = await fetch(`${ragBase}/api/v1/hive-mind/visualize?algorithm=tsne&limit=250`);
             if (response.ok) {
                 const data: VisualizationData = await response.json();
                 setVizData(data);
@@ -102,8 +116,10 @@ export default function HiveMindRAG({
 
     const connectWebSocket = useCallback(() => {
         if (propPoints) return;
+        const ragBase = getRagBaseUrl();
+        if (!ragBase) return;
         try {
-            const wsUrl = `wss://rag.demo.davinciai.eu/ws/hive-mind`;
+            const wsUrl = ragBase.replace(/^https?:\/\//, "wss://").replace(/:\d+$/, ":8444") + "/ws/hive-mind";
             wsRef.current = new WebSocket(wsUrl);
             wsRef.current.onopen = () => setConnectionStatus("connected");
             wsRef.current.onmessage = (event) => {

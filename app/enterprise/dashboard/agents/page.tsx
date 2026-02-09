@@ -18,12 +18,23 @@ import { useTheme } from "@/context/ThemeContext";
 import { useAgents, invalidateAgentsCache } from "@/context/AgentContext";
 
 
+const DEMO_TARA_AGENT = {
+    agent_id: "agent-demo-001",
+    agent_name: "TARA",
+    agent_description: "Demo AI Voice Agent — Task-Aware Responsive Assistant. Click to explore the dashboard with sample analytics and call logs.",
+    is_demo: true,
+    stats: { total_calls: 142, total_minutes: 487, success_rate: 94.2 },
+};
+
 export default function EnterpriseAgentsDashboard() {
     const router = useRouter();
     const { theme } = useTheme();
     const isDark = theme === 'dark';
 
     const { agents, loading, error, refresh, isStale, selectedAgent, selectAgent } = useAgents();
+
+    // Show demo TARA agent when enterprise has no agents
+    const displayAgents = agents.length > 0 ? agents : [DEMO_TARA_AGENT];
 
     useEffect(() => {
         const storedTenant = localStorage.getItem("tenant");
@@ -114,20 +125,28 @@ export default function EnterpriseAgentsDashboard() {
                     <p style={{ color: '#666', marginBottom: '24px' }}>{error}</p>
                     <button onClick={handleRefresh} style={{ padding: '12px 24px', backgroundColor: isDark ? '#fff' : '#000', border: 'none', borderRadius: '12px', color: isDark ? '#000' : '#fff', cursor: 'pointer' }}>Retry</button>
                 </div>
-            ) : agents.length === 0 ? (
-                <div style={{ backgroundColor: isDark ? '#111' : '#fff', borderRadius: '24px', padding: '64px', textAlign: 'center', border: isDark ? '1px solid #222' : '1px solid #eee' }}>
-                    <h3 style={{ fontSize: '24px', fontWeight: 600, marginBottom: '8px' }}>No Agents Yet</h3>
-                    <p style={{ color: '#666', marginBottom: '32px' }}>Get started by creating your first voice agent.</p>
-                    <button style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '14px 28px', backgroundColor: isDark ? '#fff' : '#000', border: 'none', borderRadius: '12px', color: isDark ? '#000' : '#fff', cursor: 'pointer' }}>
-                        <Plus size={18} />Create Your First Agent
-                    </button>
-                </div>
             ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '24px' }}>
-                    {agents.map((agent) => (
-                        <AgentCard key={agent.agent_id} agent={agent} isDark={isDark} onClick={() => navigateToDashboard(agent.agent_id)} />
-                    ))}
-                </div>
+                <>
+                    {agents.length === 0 && (
+                        <div style={{
+                            marginBottom: '24px',
+                            padding: '14px 20px',
+                            backgroundColor: isDark ? 'rgba(255,87,34,0.08)' : 'rgba(255,87,34,0.06)',
+                            border: isDark ? '1px solid rgba(255,87,34,0.2)' : '1px solid rgba(255,87,34,0.15)',
+                            borderRadius: '12px',
+                            fontSize: '13px',
+                            color: isDark ? '#ff8a65' : '#e64a19',
+                            fontWeight: 500
+                        }}>
+                            No agents configured yet — showing the demo TARA agent. Create your own agent to get started.
+                        </div>
+                    )}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '24px' }}>
+                        {displayAgents.map((agent: any) => (
+                            <AgentCard key={agent.agent_id} agent={agent} isDark={isDark} onClick={() => navigateToDashboard(agent.agent_id)} />
+                        ))}
+                    </div>
+                </>
             )}
         </motion.div>
     );

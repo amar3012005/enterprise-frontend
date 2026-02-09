@@ -10,6 +10,15 @@ import StatsCards from "@/components/dashboard/StatsCards";
 import { useTheme } from "@/context/ThemeContext";
 import { useAgents } from "@/context/AgentContext";
 
+const DEMO_TARA_AGENT = {
+    agent_id: "agent-demo-001",
+    agent_name: "TARA",
+    agent_description: "Demo AI Voice Agent — Task-Aware Responsive Assistant",
+    location: "EU-West",
+    created_at: new Date().toISOString(),
+    stats: { total_calls: 142, total_minutes: 487, success_rate: 94.2 },
+};
+
 export default function EnterpriseAgentDashboard() {
     const params = useParams();
     const agentId = params.agent_id as string;
@@ -33,9 +42,11 @@ export default function EnterpriseAgentDashboard() {
         }
     }, [agents, agentId, router]);
 
-    const currentAgent = selectedAgent || agents.find(a => a.agent_id === agentId);
+    // Fallback to demo TARA agent when agent not found in enterprise's agents
+    const currentAgent = selectedAgent || agents.find(a => a.agent_id === agentId) ||
+        (agentId === "agent-demo-001" ? DEMO_TARA_AGENT : null);
 
-    if (loading && agents.length === 0) {
+    if (loading && agents.length === 0 && !currentAgent) {
         return (
             <div suppressHydrationWarning={true} style={{ minHeight: '100vh', backgroundColor: isDark ? '#0a0a0a' : '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <div suppressHydrationWarning={true} style={{ color: isDark ? '#fff' : '#1a1a1a', fontSize: '18px', fontWeight: 500 }}>Loading dashboard...</div>
@@ -46,7 +57,7 @@ export default function EnterpriseAgentDashboard() {
     if (!currentAgent) {
         return (
             <div suppressHydrationWarning={true} style={{ minHeight: '100vh', backgroundColor: isDark ? '#0a0a0a' : '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ color: isDark ? '#fff' : '#1a1a1a' }}>Loading agent...</div>
+                <div style={{ color: isDark ? '#fff' : '#1a1a1a' }}>Agent not found. <a href="/enterprise/dashboard/agents" style={{ color: '#ff5722', textDecoration: 'underline' }}>Back to agents</a></div>
             </div>
         );
     }

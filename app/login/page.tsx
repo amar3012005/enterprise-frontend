@@ -51,20 +51,7 @@ export default function LoginPage() {
         localStorage.setItem("user", JSON.stringify(data.user));
         localStorage.setItem("tenant", JSON.stringify(data.tenant));
 
-        const agentsResponse = await fetch(
-          apiUrl(`/api/tenants/${data.tenant.tenant_id}/agents`),
-          { headers: { Authorization: `Bearer ${data.access_token}` } }
-        );
-        if (agentsResponse.ok) {
-          const agents = await agentsResponse.json();
-          if (agents.length > 0) {
-            window.location.href = `/enterprise/dashboard/${agents[0].agent_id}`;
-          } else {
-            window.location.href = `/enterprise/dashboard/agent-demo-001`;
-          }
-        } else {
-          window.location.href = `/enterprise/dashboard/agent-demo-001`;
-        }
+        window.location.href = "/enterprise/dashboard/agents";
       } else {
         const response = await fetch(apiUrl("/api/auth/register"), {
           method: "POST",
@@ -90,21 +77,7 @@ export default function LoginPage() {
         localStorage.setItem("user", JSON.stringify(data.user));
         localStorage.setItem("tenant", JSON.stringify(data.tenant));
 
-        // Fetch agents and redirect to dashboard
-        const agentsResponse = await fetch(
-          apiUrl(`/api/tenants/${data.tenant.tenant_id}/agents`),
-          { headers: { Authorization: `Bearer ${data.access_token}` } }
-        );
-        if (agentsResponse.ok) {
-          const agents = await agentsResponse.json();
-          if (agents.length > 0) {
-            window.location.href = `/enterprise/dashboard/${agents[0].agent_id}`;
-          } else {
-            window.location.href = `/enterprise/dashboard/agent-demo-001`;
-          }
-        } else {
-          window.location.href = `/enterprise/dashboard/agent-demo-001`;
-        }
+        window.location.href = "/enterprise/dashboard/agents";
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Operation failed");

@@ -83,9 +83,9 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     const [selectedAgent, setSelectedAgentState] = useState<Agent | null>(null);
 
     const fetchAgents = useCallback(async () => {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
         const tenant = typeof window !== 'undefined' ? localStorage.getItem('tenant') : null;
-        if (!tenant) {
-            setError('No tenant found');
+        if (!token || !tenant) {
             setLoading(false);
             return;
         }

@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from "react";
 import { Play, PhoneOff, Activity, Zap, MessageSquare } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useTheme } from "@/context/ThemeContext";
+import { apiFetch } from "@/lib/api";
 
 // Dynamic import to avoid SSR issues with Three.js
 const Orb = dynamic<any>(() => import("@/components/ui/orb").then(mod => mod.Orb), {
@@ -117,7 +118,7 @@ export default function AIAssistantPanel({ agentId }: { agentId: string }) {
 
         const fetchAgent = async () => {
             try {
-                const response = await fetch(`/api/agents/${agentId}`);
+                const response = await apiFetch(`/api/agents/${agentId}`);
                 if (!response.ok) {
                     const errorText = await response.text();
                     throw new Error(`Failed to fetch agent (${response.status} ${response.statusText}): ${errorText}`);

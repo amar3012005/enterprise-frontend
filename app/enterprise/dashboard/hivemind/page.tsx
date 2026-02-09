@@ -15,8 +15,17 @@ import {
 import { useTheme } from "@/context/ThemeContext";
 import { useAgents } from "@/context/AgentContext";
 
-// API Configuration
-const RAG_API_BASE = "https://rag.demo.davinciai.eu";
+// Derive RAG API base URL from tenant subdomain
+function getRagBaseUrl(): string | null {
+    if (typeof window === "undefined") return null;
+    try {
+        const tenant = localStorage.getItem("tenant");
+        if (!tenant) return null;
+        const { subdomain } = JSON.parse(tenant);
+        if (!subdomain) return null;
+        return `https://rag.${subdomain}.davinciai.eu:8444`;
+    } catch { return null; }
+}
 
 interface KnowledgePoint {
     id: string;
@@ -65,12 +74,17 @@ export default function EnterpriseDashboardHiveMindPage() {
 
     // Fetch visualization data from RAG API
     const loadVisualization = useCallback(async () => {
+        const ragBase = getRagBaseUrl();
+        if (!ragBase) {
+            setConnectionStatus("disconnected");
+            return;
+        }
         setLoading(true);
         setConnectionStatus("connecting");
 
         try {
             const response = await fetch(
-                `${RAG_API_BASE}/api/v1/hive-mind/visualize?algorithm=tsne&limit=200`
+                `${ragBase}/api/v1/hive-mind/visualize?algorithm=tsne&limit=200`
             );
 
             if (response.ok) {
@@ -105,7 +119,9 @@ export default function EnterpriseDashboardHiveMindPage() {
         setIsQuerying(true);
 
         try {
-            const response = await fetch(`${RAG_API_BASE}/api/v1/query`, {
+            const ragBase = getRagBaseUrl();
+            if (!ragBase) throw new Error("RAG not configured");
+            const response = await fetch(`${ragBase}/api/v1/query`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
