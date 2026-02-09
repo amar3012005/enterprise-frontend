@@ -120,14 +120,14 @@ export default function AIAssistantPanel({ agentId }: { agentId: string }) {
             try {
                 const response = await apiFetch(`/api/agents/${agentId}`);
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`Failed to fetch agent (${response.status} ${response.statusText}): ${errorText}`);
+                    // Agent not found in DB (e.g. demo agent) — silently skip
+                    console.warn("AIAssistantPanel: Agent not in DB, using fallback mode");
+                    return;
                 }
                 const data = await response.json();
                 setAgentData(data);
-                console.log("AIAssistantPanel: Agent Data Loaded", data);
             } catch (err) {
-                console.error("AIAssistantPanel: Error loading agent:", err);
+                console.warn("AIAssistantPanel: Could not load agent:", err);
             } finally {
                 setIsLoadingAgent(false);
             }
