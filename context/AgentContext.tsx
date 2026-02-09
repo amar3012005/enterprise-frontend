@@ -83,23 +83,16 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     const [selectedAgent, setSelectedAgentState] = useState<Agent | null>(null);
 
     const fetchAgents = useCallback(async () => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
         const tenant = typeof window !== 'undefined' ? localStorage.getItem('tenant') : null;
-
-        // Not logged in — silently skip (e.g. on the /login page)
-        if (!token || !tenant) {
+        if (!tenant) {
+            setError('No tenant found');
             setLoading(false);
             return;
         }
 
-        let tenantData: { tenant_id?: string };
-        try {
-            tenantData = JSON.parse(tenant);
-        } catch {
-            setLoading(false);
-            return;
-        }
+        const tenantData = JSON.parse(tenant);
         if (!tenantData?.tenant_id) {
+            setError('Invalid tenant');
             setLoading(false);
             return;
         }

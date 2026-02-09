@@ -199,17 +199,10 @@ export default function AIAssistantPanel({ agentId }: { agentId: string }) {
         }
     }, [agentIsSpeaking, connectionStatus]);
 
-    const hasWebSocket = agentData?.websocket_url && agentData.websocket_url !== "not_set";
-    const hasCartesia = !!agentData?.cartesia_agent_id;
-    const canCall = hasWebSocket || hasCartesia;
-
     const startCall = async () => {
         if (!agentData) {
             alert("Agent data not loaded yet");
             return;
-        }
-        if (!canCall) {
-            return; // No WSS configured — button is disabled
         }
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
@@ -712,35 +705,17 @@ export default function AIAssistantPanel({ agentId }: { agentId: string }) {
                 </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: 'auto', width: '100%', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '12px', marginTop: 'auto', width: '100%', justifyContent: 'center' }}>
                 {!isCallActive ? (
-                    <button
-                        onClick={startCall}
-                        disabled={!canCall}
-                        style={{
-                            padding: '14px 48px',
-                            backgroundColor: !canCall ? (isDark ? '#222' : '#ddd') : (isDark ? '#fff' : '#000'),
-                            color: !canCall ? '#666' : (isDark ? '#000' : '#fff'),
-                            fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em',
-                            border: 'none', borderRadius: '4px',
-                            cursor: canCall ? 'pointer' : 'not-allowed',
-                            display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.2s',
-                            opacity: canCall ? 1 : 0.6
-                        }}
-                    >
+                    <button onClick={startCall} style={{ padding: '14px 48px', backgroundColor: isDark ? '#fff' : '#000', color: isDark ? '#000' : '#fff', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.2s' }}>
                         <Play size={14} fill="currentColor" />
-                        {canCall ? 'Start Call' : 'No Voice Agent Connected'}
+                        Start Call
                     </button>
                 ) : (
                     <button onClick={endCall} style={{ padding: '14px 40px', backgroundColor: '#ef4444', color: '#fff', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.2s' }}>
                         <PhoneOff size={13} />
                         End Call
                     </button>
-                )}
-                {!canCall && (
-                    <p style={{ fontSize: '10px', color: '#666', fontFamily: 'JetBrains Mono, monospace', margin: 0, textAlign: 'center' }}>
-                        Configure a WebSocket URL for this agent to enable voice calls
-                    </p>
                 )}
             </div>
         </div>
