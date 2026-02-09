@@ -15,8 +15,19 @@ import {
 import { useTheme } from "@/context/ThemeContext";
 import { useAgents } from "@/context/AgentContext";
 
-// API Configuration
-const RAG_API_BASE = "https://rag.demo.davinciai.eu";
+// RAG URL derived per-enterprise from tenant subdomain
+function getRagBaseUrl(): string | null {
+    if (typeof window === "undefined") return null;
+    try {
+        const tenant = localStorage.getItem("tenant");
+        if (!tenant) return null;
+        const { subdomain } = JSON.parse(tenant);
+        if (!subdomain) return null;
+        return `https://rag.${subdomain}.davinciai.eu:8444`;
+    } catch {
+        return null;
+    }
+}
 
 interface KnowledgePoint {
     id: string;
@@ -63,14 +74,20 @@ export default function EnterpriseDashboardHiveMindPage() {
     const [timeRange, setTimeRange] = useState<"1D" | "1W" | "1M">("1D");
     const [uptime, setUptime] = useState("~1 days");
 
-    // Fetch visualization data from RAG API
+    // Fetch visualization data from enterprise's RAG service
     const loadVisualization = useCallback(async () => {
+        const ragBase = getRagBaseUrl();
+        if (!ragBase) {
+            setConnectionStatus("disconnected");
+            return;
+        }
+
         setLoading(true);
         setConnectionStatus("connecting");
 
         try {
             const response = await fetch(
-                `${RAG_API_BASE}/api/v1/hive-mind/visualize?algorithm=tsne&limit=200`
+                `${ragBase}/api/v1/hive-mind/visualize?algorithm=tsne&limit=200`
             );
 
             if (response.ok) {
@@ -79,18 +96,17 @@ export default function EnterpriseDashboardHiveMindPage() {
                 setPoints(data.points);
                 setConnectionStatus("connected");
             } else {
-                throw new Error(`HTTP ${response.status}`);
+                setConnectionStatus("disconnected");
             }
-        } catch (error) {
-            console.error("Failed to load HiveMind visualization:", error);
+        } catch {
+            // RAG service not deployed for this enterprise — neural animation shows
             setConnectionStatus("disconnected");
-            // Keep showing the generated neural network
         } finally {
             setLoading(false);
         }
     }, []);
 
-    // Query the RAG system
+    // Query the RAG system via backend proxy
     const handleQuery = async () => {
         if (!chatInput.trim()) return;
 
@@ -105,7 +121,10 @@ export default function EnterpriseDashboardHiveMindPage() {
         setIsQuerying(true);
 
         try {
-            const response = await fetch(`${RAG_API_BASE}/api/v1/query`, {
+            const ragBase = getRagBaseUrl();
+            if (!ragBase) throw new Error("RAG not configured");
+
+            const response = await fetch(`${ragBase}/api/v1/query`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -130,10 +149,10 @@ export default function EnterpriseDashboardHiveMindPage() {
             } else {
                 throw new Error("Query failed");
             }
-        } catch (error) {
+        } catch {
             const errorMessage: ChatMessage = {
                 role: "assistant",
-                content: "Unable to connect to HiveMind. The collective intelligence is temporarily unavailable.",
+                content: "HiveMind is not yet configured for this enterprise. Contact support to enable knowledge base features.",
                 timestamp: new Date()
             };
             setChatMessages(prev => [...prev, errorMessage]);

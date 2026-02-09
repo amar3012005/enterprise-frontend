@@ -5,8 +5,20 @@ import { motion, AnimatePresence } from "framer-motion";
 import { RefreshCw, Zap, Brain, Database } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 
-// API Configuration
-const RAG_API_BASE = "https://rag.demo.davinciai.eu";
+// RAG URL is derived per-enterprise from the tenant subdomain:
+// https://rag.{subdomain}.davinciai.eu:8444
+function getRagBaseUrl(): string | null {
+    if (typeof window === "undefined") return null;
+    try {
+        const tenant = localStorage.getItem("tenant");
+        if (!tenant) return null;
+        const { subdomain } = JSON.parse(tenant);
+        if (!subdomain) return null;
+        return `https://rag.${subdomain}.davinciai.eu:8444`;
+    } catch {
+        return null;
+    }
+}
 
 interface KnowledgePoint {
     id: string;
@@ -81,29 +93,43 @@ export default function HiveMindRAG({
 
     const loadVisualization = useCallback(async () => {
         if (propPoints) return;
+
+        const ragBase = getRagBaseUrl();
+        if (!ragBase) {
+            // No tenant / subdomain — show neural animation
+            setConnectionStatus("disconnected");
+            return;
+        }
+
         setLoading(true);
         setConnectionStatus("connecting");
 
         try {
-            const response = await fetch(`${RAG_API_BASE}/api/v1/hive-mind/visualize?algorithm=tsne&limit=250`);
+            const response = await fetch(`${ragBase}/api/v1/hive-mind/visualize?algorithm=tsne&limit=250`);
             if (response.ok) {
                 const data: VisualizationData = await response.json();
                 setVizData(data);
                 setInternalPoints(data.points);
                 setConnectionStatus("connected");
+            } else {
+                setConnectionStatus("disconnected");
             }
-        } catch (error) {
-            console.error("Failed to load HiveMind visualization:", error);
+        } catch {
+            // RAG service not deployed for this enterprise — show neural animation
             setConnectionStatus("disconnected");
         } finally {
             setLoading(false);
         }
     }, [propPoints]);
 
+    // WebSocket for live RAG updates — connects to rag.{subdomain}.davinciai.eu:8444
     const connectWebSocket = useCallback(() => {
         if (propPoints) return;
+        const ragBase = getRagBaseUrl();
+        if (!ragBase) return;
+
         try {
-            const wsUrl = `wss://rag.demo.davinciai.eu/ws/hive-mind`;
+            const wsUrl = ragBase.replace(/^https?/, "wss") + "/ws/hive-mind";
             wsRef.current = new WebSocket(wsUrl);
             wsRef.current.onopen = () => setConnectionStatus("connected");
             wsRef.current.onmessage = (event) => {
@@ -111,8 +137,11 @@ export default function HiveMindRAG({
                 if (data.type === "new_knowledge") loadVisualization();
             };
             wsRef.current.onclose = () => setTimeout(connectWebSocket, 5000);
-        } catch (e) {
-            console.error("WS Error:", e);
+            wsRef.current.onerror = () => {
+                // RAG WS not available — silent fail, neural animation continues
+            };
+        } catch {
+            // Connection failed — neural animation continues
         }
     }, [loadVisualization, propPoints]);
 
