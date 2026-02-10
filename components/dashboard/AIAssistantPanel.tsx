@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { Play, PhoneOff, Activity, Zap, MessageSquare, Brain } from "lucide-react";
+import { Play, PhoneOff, Activity, Zap, MessageSquare } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useTheme } from "@/context/ThemeContext";
 import { apiFetch } from "@/lib/api";
@@ -68,8 +68,7 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
         ratio: 0,
         chunks: 0,
         ttft: 0,
-        ttfc: 0,
-        agentIq: 0
+        ttfc: 0
     });
     const [micStream, setMicStream] = useState<MediaStream | null>(null);
 
@@ -77,6 +76,7 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
     const wsRef = useRef<WebSocket | null>(null);
     const audioCtxRef = useRef<AudioContext | null>(null);
     const wsConnectedRef = useRef(false);
+    const sessionIdRef = useRef<string | null>(null);
     const audioWorkletRef = useRef<ScriptProcessorNode | null>(null);
     const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | null>(null);
     const [agentIsSpeaking, setAgentIsSpeaking] = useState(false);
@@ -118,6 +118,13 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
         if (!agentId) return;
 
         const fetchAgent = async () => {
+            // Optimization: Skip API call for known demo agent to avoid 404 in console
+            if (agentId === "agent-demo-001") {
+                setAgentData(fallbackAgent);
+                setIsLoadingAgent(false);
+                return;
+            }
+
             try {
                 const response = await apiFetch(`/api/agents/${agentId}`);
                 if (!response.ok) {
@@ -238,10 +245,10 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
         const isCustomProtocol = !!customWsUrl && customWsUrl !== "not_set";
 
         const wsUrlTemp = isCustomProtocol
-            ? customWsUrl
+            ? (customWsUrl?.endsWith('/') ? `${customWsUrl}ws` : `${customWsUrl}/ws`)
             : `wss://api.cartesia.ai/agents/stream/${cartesiaId}?api_key=${VOICE_API_KEY}&cartesia-version=2025-04-16`;
 
-        const phone = typeof window !== 'undefined' ? (localStorage.getItem('TARA_phone_number') || "dashboard-user") : "dashboard-user";
+        const phone = typeof window !== 'undefined' ? (localStorage.getItem('access_token') || "dashboard-user") : "dashboard-user";
         const wsUrl = isCustomProtocol
             ? `${wsUrlTemp}${wsUrlTemp.includes('?') ? '&' : '?'}user_id=${encodeURIComponent(phone)}`
             : wsUrlTemp;
@@ -254,30 +261,27 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
             wsConnectedRef.current = true;
 
             const sessionId = crypto.randomUUID();
+            sessionIdRef.current = sessionId;
             const storedTenant = typeof window !== 'undefined' ? localStorage.getItem('tenant') : null;
             const tenantId = storedTenant ? JSON.parse(storedTenant).tenant_id : "unknown";
 
             if (isCustomProtocol) {
-                // Enterprise Orchestration Handshake
+                // Enterprise Orchestration Handshake (aligned with reference client.html)
                 ws.send(JSON.stringify({
-                    action: 'start_session',
-                    meta: {
-                        session_id: sessionId,
-                        agent_name: agentData.agent_name,
-                        agent_id: agentData.agent_id,
-                        user_id: phone,
-                        tenant_id: tenantId
-                    },
-                    language: agentData.language_primary,
-                    secondary_language: agentData.language_secondary,
-                    flow_config: {
-                        intro_in_primary_lang: agentData.flow_config?.intro_in_primary_lang,
-                        intro_in_secondary_lang: agentData.flow_config?.intro_in_secondary_lang,
-                        stt_mode: agentData.flow_config?.stt_mode || 'audio',
-                        tts_mode: agentData.flow_config?.tts_mode || 'audio'
-                    }
+                    type: 'start_session',
+                    mode: 'conversation',
+                    stt_mode: 'audio',
+                    tts_mode: 'audio',
+                    language: agentData.language_primary || 'en',
+                    user_id: phone,
+                    agent_id: agentId,
+                    tenant_id: tenantId,
+                    session_id: sessionId,
+                    token: typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
                 }));
-            } else {
+                console.log(`Handshake sent for agent: ${agentId}`);
+            }
+            else {
                 ws.send(JSON.stringify({
                     event: "start",
                     config: { input_format: "pcm_44100" }
@@ -370,7 +374,7 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
                     }
                 } else if (data.type === 'transcript') {
                     if (data.is_final && data.text && data.text.trim()) {
-                        // Mark turn start for TTFT/TTFC
+                        // Mark turn start for TTFT/TTFC (matching reference client.html line 1212)
                         markTurnStart();
                     }
                     setMetrics(prev => ({
@@ -384,7 +388,7 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
                 } else if (data.type === 'agent_response') {
                     if (data.text && data.text.trim()) {
                         if (data.is_streaming) {
-                            // Record TTFT on first token
+                            // Record TTFT on first token (matching reference client.html line 1225)
                             if (turnStartTimeRef.current && !hasTtftForTurnRef.current) {
                                 const ttft = Math.round(performance.now() - turnStartTimeRef.current);
                                 setMetrics(prev => ({ ...prev, ttft }));
@@ -399,7 +403,7 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
                     audioStreamCompleteRef.current = false;
                     const audioB64 = data.data || data.audio;
                     if (audioB64) {
-                        // Record TTFC on first audio chunk
+                        // Record TTFC on first audio chunk (matching reference client.html line 1261)
                         if (turnStartTimeRef.current && !hasTtfcForTurnRef.current) {
                             const ttfc = Math.round(performance.now() - turnStartTimeRef.current);
                             setMetrics(prev => ({ ...prev, ttfc }));
@@ -414,10 +418,6 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
                     setAgentIsSpeaking(false);
                     lastPlaybackTimeRef.current = audioCtxRef.current?.currentTime || 0;
                     playbackStartTimeRef.current = null;
-                } else if (data.type === 'agent_iq' || data.type === 'metrics_update') {
-                    if (data.agent_iq !== undefined) {
-                        setMetrics(prev => ({ ...prev, agentIq: data.agent_iq }));
-                    }
                 } else if (data.type === 'ping') {
                     if (ws.readyState === WebSocket.OPEN) {
                         ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() / 1000 }));
@@ -510,6 +510,8 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
             const now = audioCtxRef.current.currentTime;
 
             // --- Strict Scheduling with Drift Correction ---
+            // If chunks arrive slightly late, play immediately (drift correction)
+            // If they arrive on time/early, queue precisely at the end of the previous chunk
             let startAt = lastPlaybackTimeRef.current;
             if (startAt < now) {
                 startAt = now;
@@ -559,6 +561,7 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
+                        call_id: sessionIdRef.current,
                         agent_id: finalAgentId,
                         duration_seconds: finalDuration,
                         status: 'completed',
@@ -568,6 +571,9 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
                         cost_euros: (finalDuration / 60) * 0.15
                     })
                 });
+                if (response.ok) {
+                    console.log("AIAssistantPanel: Call metrics synced successfully");
+                }
             } catch (err) {
                 console.error("AIAssistantPanel: Failed to sync call metrics:", err);
             }
@@ -595,8 +601,7 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
             ratio: 0,
             chunks: 0,
             ttft: 0,
-            ttfc: 0,
-            agentIq: 0
+            ttfc: 0
         });
     };
 
@@ -676,6 +681,7 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
                         <h3 style={{ fontSize: '28px', fontWeight: 700, color: isDark ? '#fff' : '#1a1a1a', textTransform: 'uppercase', letterSpacing: '0.15em', margin: '0 0 16px 0' }}>{agentData?.agent_name || "TARA"}</h3>
                     </div>
 
+                    {/* Always show timer */}
                     <p style={{
                         fontSize: '13px',
                         color: loginMode === 'demo' && callDuration >= DEMO_WARNING_TIME ? '#ef4444' : '#666',
@@ -694,6 +700,8 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
                     </p>
                 </div>
 
+                {/* Voice-only interaction - no text display */}
+
                 {/* Performance Metrics */}
                 <div style={{
                     display: 'grid',
@@ -705,7 +713,7 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
                 }}>
                     <MetricPill icon={<Zap size={10} />} label="TTFT" value={`${metrics.ttft}ms`} color="#22c55e" />
                     <MetricPill icon={<Activity size={10} />} label="TTFC" value={`${metrics.ttfc}ms`} color="#3b82f6" />
-                    <MetricPill icon={<Brain size={10} />} label="Agent IQ" value={`${Math.round(metrics.agentIq * 100)}%`} color="#a855f7" />
+                    <MetricPill icon={<MessageSquare size={10} />} label="Ratio" value={metrics.ratio.toFixed(2)} color="#f59e0b" />
                 </div>
             </div>
 

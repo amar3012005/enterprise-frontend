@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Eye, EyeOff, ArrowRight, Mail, Lock, User, Building, Phone, MapPin, Cpu, Sparkles } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, Mail, Lock, User, Building, Phone, MapPin, Cpu } from "lucide-react";
 import { apiUrl } from "@/lib/api";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -22,8 +22,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [showDemoCreds, setShowDemoCreds] = useState(true);
   const [isLeftHovered, setIsLeftHovered] = useState(false);
-  const [isRightHovered, setIsRightHovered] = useState(false);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [mousePosition, setMousePosition] = useState({ x: 50, y: 50 });
   const leftPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -105,10 +104,20 @@ export default function LoginPage() {
   };
 
   return (
-    <div className={`min-h-screen w-full flex items-center justify-center p-4 lg:p-8 transition-all duration-700 ${isDark ? "bg-[#0a0a0a]" : "bg-[#f0f2f5]"}`}>
+    <div className={`w-full h-screen flex overflow-hidden ${isDark ? "bg-[#0a0a0a]" : "bg-[#f5f5f5]"}`}>
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className={`absolute -top-[30%] -left-[20%] w-[70%] h-[70%] rounded-full blur-[150px] opacity-10 transition-all duration-1000 ${isDark ? "bg-[#ff5722]" : "bg-[#ff8a65]"}`} style={{ transform: `translate(${mousePosition.x * 0.1}px, ${mousePosition.y * 0.1}px)` }} />
-        <div className={`absolute top-[30%] -right-[20%] w-[60%] h-[60%] rounded-full blur-[150px] opacity-8 transition-all duration-1000 ${isDark ? "bg-blue-600" : "bg-blue-400"}`} style={{ transform: `translate(${-mousePosition.x * 0.05}px, ${-mousePosition.y * 0.05}px)` }} />
+        <div
+          className={`absolute -top-[40%] -left-[30%] w-[100%] h-[100%] rounded-full blur-[180px] opacity-12 transition-all duration-1000 ease-out ${isDark ? "bg-[#ff5722]" : "bg-[#ff8a65]"}`}
+          style={{
+            transform: `translate(${(mousePosition.x - 50) * 0.15}px, ${(mousePosition.y - 50) * 0.15}px)`,
+          }}
+        />
+        <div
+          className={`absolute top-[20%] -right-[30%] w-[90%] h-[90%] rounded-full blur-[180px] opacity-10 transition-all duration-1000 ease-out ${isDark ? "bg-blue-600" : "bg-blue-400"}`}
+          style={{
+            transform: `translate(${(50 - mousePosition.x) * 0.1}px, ${(50 - mousePosition.y) * 0.1}px)`,
+          }}
+        />
       </div>
 
       <button
@@ -129,69 +138,45 @@ export default function LoginPage() {
         )}
       </button>
 
-      <div className={`relative z-10 w-full max-w-6xl h-auto min-h-[650px] flex flex-col lg:flex-row overflow-hidden rounded-2xl shadow-2xl transition-all duration-700 ${isDark ? "bg-[#111] border-[#222]" : "bg-white border-gray-200"}`}>
+      <div className={`relative z-10 w-full h-full flex flex-col lg:flex-row overflow-hidden ${isDark ? "bg-[#111]" : "bg-white"}`}>
         <div
           ref={leftPanelRef}
           onMouseEnter={() => setIsLeftHovered(true)}
           onMouseLeave={() => setIsLeftHovered(false)}
           onMouseMove={handleMouseMove}
-          className={`relative w-full lg:w-5/12 overflow-hidden transition-all duration-700 ease-out ${isDark ? "bg-[#0d0d0d]" : "bg-gradient-to-br from-gray-100 to-gray-200"}`}
+          className={`relative w-full lg:w-1/2 overflow-hidden transition-all duration-1000 ease-out ${isDark ? "bg-[#0d0d0d]" : "bg-gradient-to-br from-gray-900 to-gray-800"}`}
         >
           <div className="absolute inset-0">
             <img
               src="/Images/login_page.jpeg"
               alt="DaVinci AI Platform"
-              className={`w-full h-full object-cover transition-all duration-1000 ${isLeftHovered ? "scale-110" : "scale-100"}`}
+              className={`w-full h-full object-cover transition-all duration-1000 ${isLeftHovered ? "scale-110" : "scale-105"}`}
             />
           </div>
 
-          <div className={`absolute inset-0 transition-all duration-700 ${isDark ? "bg-gradient-to-b from-black/60 via-black/40 to-black/70" : "bg-gradient-to-b from-black/40 via-black/20 to-black/60"}`} />
+          <div className={`absolute inset-0 transition-all duration-700 ${isDark ? "bg-gradient-to-b from-black/70 via-black/50 to-black/80" : "bg-gradient-to-b from-black/60 via-black/40 to-black/70"}`} />
 
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-8 z-10">
+          <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
             <div
-              className={`mb-8 transition-all duration-700 transform ${isLeftHovered ? "scale-110 translate-y-0" : "scale-100 translate-y-2"}`}
+              className={`transition-all duration-700 ${isLeftHovered ? "scale-110 opacity-100" : "scale-100 opacity-90"}`}
             >
               <img
                 src="/Images/davinci-logo.svg"
                 alt="DaVinci AI Logo"
-                width={120}
-                height={120}
-                className={`drop-shadow-2xl ${isLeftHovered ? "filter brightness-125" : ""}`}
+                width={180}
+                height={180}
+                className={`transition-all duration-700 ${
+                  isLeftHovered
+                    ? "filter brightness-125 drop-shadow-[0_0_40px_rgba(255,87,34,0.6)]"
+                    : "filter brightness-110 drop-shadow-[0_0_30px_rgba(255,87,34,0.4)]"
+                }`}
               />
             </div>
-
-            <h1
-              className={`text-5xl lg:text-6xl font-bold tracking-tight transition-all duration-700 transform ${isLeftHovered ? "scale-105 opacity-100" : "scale-100 opacity-90"} ${isDark ? "text-white" : "text-white"}`}
-              style={{
-                textShadow: "0 4px 30px rgba(0,0,0,0.3)",
-              }}
-            >
-              DaVinci
-            </h1>
-
-            <p className={`mt-4 text-lg lg:text-xl tracking-widest uppercase transition-all duration-700 ${isLeftHovered ? "opacity-100" : "opacity-70"} ${isDark ? "text-white/80" : "text-white/90"}`}>
-              Enterprise Platform
-            </p>
-
-            <div className={`mt-12 flex items-center gap-3 px-6 py-3 rounded-full backdrop-blur-sm transition-all duration-500 ${isLeftHovered ? "bg-white/10 scale-100" : "bg-white/5 scale-95 opacity-0"} ${isDark ? "border border-white/10" : "border border-white/20"}`}>
-              <Sparkles className={`w-5 h-5 ${isDark ? "text-amber-400" : "text-amber-300"}`} />
-              <span className="text-sm font-medium text-white">Next-Gen AI Voice Agents</span>
-            </div>
-          </div>
-
-          <div className={`absolute bottom-8 left-8 right-8 transition-all duration-500 ${isLeftHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-            <p className={`text-sm text-center ${isDark ? "text-white/60" : "text-white/70"}`}>
-              Trusted by enterprise leaders worldwide
-            </p>
           </div>
         </div>
 
-        <div
-          className={`relative w-full lg:w-7/12 p-8 lg:p-16 flex flex-col justify-center transition-all duration-700 ease-out ${isDark ? "bg-[#0a0a0a]" : "bg-white"}`}
-          onMouseEnter={() => setIsRightHovered(true)}
-          onMouseLeave={() => setIsRightHovered(false)}
-        >
-          <div className={`w-full max-w-md mx-auto transition-all duration-500 ${isRightHovered ? "opacity-100 translate-x-0" : "opacity-90 translate-x-2"}`}>
+        <div className={`relative w-full lg:w-1/2 p-8 lg:p-16 xl:p-20 flex flex-col justify-center ${isDark ? "bg-[#0a0a0a]" : "bg-white"}`}>
+          <div className={`w-full max-w-md mx-auto ${isDark ? "text-white" : "text-black"}`}>
             <div className="mb-10">
               <h2 className={`text-3xl font-bold tracking-tight mb-2 ${isDark ? "text-white" : "text-gray-900"}`}>
                 {mode === "login" ? "Welcome back" : "Create account"}
@@ -201,21 +186,21 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <div className={`flex p-1 rounded-xl mb-8 w-fit mx-auto lg:mx-0 ${isDark ? "bg-[#151515] border border-[#222]" : "bg-gray-100 border border-gray-200"}`}>
+            <div className={`flex mb-8 w-fit ${isDark ? "bg-[#151515] border border-[#222]" : "bg-gray-100 border border-gray-200"}`}>
               <button
                 onClick={() => setMode("login")}
-                className={`px-8 py-2.5 rounded-lg text-sm font-semibold tracking-wide transition-all duration-300 transform ${mode === "login"
-                  ? "bg-[#ff5722] text-white shadow-lg shadow-orange-500/20 scale-105"
-                  : `${isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900"} hover:scale-102`
+                className={`px-8 py-2.5 text-sm font-semibold transition-all duration-200 ${mode === "login"
+                  ? "bg-black text-white"
+                  : `${isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900"}`
                   }`}
               >
                 Sign In
               </button>
               <button
                 onClick={() => setMode("register")}
-                className={`px-8 py-2.5 rounded-lg text-sm font-semibold tracking-wide transition-all duration-300 transform ${mode === "register"
-                  ? "bg-[#ff5722] text-white shadow-lg shadow-orange-500/20 scale-105"
-                  : `${isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900"} hover:scale-102`
+                className={`px-8 py-2.5 text-sm font-semibold transition-all duration-200 ${mode === "register"
+                  ? "bg-black text-white"
+                  : `${isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900"}`
                   }`}
               >
                 Register
@@ -223,7 +208,7 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-sm flex items-center gap-3 animate-in slide-in-from-top-2">
+              <div className="mb-6 p-4 border border-red-500/20 text-red-500 text-sm flex items-center gap-3">
                 <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -232,11 +217,10 @@ export default function LoginPage() {
             )}
 
             {mode === "login" && showDemoCreds && (
-              <div className={`mb-8 p-5 rounded-xl border relative overflow-hidden transition-all duration-300 hover:shadow-lg ${isDark ? "bg-[#151515] border-[#222]" : "bg-gray-50 border-gray-200"}`}>
-                <div className="absolute top-0 left-0 w-1 h-full bg-[#ff5722]" />
-                <div className="flex justify-between items-start mb-4">
+              <div className={`mb-8 p-4 border ${isDark ? "bg-[#151515] border-[#222]" : "bg-gray-50 border-gray-200"}`}>
+                <div className="flex justify-between items-start mb-3">
                   <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[#ff5722] text-white">
+                    <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-black text-white">
                       Demo
                     </span>
                     <span className={`text-xs font-semibold ${isDark ? "text-gray-300" : "text-gray-700"}`}>
@@ -245,20 +229,18 @@ export default function LoginPage() {
                   </div>
                   <button
                     onClick={() => setShowDemoCreds(false)}
-                    className={`p-1.5 rounded-lg transition-colors ${isDark ? "hover:bg-white/10 text-gray-500" : "hover:bg-black/5 text-gray-400"}`}
+                    className={`text-lg leading-none transition-colors ${isDark ? "text-gray-500 hover:text-white" : "text-gray-400 hover:text-gray-900"}`}
                   >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    ×
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className={`p-3 rounded-lg border ${isDark ? "bg-[#0a0a0a] border-[#333]" : "bg-white border-gray-200"}`}>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className={`p-2 border ${isDark ? "bg-black/50 border-[#333]" : "bg-white border-gray-200"}`}>
                     <div className={`text-[10px] uppercase font-mono mb-1 ${isDark ? "text-gray-500" : "text-gray-400"}`}>Email</div>
                     <div className={`text-xs font-mono truncate ${isDark ? "text-orange-400" : "text-orange-600"}`}>b23313@students.iitmandi.ac.in</div>
                   </div>
-                  <div className={`p-3 rounded-lg border ${isDark ? "bg-[#0a0a0a] border-[#333]" : "bg-white border-gray-200"}`}>
+                  <div className={`p-2 border ${isDark ? "bg-black/50 border-[#333]" : "bg-white border-gray-200"}`}>
                     <div className={`text-[10px] uppercase font-mono mb-1 ${isDark ? "text-gray-500" : "text-gray-400"}`}>Password</div>
                     <div className={`text-xs font-mono ${isDark ? "text-orange-400" : "text-orange-600"}`}>528369</div>
                   </div>
@@ -266,7 +248,7 @@ export default function LoginPage() {
 
                 <button
                   onClick={fillDemoCreds}
-                  className="mt-4 w-full py-2.5 text-xs font-semibold uppercase tracking-wide rounded-lg bg-[#ff5722] text-white hover:bg-[#f4511e] transition-all duration-300 hover:shadow-lg hover:shadow-orange-500/20 active:scale-[0.98]"
+                  className="mt-3 w-full py-2.5 text-xs font-semibold uppercase tracking-wide bg-black text-white hover:bg-gray-900 transition-colors"
                 >
                   Auto-Fill Credentials
                 </button>
@@ -275,7 +257,7 @@ export default function LoginPage() {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               {mode === "register" && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div className="md:col-span-2">
                     <InputField
                       label="Enterprise Name"
@@ -337,11 +319,11 @@ export default function LoginPage() {
                 />
 
                 <div className="space-y-1.5">
-                  <label className={`text-xs font-semibold uppercase tracking-wider ml-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                  <label className={`text-xs font-semibold uppercase tracking-wider ml-0.5 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
                     Password
                   </label>
                   <div className="relative group">
-                    <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-all duration-300 ${isDark ? "text-gray-500 group-focus-within:text-[#ff5722]" : "text-gray-400 group-focus-within:text-[#ff5722]"}`}>
+                    <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors ${isDark ? "text-gray-500 group-focus-within:text-black" : "text-gray-400 group-focus-within:text-black"}`}>
                       <Lock size={16} />
                     </div>
                     <input
@@ -349,16 +331,16 @@ export default function LoginPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Enter your password"
-                      className={`w-full pl-10 pr-12 py-3.5 rounded-xl border text-sm outline-none transition-all duration-300 ${isDark
-                        ? "bg-[#111] border-[#222] text-white placeholder:text-gray-600 focus:border-[#ff5722] focus:bg-[#161616] focus:shadow-lg focus:shadow-orange-500/10"
-                        : "bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-[#ff5722] focus:bg-white focus:shadow-lg focus:shadow-orange-500/10"
+                      className={`w-full pl-10 pr-12 py-3 border text-sm outline-none transition-colors ${isDark
+                        ? "bg-[#151515] border-[#333] text-white placeholder:text-gray-600 focus:bg-black focus:border-black"
+                        : "bg-gray-50 border-gray-300 text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-black"
                         }`}
                       required
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className={`absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-all duration-300 ${isDark ? "text-gray-500 hover:text-white hover:bg-white/10" : "text-gray-400 hover:text-gray-700 hover:bg-black/5"}`}
+                      className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 transition-colors ${isDark ? "text-gray-500 hover:text-white" : "text-gray-400 hover:text-gray-700"}`}
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -368,7 +350,7 @@ export default function LoginPage() {
 
               {mode === "login" && (
                 <div className="flex justify-end">
-                  <button type="button" className={`text-sm transition-colors duration-300 hover:text-[#ff5722] ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                  <button type="button" className={`text-sm transition-colors ${isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900"}`}>
                     Forgot password?
                   </button>
                 </div>
@@ -377,26 +359,25 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-4 rounded-xl bg-[#ff5722] text-white font-bold text-sm uppercase tracking-wider shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 hover:bg-[#ff7043] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-2 group"
+                className="w-full py-4 bg-black text-white font-bold text-sm uppercase tracking-wider hover:bg-gray-900 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
               >
                 {isLoading ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    <span className="transition-all duration-300 group-hover:translate-x-1">
-                      {mode === "login" ? "Sign In" : "Create Account"}
-                    </span>
-                    <ArrowRight size={18} className="transition-all duration-300 group-hover:translate-x-1" />
+                    <span>{mode === "login" ? "Sign In" : "Create Account"}</span>
+                    <ArrowRight size={18} />
                   </>
                 )}
               </button>
             </form>
 
-            <div className="mt-8 text-center">
-              <p className={`text-sm ${isDark ? "text-gray-500" : "text-gray-400"}`}>
-                By continuing, you agree to DaVinci AI&apos;s
-                <a href="#" className="hover:text-[#ff5722] transition-colors duration-300 ml-1">Terms of Service</a> and
-                <a href="#" className="hover:text-[#ff5722] transition-colors duration-300 ml-1">Privacy Policy</a>.
+            <div className="mt-8">
+              <p className={`text-sm text-center ${isDark ? "text-gray-500" : "text-gray-400"}`}>
+                By continuing, you agree to DaVinci AI&apos;s{" "}
+                <a href="#" className="hover:text-black transition-colors underline">Terms of Service</a>{" "}
+                and{" "}
+                <a href="#" className="hover:text-black transition-colors underline">Privacy Policy</a>.
               </p>
             </div>
           </div>
@@ -409,12 +390,12 @@ export default function LoginPage() {
 function InputField({ label, type = "text", value, onChange, placeholder, icon, isDark }: any) {
   return (
     <div className="space-y-1.5">
-      <label className={`text-xs font-semibold uppercase tracking-wider ml-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+      <label className={`text-xs font-semibold uppercase tracking-wider ml-0.5 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
         {label}
       </label>
       <div className="relative group">
         {icon && (
-          <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-all duration-300 ${isDark ? "text-gray-500 group-focus-within:text-[#ff5722]" : "text-gray-400 group-focus-within:text-[#ff5722]"}`}>
+          <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors ${isDark ? "text-gray-500 group-focus-within:text-black" : "text-gray-400 group-focus-within:text-black"}`}>
             {icon}
           </div>
         )}
@@ -423,9 +404,9 @@ function InputField({ label, type = "text", value, onChange, placeholder, icon, 
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className={`w-full ${icon ? "pl-10" : "pl-4"} pr-4 py-3.5 rounded-xl border text-sm outline-none transition-all duration-300 ${isDark
-            ? "bg-[#111] border-[#222] text-white placeholder:text-gray-600 focus:border-[#ff5722] focus:bg-[#161616] focus:shadow-lg focus:shadow-orange-500/10"
-            : "bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-[#ff5722] focus:bg-white focus:shadow-lg focus:shadow-orange-500/10"
+          className={`w-full ${icon ? "pl-10" : "pl-4"} pr-4 py-3 border text-sm outline-none transition-colors ${isDark
+            ? "bg-[#151515] border-[#333] text-white placeholder:text-gray-600 focus:bg-black focus:border-black"
+            : "bg-gray-50 border-gray-300 text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-black"
             }`}
         />
       </div>
