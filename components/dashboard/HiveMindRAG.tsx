@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { RefreshCw, Zap, Brain, Database } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 
 // Derive RAG API base URL from tenant subdomain
@@ -57,6 +56,7 @@ export default function HiveMindRAG({
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const animationRef = useRef<number | undefined>(undefined);
+    const particlesRef = useRef<any[]>([]); // Use ref to persist background across renders
     const timeRef = useRef(0);
     const mouseRef = useRef({ x: -1000, y: -1000 });
     const wsRef = useRef<WebSocket | null>(null);
@@ -64,13 +64,18 @@ export default function HiveMindRAG({
     const { theme } = useTheme();
     const isDark = theme === "dark";
 
+    const [mounted, setMounted] = useState(false);
     const [internalPoints, setInternalPoints] = useState<KnowledgePoint[]>([]);
-    const [vizData, setVizData] = useState<VisualizationData | null>(null);
     const [loading, setLoading] = useState(false);
     const [hoveredPoint, setHoveredPoint] = useState<KnowledgePoint | null>(null);
     const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected" | "connecting">("disconnected");
 
     const points = propPoints || internalPoints;
+
+    // Set mounted on client to prevent Hydration Error #418
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     // Brain shape boundary (organic curve)
     const isInsideBrain = useCallback((nx: number, ny: number): boolean => {
@@ -102,7 +107,6 @@ export default function HiveMindRAG({
             const response = await fetch(`${ragBase}/api/v1/hive-mind/visualize?algorithm=tsne&limit=250`);
             if (response.ok) {
                 const data: VisualizationData = await response.json();
-                setVizData(data);
                 setInternalPoints(data.points);
                 setConnectionStatus("connected");
             }
@@ -133,6 +137,8 @@ export default function HiveMindRAG({
     }, [loadVisualization, propPoints]);
 
     useEffect(() => {
+        if (!mounted) return;
+
         const canvas = canvasRef.current;
         const container = containerRef.current;
         if (!canvas || !container) return;
@@ -140,20 +146,18 @@ export default function HiveMindRAG({
         const ctx = canvas.getContext("2d", { alpha: true });
         if (!ctx) return;
 
-        // Generate neural particles
-        let particles: any[] = [];
-        if (points.length === 0 && !loading) {
-            for (let i = 0; i < 300; i++) {
+        // Generate neural particles if they don't exist
+        if (particlesRef.current.length === 0) {
+            for (let i = 0; i < 400; i++) {
                 let x, y;
                 let attempts = 0;
                 do {
-                    x = Math.random();
-                    y = Math.random();
+                    x = Math.random(); y = Math.random();
                     attempts++;
                 } while (!isInsideBrain(x, y) && attempts < 100);
 
                 if (isInsideBrain(x, y)) {
-                    particles.push({
+                    particlesRef.current.push({
                         x, y,
                         vx: (Math.random() - 0.5) * 0.0003,
                         vy: (Math.random() - 0.5) * 0.0003,
@@ -204,83 +208,59 @@ export default function HiveMindRAG({
             ctx.scale(breathe, breathe);
             ctx.translate(-w / 2, -h / 2);
 
-            const displayPoints = points.length > 0 ? points.map(p => ({
-                ...p, x: (p.x + 1) / 2, y: (p.y + 1) / 2
-            })) : particles;
-
             const scale = Math.min(w, h) * (compact ? 0.8 : 0.9);
             const offsetX = (w - scale) / 2;
             const offsetY = (h - scale) / 2;
 
-            // Connections
-            ctx.lineWidth = 0.5;
-            for (let i = 0; i < displayPoints.length; i++) {
-                const p1 = displayPoints[i];
-                const x1 = offsetX + p1.x * scale;
-                const y1 = offsetY + p1.y * scale;
-
-                for (let j = i + 1; j < Math.min(i + 15, displayPoints.length); j++) {
-                    const p2 = displayPoints[j];
-                    const x2 = offsetX + p2.x * scale;
-                    const y2 = offsetY + p2.y * scale;
-
-                    const dist = Math.hypot(x2 - x1, y2 - y1);
-                    const maxDist = scale * 0.12;
-
-                    if (dist < maxDist) {
-                        const alpha = (1 - dist / maxDist) * 0.2;
-                        ctx.strokeStyle = isDark ? `rgba(255,255,255,${alpha})` : `rgba(0,0,0,${alpha})`;
-                        ctx.beginPath();
-                        ctx.moveTo(x1, y1);
-                        ctx.lineTo(x2, y2);
-                        ctx.stroke();
-
-                        if (Math.random() > 0.995) {
-                            const pPos = (time * 0.3 + i * 0.1) % 1;
-                            ctx.fillStyle = isDark ? `rgba(255,255,255,${alpha * 2})` : `rgba(0,0,0,${alpha * 2})`;
-                            ctx.beginPath();
-                            ctx.arc(x1 + (x2 - x1) * pPos, y1 + (y2 - y1) * pPos, 1, 0, Math.PI * 2);
-                            ctx.fill();
-                        }
-                    }
-                }
-            }
-
-            // Nodes
-            displayPoints.forEach((p, i) => {
-                const x = offsetX + p.x * scale;
-                const y = offsetY + p.y * scale;
-                const isHovered = hoveredPoint && 'id' in p && (p as any).id === hoveredPoint.id;
-
-                const mDist = Math.hypot(mouseRef.current.x - x, mouseRef.current.y - y);
-                const mInf = Math.max(0, 1 - mDist / 120);
+            // 1. Draw Background Generative Scaffold
+            ctx.globalAlpha = points.length > 0 ? 0.35 : 0.85; // Slightly more visible
+            particlesRef.current.forEach((p, i) => {
+                const px = offsetX + p.x * scale;
+                const py = offsetY + p.y * scale;
                 const pulse = Math.sin(time * 2 + (p.pulse || i * 0.1)) * 0.3 + 0.7;
-                const alpha = (p.alpha || 0.6) * pulse + mInf * 0.4;
-                const size = (p.size || 2.5) * (1 + mInf * 0.5) * (isHovered ? 2 : 1);
-
-                if (mInf > 0.1 || isHovered) {
-                    const g = ctx.createRadialGradient(x, y, 0, x, y, size * 6);
-                    g.addColorStop(0, isDark ? `rgba(255,255,255,${alpha * 0.2})` : `rgba(0,0,0,${alpha * 0.1})`);
-                    g.addColorStop(1, "transparent");
-                    ctx.fillStyle = g;
-                    ctx.beginPath(); ctx.arc(x, y, size * 6, 0, Math.PI * 2); ctx.fill();
-                }
-
-                ctx.fillStyle = isDark ? `rgba(255,255,255,${alpha})` : `rgba(0,0,0,${alpha})`;
-                ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = isDark ? `rgba(255,255,255,${(p.alpha || 0.6) * pulse})` : `rgba(0,0,0,0.15)`;
+                ctx.beginPath(); ctx.arc(px, py, p.size || 1, 0, Math.PI * 2); ctx.fill();
             });
 
-            // Update particles
-            if (points.length === 0) {
-                particles.forEach(p => {
-                    p.x += p.vx; p.y += p.vy;
-                    if (!isInsideBrain(p.x, p.y)) {
-                        p.vx *= -0.5; p.vy *= -0.5;
-                        p.x += (0.5 - p.x) * 0.02; p.y += (0.5 - p.y) * 0.02;
+            // 2. Draw Real Clusters
+            if (points.length > 0) {
+                ctx.globalAlpha = 1.0;
+                points.forEach((p) => {
+                    const rawX = (p.x + 1) / 2;
+                    const rawY = (p.y + 1) / 2;
+                    let nx = rawX, ny = rawY;
+                    if (!isInsideBrain(nx, ny)) {
+                        nx = 0.5 + (rawX - 0.5) * 0.8;
+                        ny = 0.5 + (rawY - 0.5) * 0.8;
                     }
-                    p.vx *= 0.99; p.vy *= 0.99;
+                    const x = offsetX + nx * scale;
+                    const y = offsetY + ny * scale;
+                    const isHovered = hoveredPoint && p.id === hoveredPoint.id;
+                    const mDist = Math.hypot(mouseRef.current.x - x, mouseRef.current.y - y);
+                    const mInf = Math.max(0, 1 - mDist / 120);
+
+                    if (isHovered || mInf > 0.1) {
+                        const g = ctx.createRadialGradient(x, y, 0, x, y, 12);
+                        g.addColorStop(0, "#A63E1B"); g.addColorStop(1, "transparent");
+                        ctx.fillStyle = g; ctx.globalAlpha = 0.45;
+                        ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.fill();
+                    }
+
+                    ctx.fillStyle = isHovered ? "#fff" : "#A63E1B";
+                    ctx.globalAlpha = isHovered ? 1.0 : (0.75 + mInf * 0.25);
+                    ctx.beginPath(); ctx.arc(x, y, isHovered ? 4.5 : 3, 0, Math.PI * 2); ctx.fill();
                 });
             }
+
+            // 3. Update physics
+            particlesRef.current.forEach(p => {
+                p.x += p.vx; p.y += p.vy;
+                if (!isInsideBrain(p.x, p.y)) {
+                    p.vx *= -0.5; p.vy *= -0.5;
+                    p.x += (0.5 - p.x) * 0.02; p.y += (0.5 - p.y) * 0.02;
+                }
+                p.vx *= 0.99; p.vy *= 0.99;
+            });
 
             ctx.restore();
             animationRef.current = requestAnimationFrame(render);
@@ -288,7 +268,7 @@ export default function HiveMindRAG({
 
         render();
         return () => { if (animationRef.current) cancelAnimationFrame(animationRef.current); };
-    }, [points, isDark, hoveredPoint, loading, compact, isInsideBrain]);
+    }, [mounted, points, isDark, hoveredPoint, compact, isInsideBrain]);
 
     const handleMouseMove = (e: React.MouseEvent) => {
         const rect = canvasRef.current?.getBoundingClientRect();
@@ -296,14 +276,11 @@ export default function HiveMindRAG({
         mouseRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
 
         if (points.length > 0 && showTooltip) {
-            const w = rect.width, h = rect.height;
-            const scale = Math.min(w, h) * (compact ? 0.8 : 0.9);
+            const w = rect.width, h = rect.height, scale = Math.min(w, h) * (compact ? 0.8 : 0.9);
             const offX = (w - scale) / 2, offY = (h - scale) / 2;
             let closest: any = null, minDist = 25;
-
             points.forEach(p => {
-                const x = offX + ((p.x + 1) / 2) * scale;
-                const y = offY + ((p.y + 1) / 2) * scale;
+                const x = offX + ((p.x + 1) / 2) * scale, y = offY + ((p.y + 1) / 2) * scale;
                 const d = Math.hypot(mouseRef.current.x - x, mouseRef.current.y - y);
                 if (d < minDist) { minDist = d; closest = p; }
             });
@@ -312,12 +289,14 @@ export default function HiveMindRAG({
     };
 
     useEffect(() => {
-        if (autoLoad && !propPoints) {
+        if (autoLoad && !propPoints && mounted) {
             loadVisualization();
             connectWebSocket();
         }
         return () => wsRef.current?.close();
-    }, [autoLoad, loadVisualization, connectWebSocket, propPoints]);
+    }, [autoLoad, loadVisualization, connectWebSocket, propPoints, mounted]);
+
+    if (!mounted) return <div style={{ width, height, backgroundColor: "transparent" }} />;
 
     return (
         <div ref={containerRef} style={{ width, height, position: "relative", overflow: "hidden" }}>
