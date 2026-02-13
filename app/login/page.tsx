@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Eye, EyeOff, ArrowRight, Mail, Lock, User, Building, Phone, MapPin, Cpu } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, Mail, Lock, User, Building, Phone, MapPin, Cpu, Key } from "lucide-react";
 import { apiUrl } from "@/lib/api";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [address, setAddress] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
   const [agentWebsocketUrl, setAgentWebsocketUrl] = useState("");
+  const [accessKey, setAccessKey] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -44,6 +45,12 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setIsLoading(true);
+
+    if (accessKey !== "528369") {
+      setError("Invalid Access Key");
+      setIsLoading(false);
+      return;
+    }
 
     try {
       if (mode === "login") {
@@ -345,6 +352,15 @@ export default function LoginPage() {
                     </button>
                   </div>
                 </div>
+
+                <InputField
+                  label="Access Key"
+                  value={accessKey}
+                  onChange={setAccessKey}
+                  placeholder="Enter access key"
+                  icon={<Key size={16} />}
+                  isDark={isDark}
+                />
               </div>
 
               {mode === "login" && (
