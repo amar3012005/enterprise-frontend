@@ -16,17 +16,8 @@ export interface TaraConfig {
   wsUrl?: string;
   /** Agent ID */
   agentId?: string;
-  /** Orb size in pixels (default: 40) */
+  /** Orb size in pixels (default: 40 for top-right placement) */
   orbSize?: number;
-  /** Position on screen */
-  position?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
-  /** Callbacks */
-  onStateChange?: (state: string) => void;
-  onCommand?: (command: TaraCommand) => void;
-  onExecute?: (status: 'success' | 'error') => void;
-  onError?: (error: Error) => void;
-  onCallStart?: () => void;
-  onCallEnd?: () => void;
 }
 
 /**
@@ -108,8 +99,6 @@ export interface TaraOverlayProps {
   onError?: (error: Error) => void;
   onCommand?: (command: TaraCommand) => void;
   onExecute?: (status: 'success' | 'error') => void;
-  onCallStart?: () => void;
-  onCallEnd?: () => void;
 }
 
 /**
