@@ -16,6 +16,10 @@ export interface TaraOverlayProps {
   onCommand?: (command: { type: string; target_id: string; text?: string }) => void;
   /** Callback when action is executed */
   onExecute?: (status: 'success' | 'error') => void;
+  /** Callback when a call starts */
+  onCallStart?: () => void;
+  /** Callback when a call ends */
+  onCallEnd?: () => void;
 }
 
 export interface TaraOverlayRef {
@@ -66,7 +70,9 @@ const TaraOverlay = forwardRef<TaraOverlayRef, TaraOverlayProps>(
     onStateChange,
     onError,
     onCommand,
-    onExecute
+    onExecute,
+    onCallStart,
+    onCallEnd
   }, ref) {
     const widgetRef = useRef<any>(null);
     const scriptLoaded = useRef(false);
@@ -144,20 +150,18 @@ const TaraOverlay = forwardRef<TaraOverlayRef, TaraOverlayProps>(
       if (!window.TaraWidget || widgetRef.current) return;
 
       try {
-        const config: any = {};
-        if (wsUrl) config.wsUrl = wsUrl;
-        if (agentId) config.agentId = agentId;
+        const config: any = {
+          wsUrl,
+          agentId,
+          onStateChange,
+          onError,
+          onCommand,
+          onExecute,
+          onCallStart,
+          onCallEnd
+        };
 
         widgetRef.current = new window.TaraWidget(config);
-
-        // Setup event listeners
-        if (onStateChange) {
-          const originalStop = widgetRef.current.stopVisualCopilot.bind(widgetRef.current);
-          widgetRef.current.stopVisualCopilot = function () {
-            originalStop();
-            onStateChange('idle');
-          };
-        }
 
         console.log('✨ TARA Visual Co-Pilot initialized');
       } catch (err) {

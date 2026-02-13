@@ -274,78 +274,10 @@ export default function EnterpriseDashboardHiveMindPage() {
             <div style={{ flex: 1, position: "relative" }}>
                 <HiveMindRAG
                     points={points}
-                    showTooltip={false}
+                    showTooltip={true}
                     showStats={false}
+                    autoLoad={true}
                 />
-
-                {/* Hovered Point Tooltip */}
-                <AnimatePresence>
-                    {hoveredPoint && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 10 }}
-                            style={{
-                                position: "absolute",
-                                bottom: 120,
-                                left: "50%",
-                                transform: "translateX(-50%)",
-                                maxWidth: 480,
-                                backgroundColor: "rgba(0, 0, 0, 0.95)",
-                                border: "1px solid #333",
-                                borderRadius: 16,
-                                padding: 20,
-                                backdropFilter: "blur(20px)",
-                                boxShadow: "0 20px 60px rgba(0,0,0,0.8)"
-                            }}
-                        >
-                            <div style={{
-                                fontSize: 10,
-                                fontFamily: "JetBrains Mono, monospace",
-                                color: "#22c55e",
-                                textTransform: "uppercase",
-                                letterSpacing: "0.1em",
-                                marginBottom: 8
-                            }}>
-                                {hoveredPoint.issue_type?.replace(/_/g, " ") || "Knowledge Node"}
-                            </div>
-                            <div style={{
-                                fontSize: 15,
-                                fontWeight: 500,
-                                marginBottom: 10,
-                                lineHeight: 1.4
-                            }}>
-                                {hoveredPoint.issue}
-                            </div>
-                            <div style={{
-                                fontSize: 13,
-                                color: "#888",
-                                lineHeight: 1.5
-                            }}>
-                                {hoveredPoint.solution?.slice(0, 150)}
-                                {hoveredPoint.solution?.length > 150 ? "..." : ""}
-                            </div>
-                            {hoveredPoint.customer_segment && (
-                                <div style={{
-                                    marginTop: 12,
-                                    paddingTop: 12,
-                                    borderTop: "1px solid #222"
-                                }}>
-                                    <span style={{
-                                        fontSize: 10,
-                                        fontFamily: "JetBrains Mono, monospace",
-                                        padding: "4px 8px",
-                                        backgroundColor: "#1a1a1a",
-                                        borderRadius: 4,
-                                        color: "#666"
-                                    }}>
-                                        {hoveredPoint.customer_segment}
-                                    </span>
-                                </div>
-                            )}
-                        </motion.div>
-                    )}
-                </AnimatePresence>
             </div>
 
             {/* Bottom Controls */}

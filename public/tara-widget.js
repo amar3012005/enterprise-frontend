@@ -343,10 +343,18 @@
 
       this.container = document.createElement('div');
       this.container.id = 'tara-container';
+
+      // Position based on config
+      const pos = this.config.position || 'top-right';
+      let posStyle = '';
+      if (pos === 'top-right') posStyle = 'top: 24px; right: 24px;';
+      else if (pos === 'top-left') posStyle = 'top: 24px; left: 24px;';
+      else if (pos === 'bottom-right') posStyle = 'bottom: 24px; right: 24px;';
+      else if (pos === 'bottom-left') posStyle = 'bottom: 24px; left: 24px;';
+
       this.container.style.cssText = `
         position: fixed;
-        top: 24px;
-        right: 24px;
+        ${posStyle}
         pointer-events: auto;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       `;
@@ -457,6 +465,23 @@
           border-bottom-color: transparent;
           animation: tara-gyro-spin 5s linear infinite reverse;
         }
+
+        /* EXECUTING: Purple Pulse */
+        .tara-orb.executing {
+          box-shadow: 0 0 25px rgba(168, 85, 247, 0.4), inset 0 0 10px rgba(168, 85, 247, 0.1);
+          border-color: rgba(168, 85, 247, 0.8);
+        }
+        .tara-orb.executing::before {
+          border-color: #a855f7;
+          border-left-color: transparent;
+          border-right-color: transparent;
+          animation: tara-gyro-spin 1.5s linear infinite;
+        }
+        .tara-orb.executing::after {
+          background: #a855f7;
+          box-shadow: 0 0 20px #a855f7;
+          transform: translate(-50%, -50%) scale(1.1);
+        }
         
         /* === ANIMATIONS === */
         @keyframes tara-gyro-spin {
@@ -505,30 +530,6 @@
           50% { opacity: 1; box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 0 0 25px rgba(255, 255, 255, 0.6); }
         }
 
-        /* CHAT TOGGLE - Black Box */
-        .tara-chat-toggle {
-            position: fixed;
-            bottom: 30px;
-            right: 120px;
-            width: 36px;
-            height: 36px;
-            background: #000000;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 6px; 
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 100001;
-            font-size: 14px;
-            transition: all 0.2s ease;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        }
-        .tara-chat-toggle:hover {
-            border-color: #ffffff;
-            background: #111111;
-        }
       `);
 
       this.shadowRoot.adoptedStyleSheets = [styleSheet];
@@ -548,22 +549,6 @@
           await this.stopVisualCopilot();
         }
       });
-
-      // --- CHAT TOGGLE BUTTON ---
-      const chatToggle = document.createElement('div');
-      chatToggle.className = 'tara-chat-toggle';
-      chatToggle.innerHTML = '💬'; // Or a keyboard icon
-      chatToggle.title = "Open Chat / Debug Mode";
-      chatToggle.onclick = (e) => {
-        e.stopPropagation();
-        this.toggleChat();
-      };
-      // Inject into shadow DOM
-      if (this.shadowRoot) {
-        this.shadowRoot.appendChild(chatToggle);
-      } else {
-        document.body.appendChild(chatToggle);
-      }
     }
 
     updateTooltip(text) {
@@ -818,6 +803,7 @@
         this.setOrbState('listening'); // Default to listening
         this.updateTooltip('Click to end Visual Co-Pilot');
 
+        if (this.config.onCallStart) this.config.onCallStart();
       } catch (err) {
         console.error('❌ Failed to start Visual Co-Pilot:', err);
         // alert('Failed to connect to TARA Orchestrator. Please check your connection.');
@@ -987,6 +973,8 @@
       this.setOrbState('idle');
       this.updateTooltip('Click to start Visual Co-Pilot');
 
+      if (this.config.onCallEnd) this.config.onCallEnd();
+
       console.log('✅ Visual Co-Pilot stopped');
     }
 
@@ -1134,6 +1122,10 @@
       }
 
       console.log(`🎨 Orb state changed to: ${displayState}`);
+
+      if (this.config.onStateChange) {
+        this.config.onStateChange(displayState);
+      }
     }
 
 
@@ -1434,6 +1426,10 @@
       // SET STATE: Executing (Purple)
       this.setOrbState('executing');
 
+      if (this.config.onCommand) {
+        this.config.onCommand({ type, target_id: targetId, text });
+      }
+
       try {
         if (type === 'wait') {
           console.log("⏳ TARA Waiting (as requested)...");
@@ -1491,11 +1487,16 @@
         }
 
         // --- WAIT FOR DOM SETTLE (Crucial) ---
-        // --- WAIT FOR DOM SETTLE (Crucial) ---
         await new Promise(r => setTimeout(r, 2000)); // Increased to 2s for complex React renders
 
+        if (this.config.onExecute) {
+          this.config.onExecute('success');
+        }
       } catch (err) {
         console.warn("Execution partial error:", err);
+        if (this.config.onExecute) {
+          this.config.onExecute('error');
+        }
       }
     }
 
@@ -1607,8 +1608,11 @@
 
   function initTara() {
     if (window.tara) return; // Prevent double init
-    // Auto-init for Plugin Usage (no specific element required)
-    window.tara = new TaraWidget(window.TARA_CONFIG || {});
+
+    // Auto-init for Plugin Usage if data attribute or TARA_CONFIG is present
+    if (document.body && (document.body.hasAttribute('data-tara-widget') || window.TARA_CONFIG)) {
+      window.tara = new TaraWidget(window.TARA_CONFIG || {});
+    }
   }
 
   if (document.readyState === 'loading') {

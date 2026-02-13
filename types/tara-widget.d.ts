@@ -16,8 +16,17 @@ export interface TaraConfig {
   wsUrl?: string;
   /** Agent ID */
   agentId?: string;
-  /** Orb size in pixels (default: 40 for top-right placement) */
+  /** Orb size in pixels (default: 40) */
   orbSize?: number;
+  /** Position on screen */
+  position?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
+  /** Callbacks */
+  onStateChange?: (state: string) => void;
+  onCommand?: (command: TaraCommand) => void;
+  onExecute?: (status: 'success' | 'error') => void;
+  onError?: (error: Error) => void;
+  onCallStart?: () => void;
+  onCallEnd?: () => void;
 }
 
 /**
@@ -42,7 +51,7 @@ export interface TaraDOMElement {
 /**
  * WebSocket message types (Client → Server)
  */
-export type TaraClientMessage = 
+export type TaraClientMessage =
   | { type: 'session_config'; mode: 'visual-copilot' | 'voice'; timestamp: number }
   | { type: 'dom_update'; elements: TaraDOMElement[] }
   | { type: 'execution_complete'; status: 'success' | 'error'; timestamp: number };
@@ -50,7 +59,7 @@ export type TaraClientMessage =
 /**
  * WebSocket message types (Server → Client)
  */
-export type TaraServerMessage = 
+export type TaraServerMessage =
   | { type: 'command'; payload: TaraCommand }
   | { type: 'state_update'; state: string };
 
@@ -71,7 +80,7 @@ export interface TaraCommand {
  */
 export declare class TaraWidget {
   constructor(config?: TaraConfig);
-  
+
   /** Whether Visual Co-Pilot is active */
   isActive: boolean;
   /** Whether waiting for intro to complete */
@@ -80,7 +89,7 @@ export declare class TaraWidget {
   waitingForExecution: boolean;
   /** Reference to orb container */
   orbContainer: HTMLDivElement | null;
-  
+
   /** Start Visual Co-Pilot mode (called on orb click) */
   startVisualCopilot(): Promise<void>;
   /** Stop Visual Co-Pilot mode */
@@ -99,6 +108,8 @@ export interface TaraOverlayProps {
   onError?: (error: Error) => void;
   onCommand?: (command: TaraCommand) => void;
   onExecute?: (status: 'success' | 'error') => void;
+  onCallStart?: () => void;
+  onCallEnd?: () => void;
 }
 
 /**
@@ -111,4 +122,4 @@ export interface TaraOverlayRef {
   destroy(): void;
 }
 
-export {};
+export { };

@@ -84,11 +84,11 @@ export default function AgentVisualizer({ agentName, agentDescription, totalCall
                     </div>
                 </div>
 
-                {/* HiveMind RAG Visualization - Full Canvas */}
+                {/* HiveMind RAG Visualization - Full Canvas (Ambient Mode) */}
                 <HiveMindRAG
-                    showStats={true}
-                    showTooltip={true}
-                    autoLoad={true}
+                    showStats={false}
+                    showTooltip={false}
+                    autoLoad={false}
                     compact={false}
                 />
 

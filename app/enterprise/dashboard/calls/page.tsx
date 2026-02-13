@@ -361,7 +361,7 @@ export default function EnterpriseDashboardCallsPage() {
             </motion.div >
 
             {/* Call List */}
-            < motion.div
+            <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
@@ -369,17 +369,23 @@ export default function EnterpriseDashboardCallsPage() {
                     backgroundColor: isDark ? "#111" : "#fff",
                     borderRadius: 20,
                     border: isDark ? "1px solid #1a1a1a" : "1px solid #eee",
-                    overflow: "hidden"
+                    overflow: "hidden",
+                    display: "flex",
+                    flexDirection: "column",
+                    maxHeight: "calc(100vh - 300px)" // Sticky scroll container
                 }}
             >
                 {/* Table Header */}
-                < div style={{
+                <div style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr 120px 100px 120px 100px 120px 80px",
+                    gridTemplateColumns: "1fr 140px 100px 120px 100px 100px 80px", // Adjusted grid
                     gap: 16,
                     padding: "16px 24px",
                     borderBottom: isDark ? "1px solid #1a1a1a" : "1px solid #eee",
-                    backgroundColor: isDark ? "#0d0d0d" : "#fafafa"
+                    backgroundColor: isDark ? "#0d0d0d" : "#fafafa",
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 10
                 }}>
                     <TableHeader>Call ID</TableHeader>
                     <TableHeader>Time</TableHeader>
@@ -388,11 +394,11 @@ export default function EnterpriseDashboardCallsPage() {
                     <TableHeader>Sentiment</TableHeader>
                     <TableHeader>Signals</TableHeader>
                     <TableHeader>Cost</TableHeader>
-                </div >
+                </div>
 
-                {/* Table Body */}
-                {
-                    filteredCalls.length > 0 ? (
+                {/* Scrollable Body */}
+                <div style={{ overflowY: "auto", flex: 1 }}>
+                    {filteredCalls.length > 0 ? (
                         filteredCalls.map((call, index) => (
                             <motion.div
                                 key={call.call_id}
@@ -401,7 +407,7 @@ export default function EnterpriseDashboardCallsPage() {
                                 transition={{ delay: index * 0.05 }}
                                 style={{
                                     display: "grid",
-                                    gridTemplateColumns: "1fr 120px 100px 120px 100px 120px 80px",
+                                    gridTemplateColumns: "1fr 140px 100px 120px 100px 100px 80px", // Matched grid
                                     gap: 16,
                                     padding: "16px 24px",
                                     borderBottom: isDark ? "1px solid #1a1a1a" : "1px solid #eee",
@@ -442,17 +448,20 @@ export default function EnterpriseDashboardCallsPage() {
                                     </span>
                                 </div>
 
-                                {/* Time */}
+                                {/* Time with Date */}
                                 <div style={{
                                     fontSize: 13,
                                     color: "#666",
-                                    fontFamily: "JetBrains Mono, monospace"
+                                    fontFamily: "JetBrains Mono, monospace",
+                                    display: "flex",
+                                    flexDirection: "column"
                                 }}>
-                                    {new Date(call.start_time).toLocaleTimeString("en-US", {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                        hour12: false
-                                    })}
+                                    <span style={{ color: isDark ? "#ddd" : "#333", fontWeight: 500 }}>
+                                        {new Date(call.start_time).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                                    </span>
+                                    <span style={{ fontSize: 11, opacity: 0.7 }}>
+                                        {new Date(call.start_time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                                    </span>
                                 </div>
 
                                 {/* Duration */}
@@ -471,7 +480,7 @@ export default function EnterpriseDashboardCallsPage() {
                                 {/* Status */}
                                 <StatusBadge status={call.status} isDark={isDark} />
 
-                                {/* Sentiment */}
+                                {/* Sentiment - Handled properly */}
                                 <SentimentIndicator score={call.sentiment_score} isDark={isDark} />
 
                                 {/* Signals */}
@@ -482,16 +491,18 @@ export default function EnterpriseDashboardCallsPage() {
                                     {call.is_hot_lead && (
                                         <div title="Hot Lead" style={{ color: "#ff5722" }}><Flame size={14} /></div>
                                     )}
-                                    <div style={{
-                                        fontSize: '10px',
-                                        fontWeight: 700,
-                                        color: call.priority_level === 'HIGH' || call.priority_level === 'URGENT' ? '#ef4444' : '#666',
-                                        backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                                        padding: '2px 6px',
-                                        borderRadius: '4px'
-                                    }}>
-                                        {call.priority_level}
-                                    </div>
+                                    {call.priority_level && (
+                                        <div style={{
+                                            fontSize: '10px',
+                                            fontWeight: 700,
+                                            color: ['HIGH', 'URGENT'].includes(call.priority_level) ? '#ef4444' : '#666',
+                                            backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                                            padding: '2px 6px',
+                                            borderRadius: '4px'
+                                        }}>
+                                            {call.priority_level}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Cost */}
@@ -513,15 +524,10 @@ export default function EnterpriseDashboardCallsPage() {
                         }}>
                             <Phone size={48} color="#333" style={{ marginBottom: 16 }} />
                             <p style={{ margin: 0, fontSize: 16 }}>No calls found</p>
-                            <p style={{ margin: "8px 0 0", fontSize: 13 }}>
-                                {searchQuery || statusFilter !== "all"
-                                    ? "Try adjusting your filters"
-                                    : "Calls will appear here once your agents start handling calls"}
-                            </p>
                         </div>
-                    )
-                }
-            </motion.div >
+                    )}
+                </div>
+            </motion.div>
         </>
     );
 }

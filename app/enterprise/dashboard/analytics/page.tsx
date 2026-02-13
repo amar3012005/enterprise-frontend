@@ -478,7 +478,7 @@ export default function EnterpriseDashboardAnalyticsPage() {
                         letterSpacing: "0.05em",
                         fontFamily: "JetBrains Mono, monospace"
                     }}>
-                        Cost Today
+                        Total Cost
                     </div>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
                         <span style={{
@@ -591,7 +591,7 @@ export default function EnterpriseDashboardAnalyticsPage() {
                                 Call Volume
                             </h3>
                             <p style={{ margin: 0, fontSize: 13, color: "#666" }}>
-                                Hourly distribution today
+                                Activity by Hour of Day
                             </p>
                         </div>
                         <div style={{
