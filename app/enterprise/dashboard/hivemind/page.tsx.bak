@@ -165,52 +165,6 @@ export default function EnterpriseDashboardHiveMindPage() {
         }
     };
 
-    // Submit agent skill directly
-    // Submit agent skill directly
-    const handleAgentSkillSubmit = async () => {
-        if (!chatInput.trim()) return;
-
-        setIsQuerying(true);
-        try {
-            const ragBase = getRagBaseUrl();
-            if (!ragBase) throw new Error("RAG not configured");
-
-            const payload = {
-                text: chatInput,
-                type: "agent_skill",
-                topic: "general"
-            };
-
-            const response = await fetch(`${ragBase}/api/v1/skills`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-
-            if (response.ok) {
-                const successMessage: ChatMessage = {
-                    role: "assistant",
-                    content: `✅ Agent skill added successfully: "${chatInput}"`,
-                    timestamp: new Date()
-                };
-                setChatMessages(prev => [...prev, successMessage]);
-                setChatInput("");
-            } else {
-                throw new Error("Failed to add skill");
-            }
-        } catch (error) {
-            const errorMessage: ChatMessage = {
-                role: "assistant",
-                content: "Failed to add agent skill. Please try again.",
-                timestamp: new Date()
-            };
-            setChatMessages(prev => [...prev, errorMessage]);
-        } finally {
-            setIsQuerying(false);
-        }
-    };
-
-
     useEffect(() => {
         const storedTenant = localStorage.getItem("tenant");
         if (!storedTenant) {

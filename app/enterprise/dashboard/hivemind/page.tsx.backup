@@ -166,7 +166,6 @@ export default function EnterpriseDashboardHiveMindPage() {
     };
 
     // Submit agent skill directly
-    // Submit agent skill directly
     const handleAgentSkillSubmit = async () => {
         if (!chatInput.trim()) return;
 

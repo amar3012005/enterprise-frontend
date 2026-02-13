@@ -10,21 +10,11 @@ interface AgentSkillsModalProps {
     isDark?: boolean;
 }
 
-interface UniversalPayload {
-    base: {
-        doc_type: "Agent_Skill" | "Agent_Rule" | "Case_Memory" | "General_KB";
-        domain: string;
-        tenant_id: string;
-        created_at: string;
-    };
-    content: {
-        text: string;
-        summary?: string;
-        metadata?: {
-            name?: string;
-            [key: string]: any;
-        };
-    };
+interface SkillPayload {
+    text: string;
+    type: "agent_skill" | "agent_rule";
+    topic: string;
+    severity?: "normal" | "critical";
 }
 
 type UploadStatus = "idle" | "uploading" | "success" | "error";
@@ -99,21 +89,23 @@ export default function AgentSkillsModal({ isOpen, onClose, isDark = true }: Age
         setUploadStatus("uploading");
         setStatusMessage("Uploading to HiveMind...");
 
-        const payload: UniversalPayload = {
-            base: {
-                doc_type: docType,
-                domain,
-                tenant_id: tenantId,
-                created_at: new Date().toISOString(),
-            },
-            content: {
-                text: contentText,
-                summary: summary || undefined,
-                metadata: {
-                    name: skillName || undefined,
-                },
-            },
+        // Convert doc type to the format expected by the endpoint
+        const typeMapping: Record<typeof docType, "agent_skill" | "agent_rule"> = {
+            "Agent_Skill": "agent_skill",
+            "Agent_Rule": "agent_rule",
+            "Case_Memory": "agent_skill" // Default to agent_skill
         };
+
+        const payload: SkillPayload = {
+            text: contentText,
+            type: typeMapping[docType],
+            topic: skillName || summary || "general",
+        };
+
+        // Add severity only for agent rules
+        if (docType === "Agent_Rule") {
+            payload.severity = "normal";
+        }
 
         try {
             const ragBase = getRagBaseUrl();
@@ -238,8 +230,8 @@ export default function AgentSkillsModal({ isOpen, onClose, isDark = true }: Age
                     exit={{ scale: 0.9, opacity: 0 }}
                     onClick={(e) => e.stopPropagation()}
                     className={`w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden ${isDark
-                            ? "bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95"
-                            : "bg-white"
+                        ? "bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95"
+                        : "bg-white"
                         } backdrop-blur-xl border ${isDark ? "border-cyan-500/20" : "border-slate-200"
                         }`}
                 >
@@ -258,8 +250,8 @@ export default function AgentSkillsModal({ isOpen, onClose, isDark = true }: Age
                             <div>
                                 <h2
                                     className={`text-lg font-bold ${isDark
-                                            ? "bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent"
-                                            : "text-slate-900"
+                                        ? "bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent"
+                                        : "text-slate-900"
                                         }`}
                                 >
                                     Agent Skills & Rules
@@ -272,8 +264,8 @@ export default function AgentSkillsModal({ isOpen, onClose, isDark = true }: Age
                         <button
                             onClick={handleClose}
                             className={`p-2 rounded-lg transition-colors ${isDark
-                                    ? "hover:bg-slate-700/50 text-slate-400 hover:text-slate-200"
-                                    : "hover:bg-slate-100 text-slate-500 hover:text-slate-700"
+                                ? "hover:bg-slate-700/50 text-slate-400 hover:text-slate-200"
+                                : "hover:bg-slate-100 text-slate-500 hover:text-slate-700"
                                 }`}
                         >
                             <X size={20} />
@@ -288,12 +280,12 @@ export default function AgentSkillsModal({ isOpen, onClose, isDark = true }: Age
                         <button
                             onClick={() => setActiveTab("manual")}
                             className={`flex-1 px-6 py-3 text-sm font-medium transition-all ${activeTab === "manual"
-                                    ? isDark
-                                        ? "border-b-2 border-cyan-400 text-cyan-400 bg-slate-800/50"
-                                        : "border-b-2 border-cyan-600 text-cyan-600 bg-white"
-                                    : isDark
-                                        ? "text-slate-400 hover:text-slate-300"
-                                        : "text-slate-500 hover:text-slate-700"
+                                ? isDark
+                                    ? "border-b-2 border-cyan-400 text-cyan-400 bg-slate-800/50"
+                                    : "border-b-2 border-cyan-600 text-cyan-600 bg-white"
+                                : isDark
+                                    ? "text-slate-400 hover:text-slate-300"
+                                    : "text-slate-500 hover:text-slate-700"
                                 }`}
                         >
                             <FileText className="inline mr-2" size={16} />
@@ -302,12 +294,12 @@ export default function AgentSkillsModal({ isOpen, onClose, isDark = true }: Age
                         <button
                             onClick={() => setActiveTab("file")}
                             className={`flex-1 px-6 py-3 text-sm font-medium transition-all ${activeTab === "file"
-                                    ? isDark
-                                        ? "border-b-2 border-cyan-400 text-cyan-400 bg-slate-800/50"
-                                        : "border-b-2 border-cyan-600 text-cyan-600 bg-white"
-                                    : isDark
-                                        ? "text-slate-400 hover:text-slate-300"
-                                        : "text-slate-500 hover:text-slate-700"
+                                ? isDark
+                                    ? "border-b-2 border-cyan-400 text-cyan-400 bg-slate-800/50"
+                                    : "border-b-2 border-cyan-600 text-cyan-600 bg-white"
+                                : isDark
+                                    ? "text-slate-400 hover:text-slate-300"
+                                    : "text-slate-500 hover:text-slate-700"
                                 }`}
                         >
                             <Upload className="inline mr-2" size={16} />
@@ -333,8 +325,8 @@ export default function AgentSkillsModal({ isOpen, onClose, isDark = true }: Age
                                             onChange={(e) => setSkillName(e.target.value)}
                                             placeholder="e.g., Customer Support Protocol"
                                             className={`w-full px-4 py-2 rounded-lg border ${isDark
-                                                    ? "bg-slate-800/50 border-slate-700 text-slate-200 placeholder-slate-500 focus:border-cyan-500"
-                                                    : "bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-cyan-500"
+                                                ? "bg-slate-800/50 border-slate-700 text-slate-200 placeholder-slate-500 focus:border-cyan-500"
+                                                : "bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-cyan-500"
                                                 } focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all`}
                                         />
                                     </div>
@@ -353,8 +345,8 @@ export default function AgentSkillsModal({ isOpen, onClose, isDark = true }: Age
                                                 )
                                             }
                                             className={`w-full px-4 py-2 rounded-lg border ${isDark
-                                                    ? "bg-slate-800/50 border-slate-700 text-slate-200 focus:border-cyan-500"
-                                                    : "bg-white border-slate-300 text-slate-900 focus:border-cyan-500"
+                                                ? "bg-slate-800/50 border-slate-700 text-slate-200 focus:border-cyan-500"
+                                                : "bg-white border-slate-300 text-slate-900 focus:border-cyan-500"
                                                 } focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all`}
                                         >
                                             <option value="Agent_Skill">Agent Skill</option>
@@ -377,8 +369,8 @@ export default function AgentSkillsModal({ isOpen, onClose, isDark = true }: Age
                                             value={domain}
                                             onChange={(e) => setDomain(e.target.value)}
                                             className={`w-full px-4 py-2 rounded-lg border ${isDark
-                                                    ? "bg-slate-800/50 border-slate-700 text-slate-200 focus:border-cyan-500"
-                                                    : "bg-white border-slate-300 text-slate-900 focus:border-cyan-500"
+                                                ? "bg-slate-800/50 border-slate-700 text-slate-200 focus:border-cyan-500"
+                                                : "bg-white border-slate-300 text-slate-900 focus:border-cyan-500"
                                                 } focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all`}
                                         />
                                     </div>
@@ -394,8 +386,8 @@ export default function AgentSkillsModal({ isOpen, onClose, isDark = true }: Age
                                             value={tenantId}
                                             onChange={(e) => setTenantId(e.target.value)}
                                             className={`w-full px-4 py-2 rounded-lg border ${isDark
-                                                    ? "bg-slate-800/50 border-slate-700 text-slate-200 focus:border-cyan-500"
-                                                    : "bg-white border-slate-300 text-slate-900 focus:border-cyan-500"
+                                                ? "bg-slate-800/50 border-slate-700 text-slate-200 focus:border-cyan-500"
+                                                : "bg-white border-slate-300 text-slate-900 focus:border-cyan-500"
                                                 } focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all`}
                                         />
                                     </div>
@@ -414,8 +406,8 @@ export default function AgentSkillsModal({ isOpen, onClose, isDark = true }: Age
                                         rows={6}
                                         placeholder="Enter the skill instructions or rule details..."
                                         className={`w-full px-4 py-2 rounded-lg border ${isDark
-                                                ? "bg-slate-800/50 border-slate-700 text-slate-200 placeholder-slate-500 focus:border-cyan-500"
-                                                : "bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-cyan-500"
+                                            ? "bg-slate-800/50 border-slate-700 text-slate-200 placeholder-slate-500 focus:border-cyan-500"
+                                            : "bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-cyan-500"
                                             } focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-mono text-sm`}
                                     />
                                 </div>
@@ -433,8 +425,8 @@ export default function AgentSkillsModal({ isOpen, onClose, isDark = true }: Age
                                         onChange={(e) => setSummary(e.target.value)}
                                         placeholder="Brief description of this skill/rule"
                                         className={`w-full px-4 py-2 rounded-lg border ${isDark
-                                                ? "bg-slate-800/50 border-slate-700 text-slate-200 placeholder-slate-500 focus:border-cyan-500"
-                                                : "bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-cyan-500"
+                                            ? "bg-slate-800/50 border-slate-700 text-slate-200 placeholder-slate-500 focus:border-cyan-500"
+                                            : "bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-cyan-500"
                                             } focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all`}
                                     />
                                 </div>
@@ -446,8 +438,8 @@ export default function AgentSkillsModal({ isOpen, onClose, isDark = true }: Age
                                     onDragOver={handleDragOver}
                                     onClick={() => fileInputRef.current?.click()}
                                     className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${isDark
-                                            ? "border-slate-700 hover:border-cyan-500 bg-slate-800/30 hover:bg-slate-800/50"
-                                            : "border-slate-300 hover:border-cyan-500 bg-slate-50 hover:bg-slate-100"
+                                        ? "border-slate-700 hover:border-cyan-500 bg-slate-800/30 hover:bg-slate-800/50"
+                                        : "border-slate-300 hover:border-cyan-500 bg-slate-50 hover:bg-slate-100"
                                         }`}
                                 >
                                     <Upload
@@ -487,8 +479,8 @@ export default function AgentSkillsModal({ isOpen, onClose, isDark = true }: Age
                                                 setFileDocType(e.target.value as "General_KB" | "Website_Map")
                                             }
                                             className={`w-full px-4 py-2 rounded-lg border ${isDark
-                                                    ? "bg-slate-800/50 border-slate-700 text-slate-200 focus:border-cyan-500"
-                                                    : "bg-white border-slate-300 text-slate-900 focus:border-cyan-500"
+                                                ? "bg-slate-800/50 border-slate-700 text-slate-200 focus:border-cyan-500"
+                                                : "bg-white border-slate-300 text-slate-900 focus:border-cyan-500"
                                                 } focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all`}
                                         >
                                             <option value="General_KB">General Knowledge Base</option>
@@ -508,8 +500,8 @@ export default function AgentSkillsModal({ isOpen, onClose, isDark = true }: Age
                                             onChange={(e) => setFileTopics(e.target.value)}
                                             placeholder="e.g., support, sales, technical"
                                             className={`w-full px-4 py-2 rounded-lg border ${isDark
-                                                    ? "bg-slate-800/50 border-slate-700 text-slate-200 placeholder-slate-500 focus:border-cyan-500"
-                                                    : "bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-cyan-500"
+                                                ? "bg-slate-800/50 border-slate-700 text-slate-200 placeholder-slate-500 focus:border-cyan-500"
+                                                : "bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-cyan-500"
                                                 } focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all`}
                                         />
                                     </div>
@@ -528,8 +520,8 @@ export default function AgentSkillsModal({ isOpen, onClose, isDark = true }: Age
                                             value={fileDomain}
                                             onChange={(e) => setFileDomain(e.target.value)}
                                             className={`w-full px-4 py-2 rounded-lg border ${isDark
-                                                    ? "bg-slate-800/50 border-slate-700 text-slate-200 focus:border-cyan-500"
-                                                    : "bg-white border-slate-300 text-slate-900 focus:border-cyan-500"
+                                                ? "bg-slate-800/50 border-slate-700 text-slate-200 focus:border-cyan-500"
+                                                : "bg-white border-slate-300 text-slate-900 focus:border-cyan-500"
                                                 } focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all`}
                                         />
                                     </div>
@@ -545,8 +537,8 @@ export default function AgentSkillsModal({ isOpen, onClose, isDark = true }: Age
                                             value={fileTenantId}
                                             onChange={(e) => setFileTenantId(e.target.value)}
                                             className={`w-full px-4 py-2 rounded-lg border ${isDark
-                                                    ? "bg-slate-800/50 border-slate-700 text-slate-200 focus:border-cyan-500"
-                                                    : "bg-white border-slate-300 text-slate-900 focus:border-cyan-500"
+                                                ? "bg-slate-800/50 border-slate-700 text-slate-200 focus:border-cyan-500"
+                                                : "bg-white border-slate-300 text-slate-900 focus:border-cyan-500"
                                                 } focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all`}
                                         />
                                     </div>
@@ -560,16 +552,16 @@ export default function AgentSkillsModal({ isOpen, onClose, isDark = true }: Age
                                 initial={{ opacity: 0, y: -10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 className={`mt-4 p-4 rounded-lg flex items-center gap-3 ${uploadStatus === "success"
+                                    ? isDark
+                                        ? "bg-green-500/10 border border-green-500/20"
+                                        : "bg-green-50 border border-green-200"
+                                    : uploadStatus === "error"
                                         ? isDark
-                                            ? "bg-green-500/10 border border-green-500/20"
-                                            : "bg-green-50 border border-green-200"
-                                        : uploadStatus === "error"
-                                            ? isDark
-                                                ? "bg-red-500/10 border border-red-500/20"
-                                                : "bg-red-50 border border-red-200"
-                                            : isDark
-                                                ? "bg-blue-500/10 border border-blue-500/20"
-                                                : "bg-blue-50 border border-blue-200"
+                                            ? "bg-red-500/10 border border-red-500/20"
+                                            : "bg-red-50 border border-red-200"
+                                        : isDark
+                                            ? "bg-blue-500/10 border border-blue-500/20"
+                                            : "bg-blue-50 border border-blue-200"
                                     }`}
                             >
                                 {uploadStatus === "uploading" && (
@@ -583,10 +575,10 @@ export default function AgentSkillsModal({ isOpen, onClose, isDark = true }: Age
                                 )}
                                 <p
                                     className={`text-sm font-medium ${uploadStatus === "success"
-                                            ? "text-green-400"
-                                            : uploadStatus === "error"
-                                                ? "text-red-400"
-                                                : "text-blue-400"
+                                        ? "text-green-400"
+                                        : uploadStatus === "error"
+                                            ? "text-red-400"
+                                            : "text-blue-400"
                                         }`}
                                 >
                                     {statusMessage}
@@ -603,8 +595,8 @@ export default function AgentSkillsModal({ isOpen, onClose, isDark = true }: Age
                         <button
                             onClick={handleClose}
                             className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-all ${isDark
-                                    ? "bg-slate-700/50 text-slate-300 hover:bg-slate-700"
-                                    : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                                ? "bg-slate-700/50 text-slate-300 hover:bg-slate-700"
+                                : "bg-slate-200 text-slate-700 hover:bg-slate-300"
                                 }`}
                         >
                             Cancel
@@ -613,8 +605,8 @@ export default function AgentSkillsModal({ isOpen, onClose, isDark = true }: Age
                             onClick={activeTab === "manual" ? handleManualUpload : handleFileUpload}
                             disabled={uploadStatus === "uploading"}
                             className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-all ${uploadStatus === "uploading"
-                                    ? "opacity-50 cursor-not-allowed"
-                                    : "hover:shadow-lg hover:shadow-cyan-500/20"
+                                ? "opacity-50 cursor-not-allowed"
+                                : "hover:shadow-lg hover:shadow-cyan-500/20"
                                 } ${isDark
                                     ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-400 hover:to-blue-400"
                                     : "bg-cyan-600 text-white hover:bg-cyan-700"
