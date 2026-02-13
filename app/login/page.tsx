@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Eye, EyeOff, ArrowRight, Mail, Lock, User, Building, Phone, MapPin, Cpu } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, Mail, Lock, User, Building, Phone, MapPin, Cpu, Key } from "lucide-react";
 import { apiUrl } from "@/lib/api";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [address, setAddress] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
   const [agentWebsocketUrl, setAgentWebsocketUrl] = useState("");
+  const [accessKey, setAccessKey] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -44,6 +45,12 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setIsLoading(true);
+
+    if (accessKey !== "528369") {
+      setError("Invalid Access Key");
+      setIsLoading(false);
+      return;
+    }
 
     try {
       if (mode === "login") {
@@ -101,6 +108,7 @@ export default function LoginPage() {
   const fillDemoCreds = () => {
     setEmail("b23313@students.iitmandi.ac.in");
     setPassword("528369");
+    setAccessKey("528369");
   };
 
   return (
@@ -166,8 +174,8 @@ export default function LoginPage() {
                 width={180}
                 height={180}
                 className={`transition-all duration-700 ${isLeftHovered
-                    ? "filter brightness-125 drop-shadow-[0_0_40px_rgba(255,87,34,0.6)]"
-                    : "filter brightness-110 drop-shadow-[0_0_30px_rgba(255,87,34,0.4)]"
+                  ? "filter brightness-125 drop-shadow-[0_0_40px_rgba(255,87,34,0.6)]"
+                  : "filter brightness-110 drop-shadow-[0_0_30px_rgba(255,87,34,0.4)]"
                   }`}
               />
             </div>
@@ -234,13 +242,17 @@ export default function LoginPage() {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <div className={`p-2 border ${isDark ? "bg-black/50 border-[#333]" : "bg-white border-gray-200"}`}>
                     <div className={`text-[10px] uppercase font-mono mb-1 ${isDark ? "text-gray-500" : "text-gray-400"}`}>Email</div>
                     <div className={`text-xs font-mono truncate ${isDark ? "text-orange-400" : "text-orange-600"}`}>b23313@students.iitmandi.ac.in</div>
                   </div>
                   <div className={`p-2 border ${isDark ? "bg-black/50 border-[#333]" : "bg-white border-gray-200"}`}>
                     <div className={`text-[10px] uppercase font-mono mb-1 ${isDark ? "text-gray-500" : "text-gray-400"}`}>Password</div>
+                    <div className={`text-xs font-mono ${isDark ? "text-orange-400" : "text-orange-600"}`}>528369</div>
+                  </div>
+                  <div className={`p-2 border ${isDark ? "bg-black/50 border-[#333]" : "bg-white border-gray-200"}`}>
+                    <div className={`text-[10px] uppercase font-mono mb-1 ${isDark ? "text-gray-500" : "text-gray-400"}`}>Access Key</div>
                     <div className={`text-xs font-mono ${isDark ? "text-orange-400" : "text-orange-600"}`}>528369</div>
                   </div>
                 </div>
@@ -345,6 +357,15 @@ export default function LoginPage() {
                     </button>
                   </div>
                 </div>
+
+                <InputField
+                  label="Access Key"
+                  value={accessKey}
+                  onChange={setAccessKey}
+                  placeholder="Enter 6-digit access key"
+                  icon={<Key size={16} />}
+                  isDark={isDark}
+                />
               </div>
 
               {mode === "login" && (

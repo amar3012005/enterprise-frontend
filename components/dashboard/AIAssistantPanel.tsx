@@ -74,8 +74,10 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
 
     // Voice Agent WebSocket
     const wsRef = useRef<WebSocket | null>(null);
+    const audioWsRef = useRef<WebSocket | null>(null); // Dedicated audio stream WebSocket
     const audioCtxRef = useRef<AudioContext | null>(null);
     const wsConnectedRef = useRef(false);
+    const audioStreamActiveRef = useRef(false); // Track if dedicated audio stream is active
     const sessionIdRef = useRef<string | null>(null);
     const audioWorkletRef = useRef<ScriptProcessorNode | null>(null);
     const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | null>(null);
@@ -213,6 +215,70 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
         }
     }, [agentIsSpeaking, connectionStatus]);
 
+    // Connect to dedicated audio WebSocket stream (matching tara-widget.js pattern)
+    const connectAudioWebSocket = (sessionId: string, baseWsUrl: string) => {
+        if (!sessionId || !baseWsUrl) {
+            console.warn('⚠️ Cannot connect audio WebSocket: missing sessionId or baseWsUrl');
+            return;
+        }
+
+        // Replace /ws with /stream and add session_id parameter
+        const audioUrl = baseWsUrl.replace('/ws', '/stream') +
+            '?session_id=' + encodeURIComponent(sessionId);
+
+        console.log('🔊 Connecting dedicated audio WebSocket:', audioUrl);
+
+        const audioWs = new WebSocket(audioUrl);
+        audioWs.binaryType = 'arraybuffer';
+        audioWsRef.current = audioWs;
+
+        audioWs.onopen = () => {
+            console.log('✅ Dedicated audio stream connected');
+            audioStreamActiveRef.current = true;
+        };
+
+        audioWs.onmessage = (e) => {
+            if (e.data instanceof ArrayBuffer) {
+                // Audio chunk received on dedicated stream
+                if (!playbackStartTimeRef.current) playbackStartTimeRef.current = Date.now();
+                setAgentIsSpeaking(true);
+                audioStreamCompleteRef.current = false;
+
+                // Record TTFC on first audio chunk
+                if (turnStartTimeRef.current && !hasTtfcForTurnRef.current) {
+                    const ttfc = Math.round(performance.now() - turnStartTimeRef.current);
+                    setMetrics(prev => ({ ...prev, ttfc }));
+                    hasTtfcForTurnRef.current = true;
+                }
+
+                playAudioChunk(e.data);
+            } else {
+                // JSON message on audio stream (e.g., stream_complete)
+                try {
+                    const data = JSON.parse(e.data);
+                    if (data.type === 'stream_complete') {
+                        console.log('🎵 Audio stream marked complete');
+                        audioStreamCompleteRef.current = true;
+                        setAgentIsSpeaking(false);
+                    }
+                } catch (err) {
+                    console.warn('⚠️ Non-JSON message on audio stream:', e.data);
+                }
+            }
+        };
+
+        audioWs.onclose = (event) => {
+            console.log(`🔌 Audio WebSocket closed: ${event.code}`);
+            audioStreamActiveRef.current = false;
+            audioWsRef.current = null;
+        };
+
+        audioWs.onerror = (event) => {
+            console.error('❌ Audio WebSocket error:', event);
+            audioStreamActiveRef.current = false;
+        };
+    };
+
     const startCall = async () => {
         if (!agentData) {
             alert("Agent data not loaded yet");
@@ -280,6 +346,9 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
                     token: typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
                 }));
                 console.log(`Handshake sent for agent: ${agentId}`);
+
+                // Connect dedicated audio WebSocket for enterprise agents
+                connectAudioWebSocket(sessionId, wsUrlTemp);
             }
             else {
                 ws.send(JSON.stringify({
@@ -333,7 +402,8 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
 
         ws.onmessage = async (e) => {
             if (e.data instanceof ArrayBuffer) {
-                if (isCustomProtocol) {
+                // Only handle binary audio on control WS if dedicated audio stream is NOT active
+                if (isCustomProtocol && !audioStreamActiveRef.current) {
                     if (!playbackStartTimeRef.current) playbackStartTimeRef.current = Date.now();
                     setAgentIsSpeaking(true);
                     audioStreamCompleteRef.current = false;
@@ -346,6 +416,9 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
                     }
 
                     playAudioChunk(e.data);
+                } else if (isCustomProtocol && audioStreamActiveRef.current) {
+                    // Audio should come via dedicated stream - ignore on control WS
+                    console.log('🔇 Ignoring binary audio on control WS (using dedicated stream)');
                 }
                 return;
             }
@@ -552,6 +625,13 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
             }
             wsRef.current.close();
             wsRef.current = null;
+        }
+
+        // Close dedicated audio WebSocket if active
+        if (audioWsRef.current) {
+            audioWsRef.current.close();
+            audioWsRef.current = null;
+            audioStreamActiveRef.current = false;
         }
 
         // Sync with Backend

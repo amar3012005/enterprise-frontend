@@ -54,6 +54,7 @@ interface ChatMessage {
 }
 
 import HiveMindRAG from "@/components/dashboard/HiveMindRAG";
+import AgentSkillsModal from "@/components/dashboard/AgentSkillsModal";
 
 export default function EnterpriseDashboardHiveMindPage() {
     const router = useRouter();
@@ -71,6 +72,7 @@ export default function EnterpriseDashboardHiveMindPage() {
     const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected" | "connecting">("disconnected");
     const [timeRange, setTimeRange] = useState<"1D" | "1W" | "1M">("1D");
     const [uptime, setUptime] = useState("~1 days");
+    const [isSkillsModalOpen, setIsSkillsModalOpen] = useState(false);
 
     // Fetch visualization data from RAG API
     const loadVisualization = useCallback(async () => {
@@ -434,18 +436,30 @@ export default function EnterpriseDashboardHiveMindPage() {
                     backdropFilter: "blur(20px)",
                     boxShadow: "0 10px 40px rgba(0,0,0,0.5)"
                 }}>
-                    <button style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: 10,
-                        backgroundColor: "#1a1a1a",
-                        border: "1px solid #333",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                        color: "#666"
-                    }}>
+                    <button
+                        onClick={() => setIsSkillsModalOpen(true)}
+                        style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 10,
+                            backgroundColor: "#1a1a1a",
+                            border: "1px solid #333",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                            color: "#06b6d4",
+                            transition: "all 0.2s"
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = "#06b6d4";
+                            e.currentTarget.style.color = "#000";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = "#1a1a1a";
+                            e.currentTarget.style.color = "#06b6d4";
+                        }}
+                    >
                         <Plus size={18} />
                     </button>
 
@@ -523,6 +537,13 @@ export default function EnterpriseDashboardHiveMindPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Agent Skills Modal */}
+            <AgentSkillsModal
+                isOpen={isSkillsModalOpen}
+                onClose={() => setIsSkillsModalOpen(false)}
+                isDark={true}
+            />
         </div>
     );
 }
