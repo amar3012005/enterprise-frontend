@@ -22,8 +22,8 @@
   // ============================================
   const DEFAULTS = {
     wsUrl: 'wss://demo.davinciai.eu:8443/ws', // Default Production URL
-    orbSize: 30,
-    position: 'bottom-right', // 'bottom-right', 'bottom-left'
+    orbSize: 40,
+    position: 'top-right', // 'top-right', 'bottom-right'
     colors: {
       core: '#ffffff',              // Pure White Core
       accent: '#000000',            // Black Accent

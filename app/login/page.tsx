@@ -21,6 +21,9 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showDemoCreds, setShowDemoCreds] = useState(true);
+  const [showAccessKeyModal, setShowAccessKeyModal] = useState(false);
+  const [accessKey, setAccessKey] = useState("");
+  const [accessKeyError, setAccessKeyError] = useState("");
   const [isLeftHovered, setIsLeftHovered] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 50, y: 50 });
   const leftPanelRef = useRef<HTMLDivElement>(null);
@@ -42,6 +45,18 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+
+    // --- ACCESS KEY CHECK FOR DEMO ---
+    if (mode === "login" && email === "b23313@students.iitmandi.ac.in" && password === "528369") {
+      setShowAccessKeyModal(true);
+      return;
+    }
+
+    performLogin();
+  };
+
+  const performLogin = async () => {
     setError("");
     setIsLoading(true);
 
@@ -101,6 +116,18 @@ export default function LoginPage() {
   const fillDemoCreds = () => {
     setEmail("b23313@students.iitmandi.ac.in");
     setPassword("528369");
+  };
+
+  const handleAccessKeySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAccessKeyError("");
+
+    if (accessKey === "528369") {
+      setShowAccessKeyModal(false);
+      performLogin();
+    } else {
+      setAccessKeyError("Invalid access key. Please try again.");
+    }
   };
 
   return (
@@ -165,11 +192,10 @@ export default function LoginPage() {
                 alt="DaVinci AI Logo"
                 width={180}
                 height={180}
-                className={`transition-all duration-700 ${
-                  isLeftHovered
-                    ? "filter brightness-125 drop-shadow-[0_0_40px_rgba(255,87,34,0.6)]"
-                    : "filter brightness-110 drop-shadow-[0_0_30px_rgba(255,87,34,0.4)]"
-                }`}
+                className={`transition-all duration-700 ${isLeftHovered
+                  ? "filter brightness-125 drop-shadow-[0_0_40px_rgba(255,87,34,0.6)]"
+                  : "filter brightness-110 drop-shadow-[0_0_30px_rgba(255,87,34,0.4)]"
+                  }`}
               />
             </div>
           </div>
@@ -383,6 +409,67 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+
+      {/* Access Key Modal */}
+      {showAccessKeyModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowAccessKeyModal(false)}
+          />
+          <div className={`relative w-full max-w-sm p-8 border shadow-2xl transition-all duration-300 transform scale-100 ${isDark ? "bg-[#111] border-[#333] text-white" : "bg-white border-gray-200 text-black"
+            }`}>
+            <div className="mb-6">
+              <h3 className="text-xl font-bold mb-2 uppercase tracking-tight">Access Key Required</h3>
+              <p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                Please enter the security access key to proceed with the demo account.
+              </p>
+            </div>
+
+            <form onSubmit={handleAccessKeySubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? "text-gray-500" : "text-gray-400"}`}>
+                  Security Code
+                </label>
+                <input
+                  type="password"
+                  value={accessKey}
+                  onChange={(e) => setAccessKey(e.target.value)}
+                  placeholder="••••••"
+                  autoFocus
+                  className={`w-full px-4 py-3 border text-center text-xl font-mono tracking-[0.5em] outline-none transition-colors ${isDark
+                    ? "bg-black border-[#333] text-orange-500 focus:border-orange-500 placeholder:text-gray-800"
+                    : "bg-gray-50 border-gray-300 text-orange-600 focus:border-black placeholder:text-gray-300"
+                    }`}
+                />
+              </div>
+
+              {accessKeyError && (
+                <div className="p-2 bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] text-center font-bold uppercase tracking-tight animate-pulse">
+                  {accessKeyError}
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAccessKeyModal(false)}
+                  className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider border transition-colors ${isDark ? "border-[#333] text-gray-500 hover:text-white hover:bg-[#1a1a1a]" : "border-gray-200 text-gray-500 hover:text-black hover:bg-gray-50"
+                    }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-black text-white text-[10px] font-bold uppercase tracking-wider hover:bg-gray-900 transition-all active:scale-95 shadow-[0_0_20px_rgba(0,0,0,0.3)]"
+                >
+                  Verify Access
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
