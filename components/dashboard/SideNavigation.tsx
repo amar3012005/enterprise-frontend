@@ -64,7 +64,6 @@ export default function SideNavigation({ onLogout, agentId: propAgentId }: SideN
             if (agentId) {
                 router.push(`${ROUTES.DASHBOARD}/${agentId}`);
             } else {
-                // If no agent selected, fallback to agents list or pick first available
                 router.push(ROUTES.AGENTS);
             }
         } else {
@@ -82,14 +81,7 @@ export default function SideNavigation({ onLogout, agentId: propAgentId }: SideN
     ];
 
     return (
-        <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '8px',
-            height: '100%',
-            justifyContent: 'flex-start'
-        }}>
+        <div className={`flex flex-col items-center gap-2 h-full justify-start ${isDark ? 'bg-[#0a0a0a]' : 'bg-white'}`}>
             {navItems.map(({ key, icon: Icon, label }) => (
                 <SideIconButton
                     key={key}
@@ -100,7 +92,7 @@ export default function SideNavigation({ onLogout, agentId: propAgentId }: SideN
                     isDark={isDark}
                 />
             ))}
-            <div style={{ flex: 1, minHeight: '50px' }} />
+            <div className="flex-1 min-h-[50px]" />
             <SideIconButton
                 icon={<LogOut size={20} />}
                 onClick={onLogout}
@@ -131,7 +123,7 @@ function SideIconButton({
     const [isHovered, setIsHovered] = useState(false);
 
     return (
-        <div style={{ position: 'relative' }} suppressHydrationWarning={true}>
+        <div className="relative" suppressHydrationWarning={true}>
             <button
                 suppressHydrationWarning={true}
                 onClick={onClick}
@@ -139,60 +131,44 @@ function SideIconButton({
                 onMouseLeave={() => setIsHovered(false)}
                 title={tooltip || ''}
                 aria-label={tooltip || ''}
+                className={`
+                    w-[60px] h-[60px] rounded-2xl border-none flex items-center justify-center cursor-pointer
+                    transition-all duration-300 ease-out outline-none
+                    ${active 
+                        ? (isDark 
+                            ? 'bg-white text-black shadow-[0_4px_12px_rgba(255,255,255,0.1)]' 
+                            : 'bg-black text-white shadow-[0_4px_12px_rgba(0,0,0,0.2)]'
+                          )
+                        : isHovered 
+                            ? (isDark 
+                                ? 'bg-[#1a1a1a] text-white scale-105' 
+                                : 'bg-gray-100 text-gray-900 scale-105'
+                              )
+                            : (isDark 
+                                ? 'bg-transparent text-gray-400' 
+                                : 'bg-transparent text-gray-500'
+                              )
+                    }
+                    ${isHovered && !active ? 'scale-105' : 'scale-100'}
+                `}
                 style={{
-                    width: '60px',
-                    height: '60px',
-                    backgroundColor: active ? (isDark ? '#ffffff' : '#000') : (isHovered ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)') : 'transparent'),
-                    border: 'none',
-                    borderRadius: '16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: active ? (isDark ? '#000' : '#fff') : (isHovered ? (isDark ? '#fff' : '#000') : (isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)')),
-                    cursor: 'pointer',
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    boxShadow: active ? (isDark ? '0 4px 12px rgba(255,255,255,0.1)' : '0 4px 12px rgba(0,0,0,0.2)') : 'none',
                     transform: isHovered ? 'scale(1.05)' : 'scale(1)',
-                    outline: 'none'
                 }}
             >
-                <div style={{
-                    transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    transform: isHovered ? 'scale(1.1)' : 'scale(1)'
-                }}>
+                <div 
+                    className="transition-transform duration-300 ease-out"
+                    style={{
+                        transform: isHovered ? 'scale(1.1)' : 'scale(1)'
+                    }}
+                >
                     {icon}
                 </div>
             </button>
 
             {isHovered && tooltip && (
-                <div style={{
-                    position: 'absolute',
-                    left: '75px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    backgroundColor: '#1a1a1a',
-                    color: '#fff',
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    whiteSpace: 'nowrap',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                    zIndex: 1000,
-                    pointerEvents: 'none'
-                }}>
+                <div className="absolute left-[75px] top-1/2 -translate-y-1/2 bg-[#1a1a1a] text-white px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap shadow-[0_4px_12px_rgba(0,0,0,0.15)] z-[1000] pointer-events-none">
                     {tooltip}
-                    <div style={{
-                        position: 'absolute',
-                        left: '-4px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        width: 0,
-                        height: 0,
-                        borderTop: '4px solid transparent',
-                        borderBottom: '4px solid transparent',
-                        borderRight: '4px solid #1a1a1a'
-                    }} />
+                    <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-0 h-0 border-t-4 border-b-4 border-r-4 border-t-transparent border-b-transparent border-r-[#1a1a1a]" />
                 </div>
             )}
         </div>

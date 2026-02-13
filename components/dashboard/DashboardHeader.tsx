@@ -30,7 +30,6 @@ export default function DashboardHeader({ tenant, onLogout }: DashboardHeaderPro
         updateTime();
         const interval = setInterval(updateTime, 1000);
 
-        // Load user and tenant from local storage for fallback/context
         const storedUser = localStorage.getItem("user");
         if (storedUser) setUser(JSON.parse(storedUser));
 
@@ -40,7 +39,6 @@ export default function DashboardHeader({ tenant, onLogout }: DashboardHeaderPro
         return () => clearInterval(interval);
     }, []);
 
-    // Display logic: Helper Prop (Agent) > Prop Org > LocalStorage Org > Default
     const displayName = (isMounted && tenant?.agent_name) ||
         (isMounted && (tenant?.organization_name || localTenant?.organization_name)) ||
         "DaVinci AI";
@@ -48,28 +46,12 @@ export default function DashboardHeader({ tenant, onLogout }: DashboardHeaderPro
     const userName = (isMounted && user?.full_name) || "Admin";
 
     return (
-        <header style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '0',
-            // Removed marginBottom to fix layout spacing
-        }}>
+        <header className="flex justify-between items-center p-0">
             {/* Left Side - Brand & Navigation */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+            <div className="flex items-center gap-6">
                 {/* Logo */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{
-                        width: '42px',
-                        height: '42px',
-                        backgroundColor: isDark ? '#fff' : '#000',
-                        borderRadius: '12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        position: 'relative',
-                        overflow: 'hidden'
-                    }}>
+                <div className="flex items-center gap-3">
+                    <div className={`w-[42px] h-[42px] rounded-xl flex items-center justify-center relative overflow-hidden transition-all duration-500 ${isDark ? 'bg-white' : 'bg-black'}`}>
                         {/* Geometric Logo */}
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                             <path
@@ -93,99 +75,43 @@ export default function DashboardHeader({ tenant, onLogout }: DashboardHeaderPro
                         </svg>
                     </div>
                     <div>
-                        <span style={{
-                            fontWeight: 700,
-                            fontSize: '18px',
-                            color: isDark ? '#fff' : '#1a1a1a',
-                            letterSpacing: '-0.02em'
-                        }}>
+                        <span className={`font-bold text-lg tracking-tight transition-colors duration-300 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                             {displayName}
                         </span>
-                        <div style={{
-                            fontSize: '11px',
-                            color: '#666',
-                            fontFamily: 'JetBrains Mono, monospace',
-                            letterSpacing: '0.02em',
-                            marginTop: '2px'
-                        }}>
+                        <div className={`text-[11px] font-mono tracking-wide mt-0.5 transition-colors duration-300 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                             ENTERPRISE DASHBOARD
                         </div>
                     </div>
                 </div>
 
                 {/* Divider */}
-                <div style={{
-                    width: '1px',
-                    height: '32px',
-                    backgroundColor: isDark ? '#222' : '#ddd'
-                }} />
+                <div className={`w-px h-8 transition-colors duration-300 ${isDark ? 'bg-[#333]' : 'bg-gray-200'}`} />
 
                 {/* Status Indicator */}
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '8px 14px',
-                    backgroundColor: isDark ? '#111' : '#fff',
-                    borderRadius: '10px',
-                    border: isDark ? '1px solid #1a1a1a' : '1px solid #eee'
-                }}>
+                <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border transition-all duration-300 ${isDark ? 'bg-[#0a0a0a] border-[#222]' : 'bg-white border-gray-200'}`}>
                     <motion.div
                         animate={{ scale: [1, 1.2, 1] }}
                         transition={{ duration: 2, repeat: Infinity }}
-                        style={{
-                            width: '8px',
-                            height: '8px',
-                            backgroundColor: '#22c55e',
-                            borderRadius: '50%',
-                            boxShadow: '0 0 8px #22c55e'
-                        }}
+                        className="w-2 h-2 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"
                     />
-                    <span style={{
-                        fontSize: '12px',
-                        color: isDark ? '#888' : '#666',
-                        fontFamily: 'JetBrains Mono, monospace'
-                    }}>
+                    <span className={`text-xs font-mono transition-colors duration-300 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                         SYSTEM_ONLINE
                     </span>
                 </div>
             </div>
 
             {/* Right Side - Actions */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div className="flex items-center gap-3">
                 {/* Time Display */}
                 {isMounted && (
-                    <div style={{
-                        padding: '8px 14px',
-                        backgroundColor: isDark ? '#111' : '#fff',
-                        borderRadius: '10px',
-                        border: isDark ? '1px solid #1a1a1a' : '1px solid #eee',
-                        fontFamily: 'JetBrains Mono, monospace',
-                        fontSize: '13px',
-                        color: isDark ? '#fff' : '#000',
-                        fontWeight: 500,
-                        minWidth: '60px',
-                        textAlign: 'center'
-                    }}>
+                    <div className={`px-3.5 py-2 rounded-xl border font-mono text-sm font-medium min-w-[60px] text-center transition-all duration-300 ${isDark ? 'bg-[#0a0a0a] border-[#222] text-white' : 'bg-white border-gray-200 text-gray-900'}`}>
                         {time}
                     </div>
                 )}
 
                 {/* Search Button */}
                 <button
-                    style={{
-                        width: '40px',
-                        height: '40px',
-                        backgroundColor: isDark ? '#111' : '#fff',
-                        borderRadius: '10px',
-                        border: isDark ? '1px solid #1a1a1a' : '1px solid #eee',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        color: isDark ? '#666' : '#888',
-                        transition: 'all 0.2s ease'
-                    }}
+                    className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all duration-300 hover:scale-110 ${isDark ? 'bg-[#0a0a0a] border-[#222] text-gray-400 hover:text-white hover:border-[#333]' : 'bg-white border-gray-200 text-gray-500 hover:text-gray-900 hover:border-gray-300'}`}
                     title="Search"
                 >
                     <Search size={18} />
@@ -193,127 +119,47 @@ export default function DashboardHeader({ tenant, onLogout }: DashboardHeaderPro
 
                 {/* Notifications */}
                 <button
-                    style={{
-                        width: '40px',
-                        height: '40px',
-                        backgroundColor: isDark ? '#111' : '#fff',
-                        borderRadius: '10px',
-                        border: isDark ? '1px solid #1a1a1a' : '1px solid #eee',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        color: isDark ? '#666' : '#888',
-                        position: 'relative',
-                        transition: 'all 0.2s ease'
-                    }}
+                    className={`w-10 h-10 rounded-xl border flex items-center justify-center relative transition-all duration-300 hover:scale-110 ${isDark ? 'bg-[#0a0a0a] border-[#222] text-gray-400 hover:text-white hover:border-[#333]' : 'bg-white border-gray-200 text-gray-500 hover:text-gray-900 hover:border-gray-300'}`}
                     title="Notifications"
                 >
                     <Bell size={18} />
-                    {/* Notification dot */}
-                    <div style={{
-                        position: 'absolute',
-                        top: '8px',
-                        right: '8px',
-                        width: '8px',
-                        height: '8px',
-                        backgroundColor: '#ef4444',
-                        borderRadius: '50%',
-                        border: isDark ? '2px solid #111' : '2px solid #fff'
-                    }} />
+                    <div className={`absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full ${isDark ? 'border-2 border-[#0a0a0a]' : 'border-2 border-white'}`} />
                 </button>
 
                 {/* Theme Toggle */}
                 <button
                     onClick={toggleTheme}
-                    style={{
-                        width: '40px',
-                        height: '40px',
-                        backgroundColor: isDark ? '#111' : '#fff',
-                        borderRadius: '10px',
-                        border: isDark ? '1px solid #1a1a1a' : '1px solid #eee',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        color: isDark ? '#fff' : '#000',
-                        transition: 'all 0.2s ease'
-                    }}
+                    className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all duration-500 hover:scale-110 hover:rotate-180 ${isDark ? 'bg-[#0a0a0a] border-[#222] text-white hover:border-[#333]' : 'bg-white border-gray-200 text-gray-900 hover:border-gray-300'}`}
                     title={`Switch to ${isDark ? 'light' : 'dark'} mode`}
                 >
                     {isDark ? <Sun size={18} /> : <Moon size={18} />}
                 </button>
 
                 {/* Divider */}
-                <div style={{
-                    width: '1px',
-                    height: '32px',
-                    backgroundColor: isDark ? '#222' : '#ddd',
-                    margin: '0 4px'
-                }} />
+                <div className={`w-px h-8 mx-1 transition-colors duration-300 ${isDark ? 'bg-[#333]' : 'bg-gray-200'}`} />
 
                 {/* User Menu */}
                 <button
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        padding: '6px 12px 6px 6px',
-                        backgroundColor: isDark ? '#111' : '#fff',
-                        borderRadius: '12px',
-                        border: isDark ? '1px solid #1a1a1a' : '1px solid #eee',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                    }}
+                    className={`flex items-center gap-2.5 pl-1.5 pr-3 py-1.5 rounded-xl border transition-all duration-300 hover:scale-105 ${isDark ? 'bg-[#0a0a0a] border-[#222] hover:border-[#333]' : 'bg-white border-gray-200 hover:border-gray-300'}`}
                 >
-                    <div style={{
-                        width: '32px',
-                        height: '32px',
-                        backgroundColor: isDark ? '#222' : '#f5f5f5',
-                        borderRadius: '8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '14px',
-                        fontWeight: 600,
-                        color: isDark ? '#fff' : '#000'
-                    }}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-semibold transition-colors duration-300 ${isDark ? 'bg-[#1a1a1a] text-white' : 'bg-gray-100 text-gray-900'}`}>
                         {userName.charAt(0)}
                     </div>
-                    <div style={{ textAlign: 'left' }}>
-                        <div style={{
-                            fontSize: '13px',
-                            fontWeight: 500,
-                            color: isDark ? '#fff' : '#000'
-                        }}>
+                    <div className="text-left">
+                        <div className={`text-sm font-medium transition-colors duration-300 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                             {userName}
                         </div>
-                        <div style={{
-                            fontSize: '11px',
-                            color: '#666'
-                        }}>
+                        <div className={`text-xs transition-colors duration-300 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
                             Enterprise
                         </div>
                     </div>
-                    <ChevronDown size={14} color="#666" />
+                    <ChevronDown size={14} className={isDark ? 'text-gray-500' : 'text-gray-500'} />
                 </button>
 
                 {/* Logout */}
                 <button
                     onClick={onLogout}
-                    style={{
-                        width: '40px',
-                        height: '40px',
-                        backgroundColor: isDark ? '#111' : '#fff',
-                        borderRadius: '10px',
-                        border: isDark ? '1px solid #1a1a1a' : '1px solid #eee',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        color: isDark ? '#666' : '#888',
-                        transition: 'all 0.2s ease'
-                    }}
+                    className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all duration-300 hover:scale-110 ${isDark ? 'bg-[#0a0a0a] border-[#222] text-gray-400 hover:text-white hover:border-[#333]' : 'bg-white border-gray-200 text-gray-500 hover:text-gray-900 hover:border-gray-300'}`}
                     title="Logout"
                 >
                     <LogOut size={18} />
