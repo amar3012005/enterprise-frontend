@@ -480,46 +480,126 @@ export default function EnterpriseDashboardHiveMindPage() {
                     display: "flex",
                     alignItems: "center",
                     gap: 12,
-                    padding: "14px 18px",
-                    backgroundColor: "rgba(20, 20, 20, 0.95)",
-                    borderRadius: 20,
-                    border: "1px solid #333",
+                    padding: "16px 24px",
+                    backgroundColor: "rgba(30, 30, 30, 0.98)",
+                    borderRadius: 28,
+                    border: "1px solid #2a2a2a",
                     backdropFilter: "blur(20px)",
-                    boxShadow: "0 10px 40px rgba(0,0,0,0.5)"
+                    boxShadow: "0 10px 40px rgba(0,0,0,0.6)"
                 }}>
-                    <button
-                        onClick={() => setIsSkillsModalOpen(true)}
-                        style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: 10,
-                            backgroundColor: "#1a1a1a",
-                            border: "1px solid #333",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            cursor: "pointer",
-                            color: "#06b6d4",
-                            transition: "all 0.2s"
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = "#06b6d4";
-                            e.currentTarget.style.color = "#000";
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = "#1a1a1a";
-                            e.currentTarget.style.color = "#06b6d4";
-                        }}
-                    >
-                        <Plus size={18} />
-                    </button>
+                    {/* Left Icons */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <button
+                            onClick={() => setIsSkillsModalOpen(true)}
+                            title="Attach file"
+                            style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: 8,
+                                backgroundColor: "transparent",
+                                border: "none",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                cursor: "pointer",
+                                color: "#888",
+                                transition: "all 0.2s"
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = "#fff"}
+                            onMouseLeave={(e) => e.currentTarget.style.color = "#888"}
+                        >
+                            <Paperclip size={20} />
+                        </button>
+
+                        <div style={{ width: 1, height: 20, backgroundColor: "#333" }} />
+
+                        <button
+                            title="Web search"
+                            style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: 8,
+                                backgroundColor: "transparent",
+                                border: "none",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                cursor: "pointer",
+                                color: "#888",
+                                transition: "all 0.2s"
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = "#fff"}
+                            onMouseLeave={(e) => e.currentTarget.style.color = "#888"}
+                        >
+                            <Globe size={20} />
+                        </button>
+
+                        <div style={{ width: 1, height: 20, backgroundColor: "#333" }} />
+
+                        <button
+                            onClick={() => setIsAgentSkillMode(!isAgentSkillMode)}
+                            title="Agent Skill Mode"
+                            style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: 8,
+                                backgroundColor: isAgentSkillMode ? "#06b6d4" : "transparent",
+                                border: "none",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                cursor: "pointer",
+                                color: isAgentSkillMode ? "#000" : "#888",
+                                transition: "all 0.2s"
+                            }}
+                            onMouseEnter={(e) => {
+                                if (!isAgentSkillMode) e.currentTarget.style.color = "#fff";
+                            }}
+                            onMouseLeave={(e) => {
+                                if (!isAgentSkillMode) e.currentTarget.style.color = "#888";
+                            }}
+                        >
+                            <Sparkles size={20} />
+                        </button>
+
+                        <div style={{ width: 1, height: 20, backgroundColor: "#333" }} />
+
+                        <button
+                            title="Browse files"
+                            style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: 8,
+                                backgroundColor: "transparent",
+                                border: "none",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                cursor: "pointer",
+                                color: "#888",
+                                transition: "all 0.2s"
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = "#fff"}
+                            onMouseLeave={(e) => e.currentTarget.style.color = "#888"}
+                        >
+                            <Folder size={20} />
+                        </button>
+                    </div>
 
                     <input
                         type="text"
-                        placeholder="Ask the collective intelligence..."
+                        placeholder={isAgentSkillMode ? "Type agent skill here..." : "Type your message here..."}
                         value={chatInput}
                         onChange={(e) => setChatInput(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleQuery()}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                                if (isAgentSkillMode) {
+                                    handleAgentSkillSubmit();
+                                } else {
+                                    handleQuery();
+                                }
+                            }
+                        }}
                         disabled={isQuerying}
                         style={{
                             flex: 1,
@@ -527,65 +607,37 @@ export default function EnterpriseDashboardHiveMindPage() {
                             backgroundColor: "transparent",
                             border: "none",
                             outline: "none",
-                            color: "#fff",
+                            color: "#aaa",
                             fontSize: 15,
                             fontFamily: "Inter, sans-serif"
                         }}
                     />
 
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <button style={{
-                            padding: "8px 14px",
-                            borderRadius: 8,
-                            backgroundColor: "#1a1a1a",
-                            border: "1px solid #333",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                            cursor: "pointer",
-                            color: "#888",
-                            fontSize: 12,
-                            fontFamily: "JetBrains Mono, monospace"
-                        }}>
-                            <Sparkles size={14} />
-                            Fast
-                        </button>
-
-                        <button style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: 10,
-                            backgroundColor: "#1a1a1a",
-                            border: "1px solid #333",
+                    {/* Right Microphone Button */}
+                    <button
+                        style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: "50%",
+                            backgroundColor: "#fff",
+                            border: "none",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
                             cursor: "pointer",
-                            color: "#666"
-                        }}>
-                            <Mic size={18} />
-                        </button>
-
-                        <button
-                            onClick={handleQuery}
-                            disabled={!chatInput.trim() || isQuerying}
-                            style={{
-                                width: 42,
-                                height: 42,
-                                borderRadius: 12,
-                                backgroundColor: chatInput.trim() ? "#fff" : "#1a1a1a",
-                                border: chatInput.trim() ? "none" : "1px solid #333",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                cursor: chatInput.trim() ? "pointer" : "not-allowed",
-                                color: chatInput.trim() ? "#000" : "#444",
-                                transition: "all 0.2s"
-                            }}
-                        >
-                            <Send size={18} />
-                        </button>
-                    </div>
+                            color: "#000",
+                            transition: "all 0.2s",
+                            boxShadow: "0 2px 8px rgba(255,255,255,0.2)"
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = "scale(1.05)";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = "scale(1)";
+                        }}
+                    >
+                        <Mic size={20} />
+                    </button>
                 </div>
             </div>
 
