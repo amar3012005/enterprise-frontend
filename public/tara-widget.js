@@ -55,6 +55,8 @@
 
   // LocalStorage key for cached orb SVG (delivered via WebSocket)
   const ORB_CACHE_KEY = 'tara_orb_svg_cache';
+  // LocalStorage key for mission persistence across navigations
+  const MISSION_STATE_KEY = 'tara_mission_state';
 
   function getCachedOrbUrl() {
     try {
@@ -231,7 +233,7 @@
       this.onEnd = callbacks.onEnd;
       this.isInitialized = true;
       this.nextPlayTime = this.audioCtx.currentTime;
-      console.log('🔊 Audio Manager (Robust Mode) Initialized');
+      console.log('ðŸ”Š Audio Manager (Robust Mode) Initialized');
     }
 
     async playChunk(rawBuffer, format = 'pcm_s16le', sampleRate = 44100) {
@@ -282,7 +284,7 @@
           this.activeSources.delete(source);
           if (this.activeSources.size === 0) {
             // Debounce: wait 500ms before declaring playback ended
-            // Prevents speaking→listening flicker between audio chunks
+            // Prevents speakingâ†’listening flicker between audio chunks
             this._endDebounce = setTimeout(() => {
               if (this.activeSources.size === 0) {
                 this.isPlaying = false;
@@ -293,7 +295,7 @@
           }
         };
       } catch (err) {
-        console.error('❌ Audio play error:', err);
+        console.error('âŒ Audio play error:', err);
       }
     }
 
@@ -367,17 +369,28 @@
       this.createModeSelector();
       this.createGhostCursor();
 
-      console.log('✨ TARA: Visual Co-Pilot initialized (Hetzner Cloud)');
-      console.log('🔗 WebSocket:', this.config.wsUrl);
+      console.log('âœ¨ TARA: Visual Co-Pilot initialized (Hetzner Cloud)');
+      console.log('ðŸ”— WebSocket:', this.config.wsUrl);
 
       // Auto-reconnect if navigated (preserving mode)
-      const savedSession = sessionStorage.getItem('tara_session_id');
-      const savedMode = sessionStorage.getItem('tara_mode');
-      const savedInteractionMode = sessionStorage.getItem('tara_interaction_mode');
+      // Use localStorage for cross-origin survival (e.g. daytona.io â†’ docs.daytona.io)
+      const savedSession = localStorage.getItem('tara_session_id') || sessionStorage.getItem('tara_session_id');
+      const savedMode = localStorage.getItem('tara_mode') || sessionStorage.getItem('tara_mode');
+      const savedInteractionMode = localStorage.getItem('tara_interaction_mode') || sessionStorage.getItem('tara_interaction_mode');
+
       if (savedSession && savedMode === 'visual-copilot') {
-        console.log('🔄 Restoring Visual Co-Pilot session:', savedSession);
+        // Check for a persisted mission to resume
+        const missionState = this._loadMissionState();
+        if (missionState && missionState.goal) {
+          console.log('ðŸ”„ STICKY AGENT: Resuming mission across navigation:', missionState.goal);
+          this.pendingMissionGoal = missionState.goal;
+        }
+        console.log('ðŸ”„ Restoring Visual Co-Pilot session:', savedSession);
         this.startVisualCopilot(savedSession, savedInteractionMode || 'interactive');
       }
+
+      // Register beforeunload handler for mission persistence
+      this._registerNavigationPersistence();
     }
 
     createShadowDOM() {
@@ -399,7 +412,7 @@
       this.container.id = 'tara-container';
       this.container.style.cssText = `
         position: fixed;
-        top: 24px;
+        top: 124px;
         right: 24px;
         pointer-events: auto;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -961,7 +974,7 @@
       if (!cachedUrl) {
         // External URL may fail due to cert - will be resolved when WS delivers the asset
         orbImg.onerror = () => {
-          console.warn('⚠️ Orb image failed to load (cert issue) - will load via WebSocket');
+          console.warn('âš ï¸ Orb image failed to load (cert issue) - will load via WebSocket');
           orbImg.style.opacity = '0.3'; // Dim until WS delivers
           orbImg.onerror = null;
         };
@@ -1013,9 +1026,9 @@
               type: 'speaker_mute',
               muted: this.isVoiceMuted
             }));
-            console.log(this.isVoiceMuted ? '🔇 Agent voice muted (TURBO MODE enabled)' : '🔊 Agent voice unmuted (WALKTHROUGH MODE)');
+            console.log(this.isVoiceMuted ? 'ðŸ”‡ Agent voice muted (TURBO MODE enabled)' : 'ðŸ”Š Agent voice unmuted (WALKTHROUGH MODE)');
           } else {
-            console.log(this.isVoiceMuted ? '🔇 Agent voice muted' : '🔊 Agent voice unmuted');
+            console.log(this.isVoiceMuted ? 'ðŸ”‡ Agent voice muted' : 'ðŸ”Š Agent voice unmuted');
           }
         });
       }
@@ -1243,6 +1256,9 @@
       const text = this.chatInput.value.trim();
       if (!text) return;
 
+      // Sticky Agent: Track current mission goal for navigation persistence
+      this._currentMissionGoal = text;
+
       this.appendChatMessage(text, 'user');
       this.chatInput.value = '';
       this.sendButton.classList.remove('has-text');
@@ -1255,6 +1271,28 @@
           text: text,
           mode: this.sessionMode
         }));
+      }
+    }
+
+    async simulateTyping(fullText) {
+      if (!fullText) return;
+
+      // Ensure last message is from AI and streaming, or create new
+      const lastMsg = this.chatMessages.lastElementChild;
+      if (!lastMsg || lastMsg.dataset.sender !== 'ai' || lastMsg.dataset.streaming !== 'true') {
+        this.appendChatMessage('', 'ai', true);
+      }
+
+      // TURBO MODE: Skip animation for instant feedback & to avoid overlapping updates
+      if (this.sessionMode === 'turbo') {
+        this.appendChatMessage(fullText + ' ', 'ai', true);
+        return;
+      }
+
+      const chunks = fullText.split(' ');
+      for (const chunk of chunks) {
+        this.appendChatMessage(chunk + ' ', 'ai', true);
+        await new Promise(r => setTimeout(r, 15 + Math.random() * 25));
       }
     }
 
@@ -1287,9 +1325,9 @@
     async startVisualCopilot(resumeSessionId = null, mode = 'interactive') {
       try {
         this.sessionMode = mode;
-        console.log('🎯 ============================================');
-        console.log(`🎯 ${resumeSessionId ? 'RESUMING' : 'STARTING'} VISUAL CO-PILOT MODE [${mode.toUpperCase()}]`);
-        console.log('🎯 ============================================');
+        console.log('ðŸŽ¯ ============================================');
+        console.log(`ðŸŽ¯ ${resumeSessionId ? 'RESUMING' : 'STARTING'} VISUAL CO-PILOT MODE [${mode.toUpperCase()}]`);
+        console.log('ðŸŽ¯ ============================================');
 
         // Configure based on mode
         if (mode === 'interactive') {
@@ -1299,7 +1337,7 @@
         } else {
           // Turbo mode: no audio, no mic
           this.isVoiceMuted = true;
-          console.log('⚡ Turbo Mode: Skipping audio & mic initialization');
+          console.log('âš¡ Turbo Mode: Skipping audio & mic initialization');
         }
 
         // 2. Connect WebSocket
@@ -1312,26 +1350,33 @@
           interaction_mode: this.sessionMode,
           timestamp: Date.now(),
           session_id: resumeSessionId,
-          current_url: window.location.pathname
+          current_url: window.location.pathname,
+          pending_goal: this.pendingMissionGoal || null  // Sticky Agent: resume mission after navigation
         };
 
-        // Persist for auto-resume across navigation
+        // Clear the pending goal after sending it
+        this.pendingMissionGoal = null;
+
+        // Persist for auto-resume across navigation (both storage types for maximum reliability)
         sessionStorage.setItem('tara_mode', 'visual-copilot');
         sessionStorage.setItem('tara_interaction_mode', this.sessionMode);
+        localStorage.setItem('tara_mode', 'visual-copilot');
+        localStorage.setItem('tara_interaction_mode', this.sessionMode);
 
-        console.log('📤 Sending session_config:', JSON.stringify(sessionConfig));
+        console.log('ðŸ“¤ Sending session_config:', JSON.stringify(sessionConfig));
         this.ws.send(JSON.stringify(sessionConfig));
 
         // 4. Send DOM Blueprint
-        console.log('🔍 Scanning page blueprint...');
+        console.log('ðŸ” Scanning page blueprint...');
         if (resumeSessionId) await new Promise(r => setTimeout(r, 1000));
         const blueprint = this.scanPageBlueprint(true);
         if (blueprint) {
           this.ws.send(JSON.stringify({
             type: 'dom_update',
-            elements: blueprint
+            elements: blueprint,
+            url: window.location.href
           }));
-          console.log('✅ dom_update sent successfully');
+          console.log('âœ… dom_update sent successfully');
         }
 
         this.isActive = true;
@@ -1350,8 +1395,70 @@
         }
 
       } catch (err) {
-        console.error('❌ Failed to start Visual Co-Pilot:', err);
+        console.error('âŒ Failed to start Visual Co-Pilot:', err);
       }
+    }
+
+    // â”€â”€ Sticky Agent: Mission Persistence â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    _registerNavigationPersistence() {
+      window.addEventListener('beforeunload', () => {
+        this._saveMissionState();
+      });
+    }
+
+    _saveMissionState() {
+      try {
+        // Only save if there's an active mission
+        if (!this.isActive) return;
+
+        const sessionId = sessionStorage.getItem('tara_session_id');
+        if (!sessionId) return;
+
+        // Grab the current goal from the chat bar or stored state
+        const currentGoal = this._currentMissionGoal || '';
+        if (!currentGoal) return;
+
+        const state = {
+          sessionId: sessionId,
+          goal: currentGoal,
+          url: window.location.href,
+          mode: this.sessionMode,
+          timestamp: Date.now()
+        };
+
+        localStorage.setItem(MISSION_STATE_KEY, JSON.stringify(state));
+        console.log('ðŸ’¾ Sticky Agent: Saved mission state for navigation survival');
+      } catch (e) {
+        /* localStorage not available or quota exceeded */
+      }
+    }
+
+    _loadMissionState() {
+      try {
+        const raw = localStorage.getItem(MISSION_STATE_KEY);
+        if (!raw) return null;
+
+        const state = JSON.parse(raw);
+
+        // Only resume if state is fresh (< 5 minutes old)
+        if (Date.now() - state.timestamp > 300000) {
+          console.log('ðŸ—‘ï¸ Sticky Agent: Saved state is stale (>5min), discarding');
+          localStorage.removeItem(MISSION_STATE_KEY);
+          return null;
+        }
+
+        return state;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    _clearMissionState() {
+      try {
+        localStorage.removeItem(MISSION_STATE_KEY);
+      } catch (e) { /* ignore */ }
+      this._currentMissionGoal = null;
     }
 
     async initializeAudioManager() {
@@ -1360,15 +1467,15 @@
         onStart: () => {
           this.agentIsSpeaking = true;
           this.setOrbState('talking');
-          console.log('🎙️ Tara is speaking...');
+          console.log('ðŸŽ™ï¸ Tara is speaking...');
         },
         onEnd: () => {
           this.agentIsSpeaking = false;
           this.setOrbState('listening');
-          console.log('🎙️ Tara finished speaking');
+          console.log('ðŸŽ™ï¸ Tara finished speaking');
         }
       });
-      console.log('🔊 Audio manager initialized');
+      console.log('ðŸ”Š Audio manager initialized');
     }
 
     async startMicrophoneAndCollection() {
@@ -1402,7 +1509,7 @@
         this.vad = new VoiceActivityDetector(
           () => {
             if (this.agentIsSpeaking) return; // Agent's own voice - ignore
-            console.log("🗣️ User started speaking [VAD]");
+            console.log("ðŸ—£ï¸ User started speaking [VAD]");
             this.onSpeechStart();
           },
           () => {
@@ -1460,22 +1567,22 @@
             this.ws.send(pcmData.buffer);
             this.chunksSent++;
             if (this.chunksSent % 100 === 1) {
-              console.log(`🎤 Audio streaming: ${this.chunksSent} chunks sent`);
+              console.log(`ðŸŽ¤ Audio streaming: ${this.chunksSent} chunks sent`);
             }
           }
         };
 
-        console.log('🎤 Microphone active - Listening for speech...');
+        console.log('ðŸŽ¤ Microphone active - Listening for speech...');
         this.setOrbState('listening');
 
       } catch (err) {
-        console.error('❌ Microphone access failed:', err);
+        console.error('âŒ Microphone access failed:', err);
         // alert('Please allow microphone access to use Visual Co-Pilot');
       }
     }
 
     async stopVisualCopilot() {
-      console.log('👋 Stopping Visual Co-Pilot...');
+      console.log('ðŸ‘‹ Stopping Visual Co-Pilot...');
 
       this.isActive = false;
       this.waitingForIntro = false;
@@ -1483,6 +1590,8 @@
       // Clear persistence
       sessionStorage.removeItem('tara_mode');
       sessionStorage.removeItem('tara_session_id');
+      localStorage.removeItem('tara_session_id');
+      this._clearMissionState();
       sessionStorage.removeItem('tara_interaction_mode');
 
       // Hide chat bar
@@ -1539,18 +1648,18 @@
       this.setOrbState('idle');
       this.updateTooltip('Click to start Visual Co-Pilot');
 
-      console.log('✅ Visual Co-Pilot stopped');
+      console.log('âœ… Visual Co-Pilot stopped');
     }
 
     connectWebSocket() {
       return new Promise((resolve, reject) => {
-        console.log('🔌 Connecting to WebSocket:', this.config.wsUrl);
+        console.log('ðŸ”Œ Connecting to WebSocket:', this.config.wsUrl);
 
         this.ws = new WebSocket(this.config.wsUrl);
         this.ws.binaryType = 'arraybuffer';
 
         this.ws.onopen = () => {
-          console.log('✅ WebSocket connected');
+          console.log('âœ… WebSocket connected');
 
           // Activate blue screen overlay - TARA is active
           if (this.screenOverlay) this.screenOverlay.classList.add('active');
@@ -1558,7 +1667,7 @@
           // Request orb SVG via WebSocket if not cached locally
           if (!getCachedOrbUrl()) {
             this.ws.send(JSON.stringify({ type: 'request_asset', asset: 'tara-orb.svg' }));
-            console.log('📦 Requesting orb SVG via WebSocket...');
+            console.log('ðŸ“¦ Requesting orb SVG via WebSocket...');
           }
 
           resolve();
@@ -1576,7 +1685,7 @@
             try {
               data = JSON.parse(e.data);
             } catch (err) {
-              console.error('❌ JSON Parse Error:', err, e.data);
+              console.error('âŒ JSON Parse Error:', err, e.data);
               return;
             }
 
@@ -1620,14 +1729,14 @@
         };
 
         this.ws.onclose = () => {
-          console.log('🔌 WebSocket closed');
+          console.log('ðŸ”Œ WebSocket closed');
           // Remove blue screen overlay - TARA is inactive
           if (this.screenOverlay) this.screenOverlay.classList.remove('active');
           if (this.isActive) this.stopVisualCopilot();
         };
 
         this.ws.onerror = (err) => {
-          console.error('❌ WebSocket error:', err);
+          console.error('âŒ WebSocket error:', err);
           reject(err);
         };
       });
@@ -1640,12 +1749,12 @@
       const audioUrl = this.config.wsUrl.replace('/ws', '/stream') +
         '?session_id=' + encodeURIComponent(sessionId);
 
-      console.log('🔊 Connecting audio WebSocket:', audioUrl);
+      console.log('ðŸ”Š Connecting audio WebSocket:', audioUrl);
       this.audioWs = new WebSocket(audioUrl);
       this.audioWs.binaryType = 'arraybuffer';
 
       this.audioWs.onopen = () => {
-        console.log('✅ Audio WebSocket connected');
+        console.log('âœ… Audio WebSocket connected');
         this.audioStreamActive = true;
       };
 
@@ -1657,7 +1766,7 @@
           try {
             const data = JSON.parse(e.data);
             if (data.type === 'audio_stream_ready') {
-              console.log('🔊 Audio stream ready:', data);
+              console.log('ðŸ”Š Audio stream ready:', data);
             } else if (data.type === 'audio_stream_end') {
               this.flushAudioPreBuffer();
             }
@@ -1668,12 +1777,12 @@
       };
 
       this.audioWs.onclose = () => {
-        console.log('🔊 Audio WebSocket closed');
+        console.log('ðŸ”Š Audio WebSocket closed');
         this.audioStreamActive = false;
       };
 
       this.audioWs.onerror = (err) => {
-        console.warn('⚠️ Audio WebSocket error (falling back to control WS):', err);
+        console.warn('âš ï¸ Audio WebSocket error (falling back to control WS):', err);
         this.audioStreamActive = false;
       };
     }
@@ -1812,14 +1921,14 @@
           this.vad.locked = shouldLock;
           if (shouldLock) {
             this.vad.reset();
-            console.log(`🔒 Mic LOCKED (State: ${displayState})`);
+            console.log(`ðŸ”’ Mic LOCKED (State: ${displayState})`);
           } else {
-            console.log(`🔓 Mic UNLOCKED (State: ${displayState})`);
+            console.log(`ðŸ”“ Mic UNLOCKED (State: ${displayState})`);
           }
         }
       }
 
-      console.log(`🎨 Orb state changed to: ${displayState}`);
+      console.log(`ðŸŽ¨ Orb state changed to: ${displayState}`);
     }
 
 
@@ -1836,31 +1945,32 @@
         const blueprint = this.scanPageBlueprint();
 
         if (blueprint) {
-          console.log('📸 ============================================');
-          console.log('📸 SPEECH DETECTED - DOM Changed, Sending Update');
-          console.log('📸 ============================================');
+          console.log('ðŸ“¸ ============================================');
+          console.log('ðŸ“¸ SPEECH DETECTED - DOM Changed, Sending Update');
+          console.log('ðŸ“¸ ============================================');
 
           const payload = JSON.stringify({
             type: 'dom_update',
-            elements: blueprint
+            elements: blueprint,
+            url: window.location.href
           });
 
           this.ws.send(payload);
 
-          console.log('📤 WebSocket message sent:', payload.substring(0, 200) + '...');
-          console.log('📤 Message size:', payload.length, 'bytes');
+          console.log('ðŸ“¤ WebSocket message sent:', payload.substring(0, 200) + '...');
+          console.log('ðŸ“¤ Message size:', payload.length, 'bytes');
         } else {
-          console.log('📸 Speech started - DOM Unchanged');
+          console.log('ðŸ“¸ Speech started - DOM Unchanged');
         }
       } else {
-        console.error('❌ WebSocket not connected or waiting for execution - cannot send DOM data');
+        console.error('âŒ WebSocket not connected or waiting for execution - cannot send DOM data');
       }
 
       this.setOrbState('listening');
     }
 
     onSpeechEnd() {
-      console.log('🤐 Speech ended - waiting for command...');
+      console.log('ðŸ¤ Speech ended - waiting for command...');
       this.waitingForExecution = true;
       this.domSnapshotPending = false;
 
@@ -1915,7 +2025,19 @@
 
       const allElements = collectAllElements(document.documentElement);
 
+      // SVG internal element types that are never useful for interaction
+      const SVG_NOISE_TAGS = new Set([
+        'svg', 'path', 'rect', 'circle', 'line', 'polyline', 'polygon',
+        'ellipse', 'use', 'defs', 'clippath', 'g', 'mask', 'symbol',
+        'lineargradient', 'radialgradient', 'stop', 'pattern', 'marker',
+        'filter', 'fegaussianblur', 'feoffset', 'feblend', 'fecolormatrix',
+        'text', 'tspan'  // SVG text elements (not HTML text)
+      ]);
+
       allElements.forEach(el => {
+        // Skip SVG internals immediately â€” they are icon decoration with zero interaction value
+        if (el instanceof SVGElement || SVG_NOISE_TAGS.has(el.tagName.toLowerCase())) return;
+
         // Skip hidden/disabled early
         if (el.disabled || el.type === 'hidden' || el.type === 'password') return;
 
@@ -1924,13 +2046,20 @@
         if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return;
 
         // Filter Logic:
-        // 1. Is it a known interactive element?
-        // 2. Is it a Leaf Node (no children) with visible text? (Captures div/span text)
-        // 3. Is it a pointer cursor?
-        const isInteractive = baseSelectorMatches(el) || style.cursor === 'pointer';
-        const isTextLeaf = el.children.length === 0 && el.textContent.trim().length > 0;
+        const isFocusable = el.matches('button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"]), [contenteditable="true"]');
+        const isClickableRole = el.matches('[role="button"], [role="link"], [role="menuitem"], [role="tab"], [role="checkbox"], [role="switch"]');
+        const hasPointer = style.cursor === 'pointer';
 
-        if (!isInteractive && !isTextLeaf) return;
+        const isInteractive = (isFocusable || isClickableRole || hasPointer) && !el.disabled;
+
+        // Context: Headers, Labels, Data Containers, Text Leafs
+        // CRITICAL: Include elements with meaningful text content (prices, stats, data values)
+        // This prevents "data blindness" where visible data on screen is ignored
+        const textContent = el.textContent ? el.textContent.trim() : '';
+        const isContext = el.matches('h1, h2, h3, h4, h5, h6, label, th, td, nav, legend, p, li, dt, dd, span[class*="value"], span[class*="price"], span[class*="stat"], span[class*="count"], span[class*="total"], [class*="metric"], [class*="amount"]') ||
+          (el.children.length === 0 && textContent.length > 2 && textContent.length < 200);
+
+        if (!isInteractive && !isContext) return;
 
         const rect = el.getBoundingClientRect();
         const isInViewport = rect.top < window.innerHeight + 100 &&
@@ -1941,13 +2070,13 @@
         if (!isInViewport) return;
         if (rect.width < 2 || rect.height < 2) return; // Ignore tiny specks
 
-        // --- Assign Persistent IDs ---
+        // --- Assign Persistent IDs (Stable Hash) ---
         let finalId = el.id || el.getAttribute('name');
         if (!finalId) {
           if (el.hasAttribute('data-tara-id')) {
             finalId = el.getAttribute('data-tara-id');
           } else {
-            finalId = `tara-${Math.random().toString(36).substr(2, 9)}`;
+            finalId = this.generateStableId(el);
             el.setAttribute('data-tara-id', finalId);
           }
         }
@@ -1959,13 +2088,27 @@
         let type = el.tagName.toLowerCase();
         if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(type)) type = 'header';
 
+        // Compact text cleaning
+        const rawText = this.extractText(el);
+        const cleanText = rawText.replace(/\s+/g, ' ').trim();
+
         const isNew = this.previousScanIds && !this.previousScanIds.has(finalId);
+
+        // State Detection
+        let state = "";
+        if (document.activeElement === el) state = "focused";
+        else if (el.matches('.active, .selected, [class*="active"], [class*="selected"]')) state = "active";
 
         elements.push({
           id: finalId,
-          text: this.extractText(el) + (isNew ? ' [NEW]' : ''),
+          text: cleanText,
           type: type,
-          isNew: isNew, // For sorting
+          interactive: isInteractive,
+          isNew: isNew,
+          state: state,
+          ariaSelected: el.getAttribute('aria-selected'),
+          ariaCurrent: el.getAttribute('aria-current'),
+          ariaExpanded: el.getAttribute('aria-expanded'),
           rect: {
             x: Math.round(rect.left + window.scrollX),
             y: Math.round(rect.top + window.scrollY),
@@ -1983,10 +2126,14 @@
       this.lastDOMHash = newHash;
       this.previousScanIds = currentScanIds;
 
-      // SORT: Prioritize [NEW] elements to ensure popups aren't sliced off
-      elements.sort((a, b) => (b.isNew === a.isNew) ? 0 : b.isNew ? 1 : -1);
+      // SORT: Prioritize [NEW] elements, then interactive, then context
+      elements.sort((a, b) => {
+        if (a.isNew !== b.isNew) return b.isNew ? 1 : -1;
+        if (a.interactive !== b.interactive) return b.interactive ? 1 : -1;
+        return 0;
+      });
 
-      return elements.slice(0, 300);
+      return elements.slice(0, 400);
     }
 
     forceScan() {
@@ -1994,18 +2141,48 @@
       this.lastDOMHash = null;
       if (!this.isActive) return;
 
-      console.log('🔄 Forced DOM Scan (Navigation/External Trigger)');
+      console.log('ðŸ”„ Forced DOM Scan (Navigation/External Trigger)');
       const blueprint = this.scanPageBlueprint();
 
       if (blueprint && this.ws && this.ws.readyState === WebSocket.OPEN) {
         const payload = JSON.stringify({
           type: 'dom_update',
-          elements: blueprint
+          elements: blueprint,
+          url: window.location.href
         });
 
         this.ws.send(payload);
-        console.log('📤 Forced DOM update sent');
+        console.log('ðŸ“¤ Forced DOM update sent');
       }
+    }
+
+    generateStableId(el) {
+      const tag = el.tagName.toLowerCase();
+      const text = (el.textContent || '').trim().substring(0, 30);
+      const role = el.getAttribute('role') || '';
+      const href = el.getAttribute('href') || '';
+      const type = el.getAttribute('type') || '';
+
+      // Compute DOM path (nth-child chain) for positional stability
+      let path = '';
+      let node = el;
+      while (node && node !== document.documentElement) {
+        const parent = node.parentElement;
+        if (parent) {
+          const siblings = Array.from(parent.children);
+          const index = siblings.indexOf(node);
+          path = `${index}.${path}`;
+        }
+        node = parent;
+      }
+
+      // DJB2 hash of the composite key
+      const key = `${tag}|${text}|${role}|${href}|${type}|${path}`;
+      let hash = 5381;
+      for (let i = 0; i < key.length; i++) {
+        hash = ((hash << 5) + hash) ^ key.charCodeAt(i);
+      }
+      return `t-${(hash >>> 0).toString(36)}`;
     }
 
     generateDOMHash(elements) {
@@ -2023,12 +2200,18 @@
     }
 
     extractText(el) {
-      // 1. Check direct attributes (Accessiblity first)
+      // 1. Check direct attributes (Accessibility first)
       let text = el.getAttribute('aria-label') || el.getAttribute('title') || el.getAttribute('placeholder') || '';
       if (text) return this.cleanText(text);
 
       // 2. Check inner text (if visible and meaningful)
-      text = el.innerText || el.value || '';
+      // For leaf nodes or data containers, get the direct text
+      if (el.children.length === 0 || el.matches('td, th, li, dt, dd, span, label, p')) {
+        text = el.innerText || el.textContent || el.value || '';
+      } else {
+        // For containers, prefer innerText (visible only) over textContent
+        text = el.innerText || el.value || '';
+      }
       const cleaned = this.cleanText(text);
       if (cleaned.length > 0) return cleaned;
 
@@ -2044,11 +2227,12 @@
 
     cleanText(str) {
       if (str === null || str === undefined) return '';
-      return String(str).replace(/\s+/g, ' ').trim().substring(0, 50);
+      // Allow longer text for data values (80 chars instead of 50)
+      return String(str).replace(/\s+/g, ' ').trim().substring(0, 80);
     }
 
     async handleBackendMessage(msg) {
-      console.log('📨 Backend message:', msg);
+      console.log('ðŸ“¨ Backend message:', msg);
 
       if (msg.type === 'asset_data') {
         // Orb SVG delivered via WebSocket - cache in localStorage and apply
@@ -2058,17 +2242,23 @@
             this.orbImg.src = dataUrl;
             this.orbImg.style.opacity = '1';
           }
-          console.log('📦 Orb SVG received via WebSocket and cached in localStorage');
+          console.log('ðŸ“¦ Orb SVG received via WebSocket and cached in localStorage');
         }
         return;
       }
       else if (msg.type === 'session_created') {
         sessionStorage.setItem('tara_session_id', msg.session_id);
-        console.log('💾 Session ID saved:', msg.session_id);
+        localStorage.setItem('tara_session_id', msg.session_id);
+        console.log('ðŸ’¾ Session ID saved:', msg.session_id);
         // Connect dedicated audio WebSocket (interactive mode only)
         if (this.sessionMode === 'interactive') {
           this.connectAudioWebSocket(msg.session_id);
         }
+      }
+      else if (msg.type === 'mission_started') {
+        // Sticky Agent: Track the mission goal (covers voice-initiated missions from STT)
+        this._currentMissionGoal = msg.goal;
+        console.log('ðŸŽ¯ Mission goal tracked for navigation persistence:', msg.goal);
       }
       else if (msg.type === 'ping') {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -2081,26 +2271,26 @@
         this.appendChatMessage(text, 'ai', true);
       }
       else if (msg.type === 'navigate') {
-        console.log(`📍 Navigating to: ${msg.url}`);
+        console.log(`ðŸ“ Navigating to: ${msg.url}`);
         this.setOrbState('executing');
 
         // Robust SPA Navigation for modern frameworks (React/Next.js/Vue)
         try {
           const targetUrl = new URL(msg.url, window.location.origin);
           if (targetUrl.origin === window.location.origin) {
-            console.log('🔄 SPA Nav: history.pushState + popstate dispatch');
+            console.log('ðŸ”„ SPA Nav: history.pushState + popstate dispatch');
             window.history.pushState({}, '', msg.url);
             window.dispatchEvent(new PopStateEvent('popstate'));
 
             // Fallback: If URL doesn't change after 100ms (router ignored popstate), force reload
             setTimeout(() => {
               if (window.location.href !== msg.url) {
-                console.warn('⚠️ Router blocked pushState - Forcing reload');
+                console.warn('âš ï¸ Router blocked pushState - Forcing reload');
                 window.location.href = msg.url;
               }
             }, 500);
           } else {
-            console.warn('⚠️ External navigation detected - Page WILL reload');
+            console.warn('âš ï¸ External navigation detected - Page WILL reload');
             window.location.href = msg.url;
           }
         } catch (e) {
@@ -2108,29 +2298,51 @@
           window.location.href = msg.url;
         }
       }
+      else if (msg.type === 'turbo_speech') {
+        // TURBO MODE: Simulate typing for text-only feedback
+        this.simulateTyping(msg.text);
+      }
       else if (msg.type === 'command') {
         const payload = msg.payload || msg;
         const type = payload.type;
         const target_id = payload.target_id || payload.id; // Support both naming styles
         const text = payload.text;
 
-        console.log(`🤖 Executing: ${type} on ${target_id}`);
+        console.log(`ðŸ¤– Executing: ${type} on ${target_id}`);
+
+        // Save pre-action state for structured outcome reporting
+        const preActionUrl = window.location.href;
+        const preActionHash = this.lastDOMHash;
+        const settleStart = Date.now();
 
         await this.executeCommand(type, target_id, text);
 
-        // --- MISSION AGENT HANDSHAKE ---
-        // 1. Capture FRESH DOM (wait for settling done in executeCommand)
-        const freshDOM = this.scanPageBlueprint(true); // Force scan
+        const settleTime = Date.now() - settleStart;
 
-        // 2. Send execution_complete WITH DOM
+        // --- MISSION AGENT HANDSHAKE (v4: Structured Outcome) ---
+        const freshDOM = this.scanPageBlueprint(true); // Force scan
+        const urlChanged = window.location.href !== preActionUrl;
+        const newElements = freshDOM ? freshDOM.filter(el => el.isNew).length : 0;
+        const domChanged = freshDOM !== null || this.lastDOMHash !== preActionHash;
+
         this.ws.send(JSON.stringify({
           type: 'execution_complete',
           status: 'success',
+          outcome: {
+            dom_changed: domChanged,
+            url_changed: urlChanged,
+            new_elements_count: newElements,
+            current_url: window.location.href,
+            has_modal: this.detectModal(),
+            settle_time_ms: settleTime,
+            dom_hash: this.lastDOMHash,
+            scroll_y: Math.round(window.scrollY)
+          },
           dom_context: freshDOM,
           timestamp: Date.now()
         }));
 
-        console.log('✅ Execution complete sent with DOM context - Triggering next step');
+        console.log(`âœ… Execution complete (${settleTime}ms settle, ${newElements} new, url_changed=${urlChanged})`);
 
         this.waitingForExecution = false;
         this.setOrbState('listening');
@@ -2159,13 +2371,13 @@
       else if (msg.type === 'speaker_mute_confirmed') {
         // Backend confirmed the mute state change
         const mode = msg.mode === 'turbo' ? 'TURBO MODE (fast execution)' : 'WALKTHROUGH MODE (synchronized)';
-        console.log(`🎛️ Mode confirmed: ${mode}`);
+        console.log(`ðŸŽ›ï¸ Mode confirmed: ${mode}`);
 
         // Optional: Show a brief notification to user
         const statusEl = this.pillContainer?.querySelector('.tara-pill-status');
         if (statusEl) {
           const originalText = statusEl.textContent;
-          statusEl.textContent = msg.muted ? '🚀 Turbo Mode' : '🔊 Walkthrough';
+          statusEl.textContent = msg.muted ? 'ðŸš€ Turbo Mode' : 'ðŸ”Š Walkthrough';
           setTimeout(() => {
             // Restore original status after 2 seconds
             if (statusEl.textContent.includes('Turbo') || statusEl.textContent.includes('Walkthrough')) {
@@ -2182,7 +2394,7 @@
 
       try {
         if (type === 'wait') {
-          console.log("⏳ TARA Waiting (as requested)...");
+          console.log("â³ TARA Waiting (as requested)...");
           await new Promise(r => setTimeout(r, 2000));
         }
         else if (type === 'click') {
@@ -2226,10 +2438,27 @@
           const el = this.findElement(targetId, text);
           if (el) {
             el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            this.highlightElement(el); // Brief visual confirm
+          } else {
+            // Fallback: If target not found, scroll by half a screen
+            this.robustScroll(1, window.innerHeight * 0.5);
           }
         } else if (type === 'scroll') {
-          // Blind scroll for exploration
-          window.scrollBy({ top: window.innerHeight * 0.7, behavior: 'smooth' });
+          // General scroll (up/down)
+          const direction = (text && text.includes('up')) ? -1 : 1;
+          this.robustScroll(direction);
+
+          // VISUAL FEEDBACK: Brief flash on side of screen to show action happened
+          const flash = document.createElement('div');
+          flash.style.cssText = `
+            position: fixed; top: 0; ${direction > 0 ? 'bottom: 0' : 'top: 0'}; 
+            right: 0; width: 6px; background: rgba(59, 130, 246, 0.5); z-index: 10000;
+            pointer-events: none; transition: opacity 0.5s; opacity: 1;
+          `;
+          document.body.appendChild(flash);
+          setTimeout(() => { flash.style.opacity = '0'; setTimeout(() => flash.remove(), 500); }, 200);
+
+
         } else if (type === 'highlight') {
           this.executeHighlight(targetId, text);
         } else if (type === 'spotlight') {
@@ -2239,12 +2468,102 @@
           this.clearHighlights();
         }
 
-        // --- WAIT FOR DOM SETTLE (Crucial) ---
-        // --- WAIT FOR DOM SETTLE (Crucial) ---
-        await new Promise(r => setTimeout(r, 2000)); // Increased to 2s for complex React renders
+        // --- ADAPTIVE DOM SETTLE (MutationObserver) ---
+        // Scroll actions need more time for effective layout shift
+        const settleTime = (type === 'scroll' || type === 'scroll_to') ? 800 : 300;
+        await this.waitForDOMSettle(3000, settleTime);
 
       } catch (err) {
         console.warn("Execution partial error:", err);
+      }
+    }
+
+    detectModal() {
+      // Quick check for open dialog/modal elements
+      const dialogs = document.querySelectorAll('dialog[open], [role="dialog"], [role="alertdialog"], .modal.show, .modal.active, [aria-modal="true"]');
+      return dialogs.length > 0;
+    }
+
+    async waitForDOMSettle(maxWait = 3000, stableFor = 300) {
+      return new Promise((resolve) => {
+        let lastMutationTime = Date.now();
+        let settled = false;
+
+        const observer = new MutationObserver(() => {
+          lastMutationTime = Date.now();
+        });
+
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          characterData: true
+        });
+
+        const checkInterval = setInterval(() => {
+          const elapsed = Date.now() - lastMutationTime;
+          if (elapsed >= stableFor) {
+            settled = true;
+            cleanup();
+          }
+        }, 50);
+
+        const timeout = setTimeout(() => {
+          if (!settled) cleanup();
+        }, maxWait);
+
+        function cleanup() {
+          observer.disconnect();
+          clearInterval(checkInterval);
+          clearTimeout(timeout);
+          resolve();
+        }
+      });
+    }
+
+    robustScroll(direction = 1, amount = null) {
+      if (!amount) amount = window.innerHeight * 0.7;
+      const top = amount * direction;
+
+      console.log(`ðŸ“œ Robust Scroll: direction=${direction}, amount=${amount}`);
+
+      // 1. Try scrolling the window (standard)
+      window.scrollBy({ top, behavior: 'smooth' });
+
+      // 2. Identify and scroll common app containers (Groq/Next.js/React standard)
+      const containerSelectors = [
+        'main',
+        'section',
+        '#content',
+        '.content',
+        '[role="main"]',
+        '.overflow-y-auto',
+        '.overflow-auto',
+        '.main-content'
+      ];
+
+      let containerScrolled = false;
+      containerSelectors.forEach(selector => {
+        const containers = document.querySelectorAll(selector);
+        containers.forEach(c => {
+          if (c.scrollHeight > c.clientHeight) {
+            c.scrollBy({ top, behavior: 'smooth' });
+            containerScrolled = true;
+          }
+        });
+      });
+
+      // 3. Fallback: Search all visible elements for the TRUE scroller if standard ones failed
+      if (!containerScrolled) {
+        const all = document.querySelectorAll('div, aside, article');
+        for (const el of all) {
+          const style = window.getComputedStyle(el);
+          if ((style.overflowY === 'auto' || style.overflowY === 'scroll') && el.scrollHeight > el.clientHeight) {
+            el.scrollBy({ top, behavior: 'smooth' });
+            console.log("ðŸ“œ Found ad-hoc scroller:", el);
+            break;
+          }
+        }
       }
     }
 
@@ -2267,7 +2586,7 @@
 
       // Strategy 4: Fallback - Text Content Search (if provided)
       if (fallbackText) {
-        console.warn(`⚠️ Target ID "${targetId}" not found. Trying provided fallback text: "${fallbackText}"`);
+        console.warn(`âš ï¸ Target ID "${targetId}" not found. Trying provided fallback text: "${fallbackText}"`);
         const allInteractive = document.querySelectorAll('button, a, [role="button"], h1, h2, h3, h4, span, div'); // Broaden search
         for (const el of allInteractive) {
           // Exact-ish match preferable, but loose includes is safer for now
@@ -2275,18 +2594,18 @@
           const targetText = fallbackText.toLowerCase().trim();
 
           if (elText === targetText || (targetText.length > 5 && elText.includes(targetText))) {
-            console.log(`✅ Text fallback found element by content:`, el);
+            console.log(`âœ… Text fallback found element by content:`, el);
             return el;
           }
         }
       }
 
       // Strategy 5: Old fallback (searching for ID string in text - rarely works but kept)
-      console.warn(`⚠️ Target ID "${targetId}" not found by selector. Trying text fallback...`);
+      console.warn(`âš ï¸ Target ID "${targetId}" not found by selector. Trying text fallback...`);
       const allInteractive = document.querySelectorAll('button, a, [role="button"]');
       for (const el of allInteractive) {
         if (this.extractText(el).toLowerCase().includes(targetId.toLowerCase())) {
-          console.log(`✅ Text fallback found element:`, el);
+          console.log(`âœ… Text fallback found element:`, el);
           return el;
         }
       }
@@ -2298,7 +2617,7 @@
       const element = this.findElement(targetId);
 
       if (!element) {
-        console.warn(`⚠️ Element NOT found: ${targetId}`);
+        console.warn(`âš ï¸ Element NOT found: ${targetId}`);
         return;
       }
 
@@ -2311,16 +2630,16 @@
 
       setTimeout(() => this.ghostCursor.hide(), 500);
 
-      console.log(`👆 Clicked: ${targetId}`);
+      console.log(`ðŸ‘† Clicked: ${targetId}`);
     }
 
     executeScroll(targetId) {
       const element = this.findElement(targetId);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        console.log(`📜 Scrolled to: ${targetId}`);
+        console.log(`ðŸ“œ Scrolled to: ${targetId}`);
       } else {
-        console.warn(`⚠️ Scroll target not found: ${targetId}`);
+        console.warn(`âš ï¸ Scroll target not found: ${targetId}`);
       }
     }
 
@@ -2343,7 +2662,7 @@
 
       setTimeout(() => highlight.remove(), 3000);
 
-      console.log(`✨ Highlighted: ${targetId}`);
+      console.log(`âœ¨ Highlighted: ${targetId}`);
     }
 
     clearHighlights() {

@@ -134,20 +134,20 @@ function SideIconButton({
                 className={`
                     w-[60px] h-[60px] rounded-2xl border-none flex items-center justify-center cursor-pointer
                     transition-all duration-300 ease-out outline-none
-                    ${active 
-                        ? (isDark 
-                            ? 'bg-white text-black shadow-[0_4px_12px_rgba(255,255,255,0.1)]' 
+                    ${active
+                        ? (isDark
+                            ? 'bg-white text-black shadow-[0_4px_12px_rgba(255,255,255,0.1)]'
                             : 'bg-black text-white shadow-[0_4px_12px_rgba(0,0,0,0.2)]'
-                          )
-                        : isHovered 
-                            ? (isDark 
-                                ? 'bg-[#1a1a1a] text-white scale-105' 
+                        )
+                        : isHovered
+                            ? (isDark
+                                ? 'bg-[#1a1a1a] text-white scale-105'
                                 : 'bg-gray-100 text-gray-900 scale-105'
-                              )
-                            : (isDark 
-                                ? 'bg-transparent text-gray-400' 
+                            )
+                            : (isDark
+                                ? 'bg-transparent text-gray-400'
                                 : 'bg-transparent text-gray-500'
-                              )
+                            )
                     }
                     ${isHovered && !active ? 'scale-105' : 'scale-100'}
                 `}
@@ -155,7 +155,7 @@ function SideIconButton({
                     transform: isHovered ? 'scale(1.05)' : 'scale(1)',
                 }}
             >
-                <div 
+                <div
                     className="transition-transform duration-300 ease-out"
                     style={{
                         transform: isHovered ? 'scale(1.1)' : 'scale(1)'
