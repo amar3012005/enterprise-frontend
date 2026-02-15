@@ -115,10 +115,10 @@ const TaraOverlay = forwardRef<TaraOverlayRef, TaraOverlayProps>(
         return;
       }
 
-      // Load tara-widget.js script
+      // Load tara-widget.js script from production server
       const script = document.createElement('script');
-      // Add timestamp to force reload and bypass cache (v4 - Spotlight)
-      script.src = `/tara-widget.js?v=${Date.now()}_v4`;
+      // Always fetch latest from production server with cache busting
+      script.src = `https://davinciai.eu/tara-widget.js?v=${Date.now()}`;
       script.async = true;
 
       script.onload = () => {
