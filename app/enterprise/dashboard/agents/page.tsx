@@ -97,20 +97,7 @@ export default function EnterpriseAgentsDashboard() {
                         <RefreshCcw size={14} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
                         Refresh
                     </button>
-                    <button style={{
-                        display: 'flex', alignItems: 'center', gap: '8px',
-                        padding: '10px 20px',
-                        backgroundColor: isDark ? '#fff' : '#000',
-                        border: 'none',
-                        borderRadius: '12px',
-                        fontSize: '13px',
-                        fontWeight: 600,
-                        color: isDark ? '#000' : '#fff',
-                        cursor: 'pointer'
-                    }}>
-                        <Plus size={16} />
-                        New Agent
-                    </button>
+
                 </div>
             </div>
 
