@@ -369,8 +369,49 @@
       this.createModeSelector();
       this.createGhostCursor();
 
-      console.log('âœ¨ TARA: Visual Co-Pilot initialized (Hetzner Cloud)');
-      console.log('ðŸ”— WebSocket:', this.config.wsUrl);
+      console.log('✨ TARA: Visual Co-Pilot initialized (Hetzner Cloud)');
+      console.log('🔗 WebSocket:', this.config.wsUrl);
+
+      // ============================================
+      // CROSS-FRAME COMMUNICATION BRIDGE
+      // ============================================
+      this.isParent = window.self === window.top;
+      this.childFrame = null;
+
+      if (this.isParent) {
+        // We are the shell/parent. Listen for announcements from children.
+        window.addEventListener('message', (e) => {
+          // Allow trusted origins + localhost
+          const ALLOWED_ORIGINS = [
+            'https://davinciai.eu',
+            'https://enterprise.davinciai.eu',
+            'https://prometheus.davinciai.eu',
+            'http://localhost:3000',
+            'http://localhost:3001'
+          ];
+          if (!ALLOWED_ORIGINS.includes(e.origin)) return;
+
+          if (e.data?.type === 'TARA_CHILD_READY') {
+            console.log('[TARA-Parent] Child frame detected:', e.origin);
+            // We found our active content frame
+            const frames = document.getElementsByTagName('iframe');
+            for (let i = 0; i < frames.length; i++) {
+              // Security strictness: we can't always check contentWindow directly for cross-origin
+              // But since we received a message, we know one of them is valid.
+              // For now, we assume the main portal iframe is the target.
+              this.childFrame = frames[0];
+            }
+          }
+        });
+      } else {
+        // We are a child (inside iframe). Announce ourselves to parent.
+        // If parent exists, we disable our local widget UI to avoid duplicates.
+        try {
+          window.top.postMessage({ type: 'TARA_CHILD_READY', url: window.location.href }, '*');
+        } catch (e) {
+          // Access denied or standalone mode
+        }
+      }
 
       // Auto-reconnect if navigated (preserving mode)
       // Use localStorage for cross-origin survival (e.g. daytona.io â†’ docs.daytona.io)

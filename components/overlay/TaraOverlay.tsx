@@ -109,6 +109,19 @@ const TaraOverlay = forwardRef<TaraOverlayRef, TaraOverlayProps>(
       if (scriptLoaded.current) return;
       scriptLoaded.current = true;
 
+      // Check if running inside an iframe (Davinci Portal)
+      // If so, we let the parent shell handle the TARA widget to avoid duplicates.
+      try {
+        if (window.self !== window.top) {
+          console.log('🛡️ TARA: Running in iframe, deferring to parent shell widget.');
+          return;
+        }
+      } catch (e) {
+        // Access denied (cross-origin), so we are definitely in an iframe
+        console.log('🛡️ TARA: Cross-origin iframe detected, deferring to parent shell widget.');
+        return;
+      }
+
       // Check if TaraWidget is already loaded
       if (typeof window !== 'undefined' && window.TaraWidget) {
         initializeWidget();
