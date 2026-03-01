@@ -6,6 +6,9 @@ import type { NextConfig } from "next";
 const API_URL = process.env.API_URL || "https://api.enterprise.davinciai.eu:8450";
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    root: __dirname,
+  },
   // "standalone" is for Docker self-hosting only.
   // Vercel uses its own build pipeline — do NOT set output here.
   ...(process.env.DOCKER_BUILD === "1" ? { output: "standalone" as const } : {}),

@@ -22,15 +22,15 @@ const Orb = dynamic<any>(() => import("@/components/ui/orb").then(mod => mod.Orb
     )
 });
 
-function MetricPill({ icon, label, value, color }: { icon: any, label: string, value: string, color: string }) {
+function MetricPill({ icon, label, value, color, compact = false }: { icon: any, label: string, value: string, color: string, compact?: boolean }) {
     const { theme } = useTheme();
     const isDark = theme === 'dark';
 
     return (
         <div style={{
             backgroundColor: isDark ? '#111' : '#f5f5f5',
-            padding: '8px 12px',
-            borderRadius: '12px',
+            padding: compact ? '6px 10px' : '8px 12px',
+            borderRadius: compact ? '10px' : '12px',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
@@ -41,14 +41,22 @@ function MetricPill({ icon, label, value, color }: { icon: any, label: string, v
         }}>
             <div style={{ color, display: 'flex', alignItems: 'center' }}>{icon}</div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ color: '#666', fontSize: '8px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px' }}>{label}</span>
-                <span style={{ color: isDark ? '#fff' : '#1a1a1a', fontSize: '12px', fontWeight: 'bold' }}>{value}</span>
+                <span style={{ color: '#666', fontSize: compact ? '7px' : '8px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px' }}>{label}</span>
+                <span style={{ color: isDark ? '#fff' : '#1a1a1a', fontSize: compact ? '11px' : '12px', fontWeight: 'bold' }}>{value}</span>
             </div>
         </div>
     );
 }
 
-export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: string; fallbackAgent?: any }) {
+export default function AIAssistantPanel({
+    agentId,
+    fallbackAgent,
+    layoutMode = 'panel'
+}: {
+    agentId: string;
+    fallbackAgent?: any;
+    layoutMode?: 'panel' | 'phone';
+}) {
     const { theme } = useTheme();
     const isDark = theme === 'dark';
     const [isMounted, setIsMounted] = useState(false);
@@ -80,6 +88,7 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
     const audioStreamActiveRef = useRef(false); // Track if dedicated audio stream is active
     const sessionIdRef = useRef<string | null>(null);
     const audioWorkletRef = useRef<ScriptProcessorNode | null>(null);
+    const binaryQueueRef = useRef<ArrayBuffer[]>([]);
     const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | null>(null);
     const [agentIsSpeaking, setAgentIsSpeaking] = useState(false);
     const lastPlaybackTimeRef = useRef(0);
@@ -93,6 +102,7 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
 
     const [agentData, setAgentData] = useState<any>(null);
     const [isLoadingAgent, setIsLoadingAgent] = useState(true);
+    const isPhoneLayout = layoutMode === 'phone';
 
     // Turn Timing Refs (matching reference client.html)
     const turnStartTimeRef = useRef<number | null>(null);
@@ -308,10 +318,23 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
 
         const customWsUrl = agentData.websocket_url;
         const cartesiaId = agentData.cartesia_agent_id;
+        const selectedVoice = agentData.voice || agentData.voice_name || agentData.voice_id;
         const isCustomProtocol = !!customWsUrl && customWsUrl !== "not_set";
+        const normalizedCustomWsUrl = isCustomProtocol
+            ? String(customWsUrl).replace(/^http:\/\//i, 'ws://').replace(/^https:\/\//i, 'wss://')
+            : customWsUrl;
+        let forceUnifiedCustomAudio = false;
+        if (isCustomProtocol && normalizedCustomWsUrl) {
+            try {
+                const host = new URL(normalizedCustomWsUrl).hostname.toLowerCase();
+                forceUnifiedCustomAudio = host === 'tara.davinciai.eu' || host === 'localhost' || host === '127.0.0.1';
+            } catch {
+                forceUnifiedCustomAudio = false;
+            }
+        }
 
         const wsUrlTemp = isCustomProtocol
-            ? (customWsUrl?.endsWith('/') ? `${customWsUrl}ws` : `${customWsUrl}/ws`)
+            ? (normalizedCustomWsUrl?.endsWith('/') ? `${normalizedCustomWsUrl}ws` : `${normalizedCustomWsUrl}/ws`)
             : `wss://api.cartesia.ai/agents/stream/${cartesiaId}?api_key=${VOICE_API_KEY}&cartesia-version=2025-04-16`;
 
         const phone = typeof window !== 'undefined' ? (localStorage.getItem('access_token') || "dashboard-user") : "dashboard-user";
@@ -332,23 +355,43 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
             const tenantId = storedTenant ? JSON.parse(storedTenant).tenant_id : "unknown";
 
             if (isCustomProtocol) {
-                // Enterprise Orchestration Handshake (aligned with reference client.html)
-                ws.send(JSON.stringify({
-                    type: 'start_session',
-                    mode: 'conversation',
-                    stt_mode: 'audio',
-                    tts_mode: 'audio',
-                    language: agentData.language_primary || 'en',
-                    user_id: phone,
-                    agent_id: agentId,
-                    tenant_id: tenantId,
-                    session_id: sessionId,
-                    token: typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
-                }));
+                if (forceUnifiedCustomAudio) {
+                    ws.send(JSON.stringify({
+                        type: 'session_config',
+                        config: {
+                            mode: 'voice',
+                            tenant_id: tenantId,
+                            user_id: phone,
+                            stt_mode: 'audio',
+                            tts_mode: 'audio',
+                            language: agentData.language_primary || 'en',
+                            voice: selectedVoice,
+                            voice_name: selectedVoice,
+                            tts_voice: selectedVoice
+                        }
+                    }));
+                    ws.send(JSON.stringify({ type: 'start_session', timestamp: Date.now() / 1000 }));
+                } else {
+                    // Enterprise Orchestration Handshake (split control/audio sockets)
+                    ws.send(JSON.stringify({
+                        type: 'start_session',
+                        mode: 'conversation',
+                        stt_mode: 'audio',
+                        tts_mode: 'audio',
+                        language: agentData.language_primary || 'en',
+                        user_id: phone,
+                        agent_id: agentId,
+                        tenant_id: tenantId,
+                        session_id: sessionId,
+                        voice: selectedVoice,
+                        voice_name: selectedVoice,
+                        tts_voice: selectedVoice,
+                        token: typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+                    }));
+                    // Connect dedicated audio WebSocket for enterprise agents
+                    connectAudioWebSocket(sessionId, wsUrlTemp);
+                }
                 console.log(`Handshake sent for agent: ${agentId}`);
-
-                // Connect dedicated audio WebSocket for enterprise agents
-                connectAudioWebSocket(sessionId, wsUrlTemp);
             }
             else {
                 ws.send(JSON.stringify({
@@ -402,6 +445,10 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
 
         ws.onmessage = async (e) => {
             if (e.data instanceof ArrayBuffer) {
+                if (isCustomProtocol && forceUnifiedCustomAudio) {
+                    binaryQueueRef.current.push(e.data);
+                    return;
+                }
                 // Only handle binary audio on control WS if dedicated audio stream is NOT active
                 if (isCustomProtocol && !audioStreamActiveRef.current) {
                     if (!playbackStartTimeRef.current) playbackStartTimeRef.current = Date.now();
@@ -471,18 +518,45 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
                         }
                     }
                 } else if (data.type === 'audio_chunk') {
+                    if (data.sample_rate) {
+                        audioConfigRef.current.sampleRate = data.sample_rate;
+                    }
+                    if (data.format || data.audio_format) {
+                        audioConfigRef.current.format = data.format || data.audio_format;
+                    }
+
                     if (!playbackStartTimeRef.current) playbackStartTimeRef.current = Date.now();
                     setAgentIsSpeaking(true);
                     audioStreamCompleteRef.current = false;
-                    const audioB64 = data.data || data.audio;
-                    if (audioB64) {
-                        // Record TTFC on first audio chunk (matching reference client.html line 1261)
+
+                    // client.html-compatible mode for localhost/tara:
+                    // pair JSON metadata with queued binary chunks from the same /ws.
+                    if (forceUnifiedCustomAudio && data.binary_sent && binaryQueueRef.current.length > 0) {
                         if (turnStartTimeRef.current && !hasTtfcForTurnRef.current) {
                             const ttfc = Math.round(performance.now() - turnStartTimeRef.current);
                             setMetrics(prev => ({ ...prev, ttfc }));
                             hasTtfcForTurnRef.current = true;
                         }
-                        playAudioChunk(audioB64);
+                        const binChunk = binaryQueueRef.current.shift();
+                        if (binChunk) {
+                            playAudioChunk(binChunk, audioConfigRef.current.format === 'pcm_s16le');
+                        }
+                    } else {
+                        const audioB64 = data.data || data.audio;
+                        if (audioB64) {
+                            // Record TTFC on first audio chunk
+                            if (turnStartTimeRef.current && !hasTtfcForTurnRef.current) {
+                                const ttfc = Math.round(performance.now() - turnStartTimeRef.current);
+                                setMetrics(prev => ({ ...prev, ttfc }));
+                                hasTtfcForTurnRef.current = true;
+                            }
+                            playAudioChunk(audioB64);
+                        }
+                    }
+
+                    if (data.is_final) {
+                        audioStreamCompleteRef.current = true;
+                        checkPlaybackComplete();
                     }
                 } else if (data.type === 'audio_complete' || data.is_final) {
                     audioStreamCompleteRef.current = true;
@@ -633,6 +707,7 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
             audioWsRef.current = null;
             audioStreamActiveRef.current = false;
         }
+        binaryQueueRef.current = [];
 
         // Sync with Backend
         if (finalDuration > 0) {
@@ -689,9 +764,9 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
         return (
             <div style={{
                 backgroundColor: isDark ? '#000' : '#fff',
-                borderRadius: '32px',
-                padding: '48px 32px',
-                height: '600px',
+                borderRadius: isPhoneLayout ? '36px' : '32px',
+                padding: isPhoneLayout ? 'clamp(14px, 3vw, 24px)' : '48px 32px',
+                height: isPhoneLayout ? 'min(88vh, 820px)' : '600px',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -702,7 +777,7 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
                 color: isDark ? '#fff' : '#1a1a1a',
                 transition: 'all 0.3s ease'
             }}>
-                <div style={{ width: '200px', height: '200px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: isPhoneLayout ? '170px' : '200px', height: isPhoneLayout ? '170px' : '200px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {!isMounted || isLoadingAgent ? "Loading..." : "Error loading agent"}
                 </div>
             </div>
@@ -712,9 +787,9 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
     return (
         <div style={{
             backgroundColor: isDark ? '#000' : '#fff',
-            borderRadius: '32px',
-            padding: '48px 32px',
-            height: '600px',
+            borderRadius: isPhoneLayout ? '36px' : '32px',
+            padding: isPhoneLayout ? 'clamp(14px, 3vw, 24px)' : '48px 32px',
+            height: isPhoneLayout ? 'min(88vh, 820px)' : '600px',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -727,10 +802,10 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
         }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
                 <div style={{
-                    width: '200px',
-                    height: '200px',
+                    width: isPhoneLayout ? '170px' : '200px',
+                    height: isPhoneLayout ? '170px' : '200px',
                     position: 'relative',
-                    marginBottom: '48px',
+                    marginBottom: isPhoneLayout ? '28px' : '48px',
                     borderRadius: '50%',
                     backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
                     display: 'flex',
@@ -746,10 +821,10 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
                     />
                 </div>
 
-                <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-                    <div style={{ marginBottom: '12px' }}>
+                <div style={{ textAlign: 'center', marginBottom: isPhoneLayout ? '20px' : '32px' }}>
+                    <div style={{ marginBottom: isPhoneLayout ? '8px' : '12px' }}>
                         <div style={{
-                            padding: '6px 16px',
+                            padding: isPhoneLayout ? '5px 12px' : '6px 16px',
                             backgroundColor: isDark ? '#111' : '#f5f5f5',
                             border: isDark ? '1px solid #333' : '1px solid #eee',
                             display: 'inline-block',
@@ -758,12 +833,12 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
                         }}>
                             <p style={{ fontSize: '9px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.25em', margin: 0 }}>DAVINCI</p>
                         </div>
-                        <h3 style={{ fontSize: '28px', fontWeight: 700, color: isDark ? '#fff' : '#1a1a1a', textTransform: 'uppercase', letterSpacing: '0.15em', margin: '0 0 16px 0' }}>{agentData?.agent_name || "TARA"}</h3>
+                        <h3 style={{ fontSize: isPhoneLayout ? '22px' : '28px', fontWeight: 700, color: isDark ? '#fff' : '#1a1a1a', textTransform: 'uppercase', letterSpacing: '0.15em', margin: isPhoneLayout ? '0 0 10px 0' : '0 0 16px 0' }}>{agentData?.agent_name || "TARA"}</h3>
                     </div>
 
                     {/* Always show timer */}
                     <p style={{
-                        fontSize: '13px',
+                        fontSize: isPhoneLayout ? '12px' : '13px',
                         color: loginMode === 'demo' && callDuration >= DEMO_WARNING_TIME ? '#ef4444' : '#666',
                         fontFamily: 'monospace',
                         letterSpacing: '0.1em',
@@ -786,26 +861,26 @@ export default function AIAssistantPanel({ agentId, fallbackAgent }: { agentId: 
                 <div style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: '8px',
+                    gap: isPhoneLayout ? '6px' : '8px',
                     width: '100%',
-                    maxWidth: '320px',
-                    marginTop: '32px'
+                    maxWidth: isPhoneLayout ? '300px' : '320px',
+                    marginTop: isPhoneLayout ? '20px' : '32px'
                 }}>
-                    <MetricPill icon={<Zap size={10} />} label="TTFT" value={`${metrics.ttft}ms`} color="#22c55e" />
-                    <MetricPill icon={<Activity size={10} />} label="TTFC" value={`${metrics.ttfc}ms`} color="#3b82f6" />
-                    <MetricPill icon={<MessageSquare size={10} />} label="Ratio" value={metrics.ratio.toFixed(2)} color="#f59e0b" />
+                    <MetricPill icon={<Zap size={isPhoneLayout ? 9 : 10} />} label="TTFT" value={`${metrics.ttft}ms`} color="#22c55e" compact={isPhoneLayout} />
+                    <MetricPill icon={<Activity size={isPhoneLayout ? 9 : 10} />} label="TTFC" value={`${metrics.ttfc}ms`} color="#3b82f6" compact={isPhoneLayout} />
+                    <MetricPill icon={<MessageSquare size={isPhoneLayout ? 9 : 10} />} label="Ratio" value={metrics.ratio.toFixed(2)} color="#f59e0b" compact={isPhoneLayout} />
                 </div>
             </div>
 
             <div style={{ display: 'flex', gap: '12px', marginTop: 'auto', width: '100%', justifyContent: 'center' }}>
                 {!isCallActive ? (
-                    <button onClick={startCall} style={{ padding: '14px 48px', backgroundColor: isDark ? '#fff' : '#000', color: isDark ? '#000' : '#fff', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.2s' }}>
-                        <Play size={14} fill="currentColor" />
+                    <button onClick={startCall} style={{ padding: isPhoneLayout ? '12px 24px' : '14px 48px', width: isPhoneLayout ? '100%' : 'auto', maxWidth: isPhoneLayout ? '300px' : undefined, backgroundColor: isDark ? '#fff' : '#000', color: isDark ? '#000' : '#fff', fontSize: isPhoneLayout ? '10px' : '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', transition: 'all 0.2s' }}>
+                        <Play size={isPhoneLayout ? 12 : 14} fill="currentColor" />
                         Start Call
                     </button>
                 ) : (
-                    <button onClick={endCall} style={{ padding: '14px 40px', backgroundColor: '#ef4444', color: '#fff', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.2s' }}>
-                        <PhoneOff size={13} />
+                    <button onClick={endCall} style={{ padding: isPhoneLayout ? '12px 24px' : '14px 40px', width: isPhoneLayout ? '100%' : 'auto', maxWidth: isPhoneLayout ? '300px' : undefined, backgroundColor: '#ef4444', color: '#fff', fontSize: isPhoneLayout ? '10px' : '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', transition: 'all 0.2s' }}>
+                        <PhoneOff size={isPhoneLayout ? 12 : 13} />
                         End Call
                     </button>
                 )}

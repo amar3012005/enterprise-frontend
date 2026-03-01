@@ -1,6 +1,6 @@
 "use client";
 
-import { User, LayoutDashboard, Phone, LogOut, BarChart3, Users, Network } from "lucide-react";
+import { User, LayoutDashboard, Phone, LogOut, BarChart3, Users, Network, Database } from "lucide-react";
 import { useRouter, useParams, usePathname } from "next/navigation";
 import { useState, useCallback, useEffect } from "react";
 import { useTheme } from "@/context/ThemeContext";
@@ -16,6 +16,7 @@ const ROUTES = {
     HIVEMIND: '/enterprise/dashboard/hivemind',
     ANALYTICS: '/enterprise/dashboard/analytics',
     CALLS: '/enterprise/dashboard/calls',
+    DATABASE: '/enterprise/dashboard/database',
     SETTINGS: '/enterprise/dashboard/settings',
 } as const;
 
@@ -53,6 +54,8 @@ export default function SideNavigation({ onLogout, agentId: propAgentId }: SideN
                 return pathname === ROUTES.CALLS;
             case 'SETTINGS':
                 return pathname === ROUTES.SETTINGS;
+            case 'DATABASE':
+                return pathname === ROUTES.DATABASE;
             default:
                 return false;
         }
@@ -77,6 +80,7 @@ export default function SideNavigation({ onLogout, agentId: propAgentId }: SideN
         { key: 'HIVEMIND' as const, icon: Network, label: 'HiveMind' },
         { key: 'ANALYTICS' as const, icon: BarChart3, label: 'Analytics' },
         { key: 'CALLS' as const, icon: Phone, label: 'Call History' },
+        { key: 'DATABASE' as const, icon: Database, label: 'Database' },
         { key: 'SETTINGS' as const, icon: User, label: 'Settings' },
     ];
 
