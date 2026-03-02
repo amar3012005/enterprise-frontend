@@ -46,7 +46,7 @@ export default function LoginPage() {
     setError("");
     setIsLoading(true);
 
-    if (accessKey !== "528369") {
+    if (accessKey !== ".........................") {
       setError("Invalid Access Key");
       setIsLoading(false);
       return;
@@ -106,8 +106,8 @@ export default function LoginPage() {
   };
 
   const fillDemoCreds = () => {
-    setEmail("b23313@students.iitmandi.ac.in");
-    setPassword("528369");
+    setEmail(".........................");
+    setPassword(".........................");
   };
 
   return (
@@ -244,11 +244,11 @@ export default function LoginPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className={`p-2 border ${isDark ? "bg-black/50 border-[#333]" : "bg-white border-gray-200"}`}>
                     <div className={`text-[10px] uppercase font-mono mb-1 ${isDark ? "text-gray-500" : "text-gray-400"}`}>Email</div>
-                    <div className={`text-xs font-mono truncate ${isDark ? "text-orange-400" : "text-orange-600"}`}>b23313@students.iitmandi.ac.in</div>
+                    <div className={`text-xs font-mono truncate ${isDark ? "text-orange-400" : "text-orange-600"}`}>.........................</div>
                   </div>
                   <div className={`p-2 border ${isDark ? "bg-black/50 border-[#333]" : "bg-white border-gray-200"}`}>
                     <div className={`text-[10px] uppercase font-mono mb-1 ${isDark ? "text-gray-500" : "text-gray-400"}`}>Password</div>
-                    <div className={`text-xs font-mono ${isDark ? "text-orange-400" : "text-orange-600"}`}>528369</div>
+                    <div className={`text-xs font-mono ${isDark ? "text-orange-400" : "text-orange-600"}`}>.........................</div>
                   </div>
                 </div>
 
