@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Eye, EyeOff, ArrowRight, Mail, Lock, User, Building, Phone, MapPin, Cpu, Key } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, Mail, Lock, User, Building, Phone, MapPin, Cpu } from "lucide-react";
 import { apiUrl } from "@/lib/api";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -17,11 +17,9 @@ export default function LoginPage() {
   const [address, setAddress] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
   const [agentWebsocketUrl, setAgentWebsocketUrl] = useState("");
-  const [accessKey, setAccessKey] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [showDemoCreds, setShowDemoCreds] = useState(true);
   const [isLeftHovered, setIsLeftHovered] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 50, y: 50 });
   const leftPanelRef = useRef<HTMLDivElement>(null);
@@ -45,12 +43,6 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setIsLoading(true);
-
-    if (accessKey !== ".........................") {
-      setError("Invalid Access Key");
-      setIsLoading(false);
-      return;
-    }
 
     try {
       if (mode === "login") {
@@ -111,11 +103,6 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const fillDemoCreds = () => {
-    setEmail("");
-    setPassword(".........................");
   };
 
   return (
@@ -230,45 +217,6 @@ export default function LoginPage() {
               </div>
             )}
 
-            {mode === "login" && showDemoCreds && (
-              <div className={`mb-8 p-4 border ${isDark ? "bg-[#151515] border-[#222]" : "bg-gray-50 border-gray-200"}`}>
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-black text-white">
-                      Demo
-                    </span>
-                    <span className={`text-xs font-semibold ${isDark ? "text-gray-300" : "text-gray-700"}`}>
-                      Test Credentials
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => setShowDemoCreds(false)}
-                    className={`text-lg leading-none transition-colors ${isDark ? "text-gray-500 hover:text-white" : "text-gray-400 hover:text-gray-900"}`}
-                  >
-                    ×
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className={`p-2 border ${isDark ? "bg-black/50 border-[#333]" : "bg-white border-gray-200"}`}>
-                    <div className={`text-[10px] uppercase font-mono mb-1 ${isDark ? "text-gray-500" : "text-gray-400"}`}>Email</div>
-                    <div className={`text-xs font-mono truncate ${isDark ? "text-orange-400" : "text-orange-600"}`}>.........................</div>
-                  </div>
-                  <div className={`p-2 border ${isDark ? "bg-black/50 border-[#333]" : "bg-white border-gray-200"}`}>
-                    <div className={`text-[10px] uppercase font-mono mb-1 ${isDark ? "text-gray-500" : "text-gray-400"}`}>Password</div>
-                    <div className={`text-xs font-mono ${isDark ? "text-orange-400" : "text-orange-600"}`}>.........................</div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={fillDemoCreds}
-                  className="mt-3 w-full py-2.5 text-xs font-semibold uppercase tracking-wide bg-black text-white hover:bg-gray-900 transition-colors"
-                >
-                  Auto-Fill Credentials
-                </button>
-              </div>
-            )}
-
             <form onSubmit={handleSubmit} className="space-y-5">
               {mode === "register" && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -360,15 +308,6 @@ export default function LoginPage() {
                     </button>
                   </div>
                 </div>
-
-                <InputField
-                  label="Access Key"
-                  value={accessKey}
-                  onChange={setAccessKey}
-                  placeholder="Enter access key"
-                  icon={<Key size={16} />}
-                  isDark={isDark}
-                />
               </div>
 
               {mode === "login" && (
