@@ -317,29 +317,28 @@ export default function AIAssistantPanel({
         setCallDuration(0);
 
         const customWsUrl = agentData.websocket_url;
+
         const cartesiaId = agentData.cartesia_agent_id;
         const selectedVoice = agentData.voice || agentData.voice_name || agentData.voice_id;
         const isCustomProtocol = !!customWsUrl && customWsUrl !== "not_set";
+
         const normalizedCustomWsUrl = isCustomProtocol
             ? String(customWsUrl).replace(/^http:\/\//i, 'ws://').replace(/^https:\/\//i, 'wss://')
             : customWsUrl;
-        let forceUnifiedCustomAudio = false;
-        if (isCustomProtocol && normalizedCustomWsUrl) {
-            try {
-                const host = new URL(normalizedCustomWsUrl).hostname.toLowerCase();
-                forceUnifiedCustomAudio = host === 'tara.davinciai.eu' || host === 'localhost' || host === '127.0.0.1';
-            } catch {
-                forceUnifiedCustomAudio = false;
-            }
-        }
+
+        // Any custom WebSocket URL is treated as a unified Voice Orchestrator (Tara-compatible)
 
         const wsUrlTemp = isCustomProtocol
-            ? (normalizedCustomWsUrl?.endsWith('/') ? `${normalizedCustomWsUrl}ws` : `${normalizedCustomWsUrl}/ws`)
+            ? (normalizedCustomWsUrl?.endsWith('/') ? `${normalizedCustomWsUrl}ws` : (normalizedCustomWsUrl?.endsWith('/ws') ? normalizedCustomWsUrl : `${normalizedCustomWsUrl}/ws`))
             : `wss://api.cartesia.ai/agents/stream/${cartesiaId}?api_key=${VOICE_API_KEY}&cartesia-version=2025-04-16`;
 
         const phone = typeof window !== 'undefined' ? (localStorage.getItem('access_token') || "dashboard-user") : "dashboard-user";
+        const storedTenant = typeof window !== 'undefined' ? localStorage.getItem('tenant') : null;
+        const tenantInfo = storedTenant ? JSON.parse(storedTenant) : null;
+        const tenantId = tenantInfo?.tenant_id || "davinci";
+
         const wsUrl = isCustomProtocol
-            ? `${wsUrlTemp}${wsUrlTemp.includes('?') ? '&' : '?'}user_id=${encodeURIComponent(phone)}`
+            ? `${wsUrlTemp}${wsUrlTemp.includes('?') ? '&' : '?'}user_id=${encodeURIComponent(phone)}&tenant_id=${encodeURIComponent(tenantId)}`
             : wsUrlTemp;
 
         const ws = new WebSocket(wsUrl);
@@ -348,50 +347,35 @@ export default function AIAssistantPanel({
 
         ws.onopen = () => {
             wsConnectedRef.current = true;
-
             const sessionId = crypto.randomUUID();
             sessionIdRef.current = sessionId;
-            const storedTenant = typeof window !== 'undefined' ? localStorage.getItem('tenant') : null;
-            const tenantId = storedTenant ? JSON.parse(storedTenant).tenant_id : "unknown";
 
             if (isCustomProtocol) {
-                if (forceUnifiedCustomAudio) {
-                    ws.send(JSON.stringify({
-                        type: 'session_config',
-                        config: {
-                            mode: 'voice',
-                            tenant_id: tenantId,
-                            user_id: phone,
-                            stt_mode: 'audio',
-                            tts_mode: 'audio',
-                            language: agentData.language_primary || 'en',
-                            voice: selectedVoice,
-                            voice_name: selectedVoice,
-                            tts_voice: selectedVoice
-                        }
-                    }));
-                    ws.send(JSON.stringify({ type: 'start_session', timestamp: Date.now() / 1000 }));
-                } else {
-                    // Enterprise Orchestration Handshake (split control/audio sockets)
-                    ws.send(JSON.stringify({
-                        type: 'start_session',
-                        mode: 'conversation',
+                // Dynamic Unified Handshake (Matching TaraVoiceWidget pattern)
+                console.log(`🚀 Handshake for ${agentData.agent_name} (ID: ${agentData.agent_id})`);
+                ws.send(JSON.stringify({
+                    type: 'session_config',
+                    config: {
+                        mode: 'voice',
+                        tenant_id: tenantId,
+                        agent_name: agentData.agent_name || 'Tara',
+                        agent_id: agentData.agent_id || 'tara',
+                        session_type: 'webcall',
+                        user_id: phone,
                         stt_mode: 'audio',
                         tts_mode: 'audio',
-                        language: agentData.language_primary || 'en',
-                        user_id: phone,
-                        agent_id: agentId,
-                        tenant_id: tenantId,
-                        session_id: sessionId,
+                        language: agentData.language_primary || (window.location.hostname.endsWith('in') ? 'te' : 'en'),
                         voice: selectedVoice,
                         voice_name: selectedVoice,
-                        tts_voice: selectedVoice,
-                        token: typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
-                    }));
-                    // Connect dedicated audio WebSocket for enterprise agents
-                    connectAudioWebSocket(sessionId, wsUrlTemp);
-                }
-                console.log(`Handshake sent for agent: ${agentId}`);
+                        tts_voice: selectedVoice
+                    }
+                }));
+
+                ws.send(JSON.stringify({ type: 'start_session', timestamp: Date.now() / 1000 }));
+
+                // Keep audio stream for legacy/dedicated support if NOT on the main WS
+                // Note: The orchestrator should eventually merge these, but for now we offer both paths.
+                connectAudioWebSocket(sessionId, wsUrlTemp);
             }
             else {
                 ws.send(JSON.stringify({
@@ -445,28 +429,8 @@ export default function AIAssistantPanel({
 
         ws.onmessage = async (e) => {
             if (e.data instanceof ArrayBuffer) {
-                if (isCustomProtocol && forceUnifiedCustomAudio) {
-                    binaryQueueRef.current.push(e.data);
-                    return;
-                }
-                // Only handle binary audio on control WS if dedicated audio stream is NOT active
-                if (isCustomProtocol && !audioStreamActiveRef.current) {
-                    if (!playbackStartTimeRef.current) playbackStartTimeRef.current = Date.now();
-                    setAgentIsSpeaking(true);
-                    audioStreamCompleteRef.current = false;
-
-                    // Record TTFC on first audio chunk
-                    if (turnStartTimeRef.current && !hasTtfcForTurnRef.current) {
-                        const ttfc = Math.round(performance.now() - turnStartTimeRef.current);
-                        setMetrics(prev => ({ ...prev, ttfc }));
-                        hasTtfcForTurnRef.current = true;
-                    }
-
-                    playAudioChunk(e.data);
-                } else if (isCustomProtocol && audioStreamActiveRef.current) {
-                    // Audio should come via dedicated stream - ignore on control WS
-                    console.log('🔇 Ignoring binary audio on control WS (using dedicated stream)');
-                }
+                // Push binary data to queue for playback (unified socket pattern)
+                binaryQueueRef.current.push(e.data);
                 return;
             }
 
@@ -531,7 +495,7 @@ export default function AIAssistantPanel({
 
                     // client.html-compatible mode for localhost/tara:
                     // pair JSON metadata with queued binary chunks from the same /ws.
-                    if (forceUnifiedCustomAudio && data.binary_sent && binaryQueueRef.current.length > 0) {
+                    if (isCustomProtocol && data.binary_sent && binaryQueueRef.current.length > 0) {
                         if (turnStartTimeRef.current && !hasTtfcForTurnRef.current) {
                             const ttfc = Math.round(performance.now() - turnStartTimeRef.current);
                             setMetrics(prev => ({ ...prev, ttfc }));

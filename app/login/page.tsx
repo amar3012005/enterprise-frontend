@@ -70,7 +70,11 @@ export default function LoginPage() {
         localStorage.setItem("user", JSON.stringify(data.user));
         localStorage.setItem("tenant", JSON.stringify(data.tenant));
 
-        window.location.href = "/enterprise/dashboard/agents";
+        if (data.user?.login_mode === "admin") {
+          window.location.href = "/admin/database";
+        } else {
+          window.location.href = "/enterprise/dashboard/agents";
+        }
       } else {
         const response = await fetch(apiUrl("/api/auth/register"), {
           method: "POST",
@@ -96,7 +100,11 @@ export default function LoginPage() {
         localStorage.setItem("user", JSON.stringify(data.user));
         localStorage.setItem("tenant", JSON.stringify(data.tenant));
 
-        window.location.href = "/enterprise/dashboard/agents";
+        if (data.user?.login_mode === "admin") {
+          window.location.href = "/admin/database";
+        } else {
+          window.location.href = "/enterprise/dashboard/agents";
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Operation failed");
@@ -106,7 +114,7 @@ export default function LoginPage() {
   };
 
   const fillDemoCreds = () => {
-    setEmail(".........................");
+    setEmail("");
     setPassword(".........................");
   };
 
