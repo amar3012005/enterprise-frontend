@@ -232,9 +232,14 @@ export default function AIAssistantPanel({
             return;
         }
 
-        // Replace /ws with /stream and add session_id parameter
-        const audioUrl = baseWsUrl.replace('/ws', '/stream') +
-            '?session_id=' + encodeURIComponent(sessionId);
+        // Extract base URL correctly (remove /ws if it exists)
+        const baseUrl = baseWsUrl.replace(/\/ws\/?(\?.*)?$/, '');
+
+        // Extract existing query params from baseWsUrl (like tenant_id)
+        const urlObj = new URL(baseWsUrl);
+        const tenantId = urlObj.searchParams.get('tenant_id') || 'davinci';
+
+        const audioUrl = `${baseUrl}/stream?session_id=${encodeURIComponent(sessionId)}&tenant_id=${encodeURIComponent(tenantId)}`;
 
         console.log('🔊 Connecting dedicated audio WebSocket:', audioUrl);
 
@@ -326,19 +331,33 @@ export default function AIAssistantPanel({
             ? String(customWsUrl).replace(/^http:\/\//i, 'ws://').replace(/^https:\/\//i, 'wss://')
             : customWsUrl;
 
-        // Any custom WebSocket URL is treated as a unified Voice Orchestrator (Tara-compatible)
+        // Extract base URL correctly (remove /ws if it exists)
+        const baseUrl = normalizedCustomWsUrl ? String(normalizedCustomWsUrl).replace(/\/ws\/?(\?.*)?$/, '') : '';
 
+        // Any custom WebSocket URL is treated as a unified Voice Orchestrator (Tara-compatible)
         const wsUrlTemp = isCustomProtocol
-            ? (normalizedCustomWsUrl?.endsWith('/') ? `${normalizedCustomWsUrl}ws` : (normalizedCustomWsUrl?.endsWith('/ws') ? normalizedCustomWsUrl : `${normalizedCustomWsUrl}/ws`))
+            ? `${baseUrl}/ws`
             : `wss://api.cartesia.ai/agents/stream/${cartesiaId}?api_key=${VOICE_API_KEY}&cartesia-version=2025-04-16`;
 
         const phone = typeof window !== 'undefined' ? (localStorage.getItem('access_token') || "dashboard-user") : "dashboard-user";
         const storedTenant = typeof window !== 'undefined' ? localStorage.getItem('tenant') : null;
         const tenantInfo = storedTenant ? JSON.parse(storedTenant) : null;
-        const tenantId = tenantInfo?.tenant_id || "davinci";
+
+        // Priority: existing tenant_id from url, then tenantInfo, then 'davinci'
+        let urlTenantId = "davinci";
+        let defaultSessionId = crypto.randomUUID();
+        if (isCustomProtocol) {
+            try {
+                const urlObj = new URL(normalizedCustomWsUrl as string);
+                urlTenantId = urlObj.searchParams.get('tenant_id') || tenantInfo?.tenant_id || "davinci";
+                if (urlObj.searchParams.get('session_id')) {
+                    defaultSessionId = urlObj.searchParams.get('session_id') as string;
+                }
+            } catch (e) { }
+        }
 
         const wsUrl = isCustomProtocol
-            ? `${wsUrlTemp}${wsUrlTemp.includes('?') ? '&' : '?'}user_id=${encodeURIComponent(phone)}&tenant_id=${encodeURIComponent(tenantId)}`
+            ? `${wsUrlTemp}?session_id=${encodeURIComponent(defaultSessionId)}&tenant_id=${encodeURIComponent(urlTenantId)}&user_id=${encodeURIComponent(phone)}`
             : wsUrlTemp;
 
         const ws = new WebSocket(wsUrl);
@@ -357,7 +376,7 @@ export default function AIAssistantPanel({
                     type: 'session_config',
                     config: {
                         mode: 'voice',
-                        tenant_id: tenantId,
+                        tenant_id: urlTenantId,
                         agent_name: agentData.agent_name || 'Tara',
                         agent_id: agentData.agent_id || 'tara',
                         session_type: 'webcall',
