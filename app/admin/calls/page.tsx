@@ -19,6 +19,8 @@ interface CallRow {
     cost_euros: number;
     sentiment_score: number | null;
     priority_level: string;
+    is_hot_lead: boolean;
+    is_churn_risk: boolean;
 }
 
 export default function AdminCallsPage() {
@@ -81,6 +83,7 @@ export default function AdminCallsPage() {
                                 <th className="p-4">TTFT</th>
                                 <th className="p-4">TTFC</th>
                                 <th className="p-4">Cost</th>
+                                <th className="p-4 text-center">Signals</th>
                                 <th className="p-4">Priority</th>
                             </tr>
                         </thead>
@@ -94,8 +97,8 @@ export default function AdminCallsPage() {
                                     <td className="p-4 text-xs text-[#888]">{formatDuration(c.duration_seconds)}</td>
                                     <td className="p-4">
                                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${c.status === "completed" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
-                                                c.status === "failed" ? "bg-red-500/10 text-red-400 border-red-500/20" :
-                                                    "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                                            c.status === "failed" ? "bg-red-500/10 text-red-400 border-red-500/20" :
+                                                "bg-amber-500/10 text-amber-400 border-amber-500/20"
                                             }`}>
                                             {c.status}
                                         </span>
@@ -103,10 +106,27 @@ export default function AdminCallsPage() {
                                     <td className="p-4 text-[11px] text-[#666]">{c.ttft_ms ? `${c.ttft_ms}ms` : "—"}</td>
                                     <td className="p-4 text-[11px] text-[#666]">{c.ttfc_ms ? `${c.ttfc_ms}ms` : "—"}</td>
                                     <td className="p-4 text-xs text-emerald-400">€{c.cost_euros.toFixed(4)}</td>
+                                    <td className="p-4 text-center">
+                                        <div className="flex items-center justify-center gap-2">
+                                            {c.is_hot_lead && (
+                                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-amber-500/10 text-amber-500 border border-amber-500/30">
+                                                    Lead
+                                                </span>
+                                            )}
+                                            {c.is_churn_risk && (
+                                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-red-500/10 text-red-500 border border-red-500/30">
+                                                    Churn Risk
+                                                </span>
+                                            )}
+                                            {!c.is_hot_lead && !c.is_churn_risk && (
+                                                <span className="text-[10px] text-[#444]">—</span>
+                                            )}
+                                        </div>
+                                    </td>
                                     <td className="p-4">
                                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${c.priority_level === "URGENT" ? "bg-red-500/10 text-red-400 border-red-500/20" :
-                                                c.priority_level === "HIGH" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
-                                                    "bg-[#111115] text-[#444] border-[#1a1a1f]"
+                                            c.priority_level === "HIGH" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
+                                                "bg-[#111115] text-[#444] border-[#1a1a1f]"
                                             }`}>
                                             {c.priority_level}
                                         </span>
