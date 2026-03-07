@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { apiFetch } from "@/lib/api";
 import {
     Users, RefreshCw, Search, Trash2, Save, X, Edit3,
-    DollarSign, Activity, Building, Bot, ChevronDown
+    DollarSign, Activity, Building, Bot, ChevronDown, Zap
 } from "lucide-react";
 
 interface GlobalUser {
@@ -38,6 +38,7 @@ export default function AdminDatabasePage() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<Partial<GlobalUser>>({});
     const [saving, setSaving] = useState(false);
+    const [seeding, setSeeding] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
     const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
@@ -105,6 +106,21 @@ export default function AdminDatabasePage() {
         }
     };
 
+    const handleSeedDemo = async () => {
+        if (!confirm("This will ensure 'bundb' tenant, wallet and agent exist in production. Proceed?")) return;
+        setSeeding(true);
+        try {
+            const res = await apiFetch("/api/admin/seed-demo", { method: "POST" });
+            if (!res.ok) throw new Error("Seeding failed");
+            showToast("Demo data synchronized successfully", "success");
+            fetchData();
+        } catch (err: any) {
+            showToast(err.message, "error");
+        } finally {
+            setSeeding(false);
+        }
+    };
+
     const filteredUsers = users.filter((u) => {
         const q = searchQuery.toLowerCase();
         return (
@@ -142,8 +158,8 @@ export default function AdminDatabasePage() {
             {/* Toast */}
             {toast && (
                 <div className={`fixed top-6 right-6 z-50 px-5 py-3 rounded-lg shadow-xl text-sm font-medium border animate-in slide-in-from-top-2 ${toast.type === "success"
-                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                        : "bg-red-500/10 text-red-400 border-red-500/20"
+                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                    : "bg-red-500/10 text-red-400 border-red-500/20"
                     }`}>
                     {toast.msg}
                 </div>
@@ -158,13 +174,23 @@ export default function AdminDatabasePage() {
                     </h1>
                     <p className="text-[#555] text-xs mt-1 tracking-wide">public.users JOIN public.tenants — Live PostgreSQL View</p>
                 </div>
-                <button
-                    onClick={fetchData}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#111115] border border-[#1a1a1f] rounded-lg text-xs text-[#888] hover:text-white hover:border-[#333] transition-all"
-                >
-                    <RefreshCw size={14} />
-                    Refresh
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={handleSeedDemo}
+                        disabled={seeding}
+                        className="flex items-center gap-2 px-4 py-2 bg-[#ff5722]/10 border border-[#ff5722]/30 rounded-lg text-xs text-[#ff5722] hover:bg-[#ff5722]/20 transition-all disabled:opacity-50"
+                    >
+                        <Zap size={14} className={seeding ? "animate-pulse" : ""} />
+                        {seeding ? "Seeding..." : "Seed Demo"}
+                    </button>
+                    <button
+                        onClick={fetchData}
+                        className="flex items-center gap-2 px-4 py-2 bg-[#111115] border border-[#1a1a1f] rounded-lg text-xs text-[#888] hover:text-white hover:border-[#333] transition-all"
+                    >
+                        <RefreshCw size={14} />
+                        Refresh
+                    </button>
+                </div>
             </div>
 
             {/* Metrics Strip */}
@@ -273,8 +299,8 @@ export default function AdminDatabasePage() {
                                                 </select>
                                             ) : (
                                                 <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${user.role === "admin"
-                                                        ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                                                        : "bg-[#111115] text-[#555] border border-[#1a1a1f]"
+                                                    ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                                                    : "bg-[#111115] text-[#555] border border-[#1a1a1f]"
                                                     }`}>
                                                     {user.role}
                                                 </span>
@@ -294,10 +320,10 @@ export default function AdminDatabasePage() {
                                                 </select>
                                             ) : (
                                                 <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${user.login_mode === "admin"
-                                                        ? "bg-red-500/10 text-red-400 border border-red-500/20"
-                                                        : user.login_mode === "enterprise"
-                                                            ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
-                                                            : "bg-[#111115] text-[#555] border border-[#1a1a1f]"
+                                                    ? "bg-red-500/10 text-red-400 border border-red-500/20"
+                                                    : user.login_mode === "enterprise"
+                                                        ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
+                                                        : "bg-[#111115] text-[#555] border border-[#1a1a1f]"
                                                     }`}>
                                                     {user.login_mode}
                                                 </span>
