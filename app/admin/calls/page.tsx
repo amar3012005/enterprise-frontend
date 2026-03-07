@@ -21,6 +21,11 @@ interface CallRow {
     priority_level: string;
     is_hot_lead: boolean;
     is_churn_risk: boolean;
+    brief_context: string | null;
+    total_turns: number;
+    total_llm_tokens: number;
+    agent_iq: number | null;
+    session_type: string;
 }
 
 export default function AdminCallsPage() {
@@ -77,11 +82,13 @@ export default function AdminCallsPage() {
                                 <th className="p-4">Time</th>
                                 <th className="p-4">Agent</th>
                                 <th className="p-4">Organization</th>
-                                <th className="p-4">Caller</th>
+                                <th className="p-4">Type</th>
                                 <th className="p-4">Duration</th>
                                 <th className="p-4">Status</th>
                                 <th className="p-4">TTFT</th>
-                                <th className="p-4">TTFC</th>
+                                <th className="p-4">AI IQ</th>
+                                <th className="p-4">Turns</th>
+                                <th className="p-4">Tokens</th>
                                 <th className="p-4">Cost</th>
                                 <th className="p-4 text-center">Signals</th>
                                 <th className="p-4">Priority</th>
@@ -93,7 +100,7 @@ export default function AdminCallsPage() {
                                     <td className="p-4 text-[11px] text-[#555]">{c.start_time ? new Date(c.start_time).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}</td>
                                     <td className="p-4 text-xs text-white font-medium">{c.agent_name}</td>
                                     <td className="p-4 text-xs text-[#ff5722]">{c.organization_name}</td>
-                                    <td className="p-4 text-[11px] text-[#555] font-mono">{c.caller_id || "—"}</td>
+                                    <td className="p-4"><span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">{c.session_type || "webcall"}</span></td>
                                     <td className="p-4 text-xs text-[#888]">{formatDuration(c.duration_seconds)}</td>
                                     <td className="p-4">
                                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${c.status === "completed" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
@@ -104,7 +111,9 @@ export default function AdminCallsPage() {
                                         </span>
                                     </td>
                                     <td className="p-4 text-[11px] text-[#666]">{c.ttft_ms ? `${c.ttft_ms}ms` : "—"}</td>
-                                    <td className="p-4 text-[11px] text-[#666]">{c.ttfc_ms ? `${c.ttfc_ms}ms` : "—"}</td>
+                                    <td className="p-4 text-[11px] text-purple-400 font-mono">{c.agent_iq !== null ? `${(c.agent_iq * 100).toFixed(0)}%` : "—"}</td>
+                                    <td className="p-4 text-[11px] text-[#888] font-mono">{c.total_turns || 0}</td>
+                                    <td className="p-4 text-[11px] text-cyan-400 font-mono">{(c.total_llm_tokens || 0).toLocaleString()}</td>
                                     <td className="p-4 text-xs text-emerald-400">€{c.cost_euros.toFixed(4)}</td>
                                     <td className="p-4 text-center">
                                         <div className="flex items-center justify-center gap-2">
