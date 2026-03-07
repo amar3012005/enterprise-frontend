@@ -339,25 +339,19 @@ export default function AIAssistantPanel({
             ? `${baseUrl}/ws`
             : `wss://api.cartesia.ai/agents/stream/${cartesiaId}?api_key=${VOICE_API_KEY}&cartesia-version=2025-04-16`;
 
-        const phone = typeof window !== 'undefined' ? (localStorage.getItem('access_token') || "dashboard-user") : "dashboard-user";
+        const userId = typeof window !== 'undefined' ? (localStorage.getItem('user_id') || localStorage.getItem('access_token') || "anonymous_user") : "anonymous_user";
         const storedTenant = typeof window !== 'undefined' ? localStorage.getItem('tenant') : null;
         const tenantInfo = storedTenant ? JSON.parse(storedTenant) : null;
 
-        // Priority: existing tenant_id from url, then tenantInfo, then 'davinci'
-        let urlTenantId = "davinci";
+        // Use literal Brand Slug from tenantInfo or fallback to 'davinci'
+        const tenantId = tenantInfo?.tenant_id || "davinci";
+        const agentIdToUse = agentData?.agent_id || agentId || "tara";
+        const agentName = agentData?.agent_name || "Tara AI";
         let defaultSessionId = crypto.randomUUID();
-        if (isCustomProtocol) {
-            try {
-                const urlObj = new URL(normalizedCustomWsUrl as string);
-                urlTenantId = urlObj.searchParams.get('tenant_id') || tenantInfo?.tenant_id || "davinci";
-                if (urlObj.searchParams.get('session_id')) {
-                    defaultSessionId = urlObj.searchParams.get('session_id') as string;
-                }
-            } catch (e) { }
-        }
 
+        // Optimized Handshake URL (Option 1 - Strictly using brand names/slugs)
         const wsUrl = isCustomProtocol
-            ? `${wsUrlTemp}?session_id=${encodeURIComponent(defaultSessionId)}&tenant_id=${encodeURIComponent(urlTenantId)}&user_id=${encodeURIComponent(phone)}`
+            ? `${baseUrl}/ws?tenant_id=${encodeURIComponent(tenantId)}&agent_id=${encodeURIComponent(agentIdToUse)}&session_type=webcall&user_id=${encodeURIComponent(userId)}&agent_name=${encodeURIComponent(agentName)}&session_id=${encodeURIComponent(defaultSessionId)}`
             : wsUrlTemp;
 
         const ws = new WebSocket(wsUrl);
@@ -370,22 +364,21 @@ export default function AIAssistantPanel({
             sessionIdRef.current = sessionId;
 
             if (isCustomProtocol) {
-                // Dynamic Unified Handshake (Matching TaraVoiceWidget pattern)
-                console.log(`🚀 Handshake for ${agentData.agent_name} (ID: ${agentData.agent_id})`);
+                // Dynamic Unified Handshake (Option 2 - Redundancy for session updates)
+                console.log(`🚀 Handshake for ${agentName} (Tenant: ${tenantId})`);
                 ws.send(JSON.stringify({
                     type: 'session_config',
+                    tenant_id: tenantId,
+                    agent_id: agentIdToUse,
+                    agent_name: agentName,
+                    user_id: userId,
+                    session_type: 'webcall',
+                    interaction_mode: 'interactive',
+                    language: agentData.language_primary || (window.location.hostname.endsWith('in') ? 'te' : 'en'),
+                    voice: selectedVoice,
                     config: {
-                        mode: 'voice',
-                        tenant_id: urlTenantId,
-                        agent_name: agentData.agent_name || 'Tara',
-                        agent_id: agentData.agent_id || 'tara',
-                        session_type: 'webcall',
-                        user_id: phone,
                         stt_mode: 'audio',
                         tts_mode: 'audio',
-                        language: agentData.language_primary || (window.location.hostname.endsWith('in') ? 'te' : 'en'),
-                        voice: selectedVoice,
-                        voice_name: selectedVoice,
                         tts_voice: selectedVoice
                     }
                 }));
