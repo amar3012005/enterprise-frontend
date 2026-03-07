@@ -39,29 +39,29 @@ interface AnalyticsData {
     total_calls_today: number;
     total_minutes_today: number;
     total_cost_today: number;
-    
+
     // All-time metrics
     total_calls_all_time: number;
     total_minutes_all_time: number;
     total_cost_all_time: number;
-    
+
     // Performance metrics
     success_rate: number;
     avg_call_duration: number;
     active_calls: number;
-    
+
     // Graph data
     call_volume_trend: { hour: string; calls: number; cost: number }[];
     monthly_trend: { month: string; calls: number; cost: number }[];
     cost_breakdown: {
         [key: string]: { calls: number; cost: number };
     };
-    
+
     // Intelligence
     leads_today: number;
     churn_risks_today: number;
     avg_agent_iq: number;
-    
+
     // Comparisons
     calls_change_percent: number;
     cost_change_percent: number;
@@ -158,7 +158,7 @@ export default function EnterpriseDashboardAnalyticsPage() {
     // Prepare chart data
     const volumeData = analytics?.call_volume_trend || [];
     const monthlyData = analytics?.monthly_trend || [];
-    
+
     const costData = analytics?.cost_breakdown
         ? Object.entries(analytics.cost_breakdown).map(([range, data]) => ({
             range: range.replace("_min", "").replace("_", "-"),
@@ -242,7 +242,7 @@ export default function EnterpriseDashboardAnalyticsPage() {
             {/* Stats Grid - Row 1 */}
             <div style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(3, 1fr)",
+                gridTemplateColumns: "repeat(4, 1fr)",
                 gap: 20,
                 marginBottom: 24
             }}>
@@ -265,11 +265,19 @@ export default function EnterpriseDashboardAnalyticsPage() {
                     delay={0.2}
                 />
                 <StatCard
+                    label="Churn Risks"
+                    value={analytics?.churn_risks_today || 0}
+                    unit="Alerts"
+                    icon={AlertTriangle}
+                    isDark={isDark}
+                    delay={0.3}
+                />
+                <StatCard
                     label="Active Now"
                     value={analytics?.active_calls || 0}
                     icon={Zap}
                     isDark={isDark}
-                    delay={0.3}
+                    delay={0.4}
                 />
             </div>
 
