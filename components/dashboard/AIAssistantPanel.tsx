@@ -364,7 +364,7 @@ export default function AIAssistantPanel({
             sessionIdRef.current = sessionId;
 
             if (isCustomProtocol) {
-                // Dynamic Unified Handshake (Option 2 - Redundancy for session updates)
+                // Dynamic Unified Handshake — matches Orchestrator session_config schema
                 console.log(`🚀 Handshake for ${agentName} (Tenant: ${tenantId})`);
                 ws.send(JSON.stringify({
                     type: 'session_config',
@@ -373,20 +373,19 @@ export default function AIAssistantPanel({
                     agent_name: agentName,
                     user_id: userId,
                     session_type: 'webcall',
-                    interaction_mode: 'interactive',
                     language: agentData.language_primary || (window.location.hostname.endsWith('in') ? 'te' : 'en'),
-                    voice: selectedVoice,
-                    config: {
-                        stt_mode: 'audio',
-                        tts_mode: 'audio',
-                        tts_voice: selectedVoice
+                    interaction_mode: 'interactive',
+                    stt_mode: 'streaming',
+                    tts_mode: 'streaming',
+                    metadata: {
+                        source: 'enterprise_dashboard',
+                        region: 'EU'
                     }
                 }));
 
                 ws.send(JSON.stringify({ type: 'start_session', timestamp: Date.now() / 1000 }));
 
                 // Keep audio stream for legacy/dedicated support if NOT on the main WS
-                // Note: The orchestrator should eventually merge these, but for now we offer both paths.
                 connectAudioWebSocket(sessionId, wsUrlTemp);
             }
             else {
