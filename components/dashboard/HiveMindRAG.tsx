@@ -5,16 +5,24 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/context/ThemeContext";
 import { Clock, Info } from "lucide-react";
 
-// Derive RAG API base URL from tenant subdomain
-function getRagBaseUrl(): string | null {
-    if (typeof window === "undefined") return null;
+// Derive dynamic credentials and RAG API base URL from tenant subdomain
+function getRagCredentials() {
+    if (typeof window === "undefined") return { baseUrl: null, tenantId: null, token: null };
     try {
         const tenant = localStorage.getItem("tenant");
-        if (!tenant) return null;
-        const { subdomain } = JSON.parse(tenant);
-        if (!subdomain) return null;
-        return `https://rag.${subdomain}.davinciai.eu:8444`;
-    } catch { return null; }
+        const token = localStorage.getItem("access_token");
+        if (!tenant) return { baseUrl: null, tenantId: null, token };
+
+        const parsedTenant = JSON.parse(tenant);
+        const { tenant_id } = parsedTenant;
+
+        return {
+            // Point everything to the Orchestrator EU Proxy (Port 8030)
+            baseUrl: `https://demo.davinciai.eu:8030`,
+            tenantId: tenant_id || "davinci",
+            token
+        };
+    } catch { return { baseUrl: null, tenantId: null, token: null }; }
 }
 
 interface KnowledgePoint {
@@ -150,12 +158,17 @@ export default function HiveMindRAG({
 
     const loadVisualization = useCallback(async () => {
         if (propPoints) return;
-        const ragBase = getRagBaseUrl();
+        const { baseUrl: ragBase, tenantId, token } = getRagCredentials();
         if (!ragBase) return;
         setLoading(true);
         setConnectionStatus("connecting");
         try {
-            const response = await fetch(`${ragBase}/api/v1/hive-mind/visualize?algorithm=tsne&limit=250`);
+            const url = `${ragBase}/api/v1/hive-mind/visualize?algorithm=tsne&limit=250&tenant_id=${encodeURIComponent(tenantId || 'davinci')}`;
+            const response = await fetch(url, {
+                headers: {
+                    "Authorization": token ? `Bearer ${token}` : ""
+                }
+            });
             if (response.ok) {
                 const data: VisualizationData = await response.json();
                 const pointsWithTime = data.points.map(p => ({
@@ -176,10 +189,11 @@ export default function HiveMindRAG({
 
     const connectWebSocket = useCallback(() => {
         if (propPoints) return;
-        const ragBase = getRagBaseUrl();
+        const { baseUrl: ragBase, tenantId, token } = getRagCredentials();
         if (!ragBase) return;
         try {
-            const wsUrl = ragBase.replace(/^https?:\/\//, "wss://").replace(/:\d+$/, ":8444") + "/ws/hive-mind";
+            const wsUrl = ragBase.replace(/^https?:\/\//, "wss://") +
+                `/ws/hive-mind?tenant_id=${encodeURIComponent(tenantId || 'davinci')}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
             wsRef.current = new WebSocket(wsUrl);
             wsRef.current.onopen = () => setConnectionStatus("connected");
             wsRef.current.onmessage = (event) => {

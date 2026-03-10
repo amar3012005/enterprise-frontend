@@ -373,7 +373,7 @@ export default function AIAssistantPanel({
                     agent_name: agentName,
                     user_id: userId,
                     session_type: 'webcall',
-                    language: agentData.language_primary || (window.location.hostname.endsWith('in') ? 'te' : 'en'),
+                    language: agentData.language_primary || 'de',
                     interaction_mode: 'interactive',
                     stt_mode: 'streaming',
                     tts_mode: 'streaming',

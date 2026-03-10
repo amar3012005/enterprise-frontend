@@ -19,16 +19,24 @@ import {
 import { useTheme } from "@/context/ThemeContext";
 import { useAgents } from "@/context/AgentContext";
 
-// Derive RAG API base URL from tenant subdomain
-function getRagBaseUrl(): string | null {
-    if (typeof window === "undefined") return null;
+// Derive dynamic credentials and RAG API base URL from tenant subdomain
+function getRagCredentials() {
+    if (typeof window === "undefined") return { baseUrl: null, tenantId: null, token: null };
     try {
         const tenant = localStorage.getItem("tenant");
-        if (!tenant) return null;
-        const { subdomain } = JSON.parse(tenant);
-        if (!subdomain) return null;
-        return `https://rag.${subdomain}.davinciai.eu:8444`;
-    } catch { return null; }
+        const token = localStorage.getItem("access_token");
+        if (!tenant) return { baseUrl: null, tenantId: null, token };
+
+        const parsedTenant = JSON.parse(tenant);
+        const { tenant_id } = parsedTenant;
+
+        return {
+            // Point everything to the Orchestrator EU Proxy (Port 8030)
+            baseUrl: `https://demo.davinciai.eu:8030`,
+            tenantId: tenant_id || "davinci",
+            token
+        };
+    } catch { return { baseUrl: null, tenantId: null, token: null }; }
 }
 
 interface KnowledgePoint {
@@ -81,7 +89,7 @@ export default function EnterpriseDashboardHiveMindPage() {
 
     // Fetch visualization data from RAG API
     const loadVisualization = useCallback(async () => {
-        const ragBase = getRagBaseUrl();
+        const { baseUrl: ragBase, tenantId, token } = getRagCredentials();
         if (!ragBase) {
             setConnectionStatus("disconnected");
             return;
@@ -90,9 +98,12 @@ export default function EnterpriseDashboardHiveMindPage() {
         setConnectionStatus("connecting");
 
         try {
-            const response = await fetch(
-                `${ragBase}/api/v1/hive-mind/visualize?algorithm=tsne&limit=200`
-            );
+            const url = `${ragBase}/api/v1/hive-mind/visualize?algorithm=tsne&limit=200&tenant_id=${encodeURIComponent(tenantId || 'davinci')}`;
+            const response = await fetch(url, {
+                headers: {
+                    "Authorization": token ? `Bearer ${token}` : ""
+                }
+            });
 
             if (response.ok) {
                 const data: VisualizationData = await response.json();
@@ -126,11 +137,14 @@ export default function EnterpriseDashboardHiveMindPage() {
         setIsQuerying(true);
 
         try {
-            const ragBase = getRagBaseUrl();
+            const { baseUrl: ragBase, tenantId, token } = getRagCredentials();
             if (!ragBase) throw new Error("RAG not configured");
-            const response = await fetch(`${ragBase}/api/v1/query`, {
+            const response = await fetch(`${ragBase}/api/v1/query?tenant_id=${encodeURIComponent(tenantId || 'davinci')}`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": token ? `Bearer ${token}` : ""
+                },
                 body: JSON.stringify({
                     query: chatInput,
                     history_context: chatMessages.slice(-6).map(m => ({
@@ -172,18 +186,22 @@ export default function EnterpriseDashboardHiveMindPage() {
 
         setIsQuerying(true);
         try {
-            const ragBase = getRagBaseUrl();
+            const { baseUrl: ragBase, tenantId, token } = getRagCredentials();
             if (!ragBase) throw new Error("RAG not configured");
 
             const payload = {
                 text: chatInput,
                 type: "agent_skill",
-                topic: "general"
+                topic: "general",
+                tenant_id: tenantId
             };
 
-            const response = await fetch(`${ragBase}/api/v1/skills`, {
+            const response = await fetch(`${ragBase}/api/v1/skills?tenant_id=${encodeURIComponent(tenantId || 'davinci')}`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": token ? `Bearer ${token}` : ""
+                },
                 body: JSON.stringify(payload)
             });
 
