@@ -133,16 +133,17 @@ export default function EnterpriseAgentDashboard() {
                 display: 'flex',
                 gap: '16px',
                 padding: '0',
-                height: '680px', // Fixed total height
+                height: 'calc(100vh - 140px)', // Fill available viewport height
+                width: '100%',
                 overflow: 'hidden'
             }}
         >
-            {/* Left Column - Visualizer - Fixed width and height */}
+            {/* Left Column - Visualizer - Flexible width */}
             <motion.div
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1, duration: 0.3 }}
-                style={{ width: '600px', height: '680px', flexShrink: 0 }}
+                style={{ flex: 1, height: '100%', minWidth: 0 }}
             >
                 <AgentVisualizer
                     agentName={currentAgent.agent_name}
@@ -162,13 +163,13 @@ export default function EnterpriseAgentDashboard() {
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '16px',
-                    width: '340px',
-                    height: '680px',
+                    width: '380px',
+                    height: '100%',
                     flexShrink: 0
                 }}
             >
-                {/* AI Panel - Fixed height */}
-                <div style={{ height: '480px', width: '340px', flexShrink: 0 }}>
+                {/* AI Panel - Flexible height */}
+                <div style={{ flex: 1, minHeight: 0 }}>
                     <AIAssistantPanel agentId={agentId} fallbackAgent={currentAgent} />
                 </div>
 
@@ -177,7 +178,7 @@ export default function EnterpriseAgentDashboard() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.25, duration: 0.3 }}
-                    style={{ height: '184px', width: '340px', flexShrink: 0 }}
+                    style={{ height: '140px', flexShrink: 0 }}
                 >
                     <StatsCards
                         totalCalls={currentAgent?.stats?.total_calls ?? 0}
