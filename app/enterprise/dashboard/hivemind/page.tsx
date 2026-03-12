@@ -497,7 +497,7 @@ export default function EnterpriseDashboardHiveMindPage() {
                 padding: "0 24px",
                 zIndex: 20
             }}>
-                {/* Chat Messages */}
+                {/* Chat Messages - Only show last message */}
                 <AnimatePresence>
                     {chatMessages.length > 0 && (
                         <motion.div
@@ -506,7 +506,7 @@ export default function EnterpriseDashboardHiveMindPage() {
                             exit={{ opacity: 0, height: 0 }}
                             style={{
                                 marginBottom: 16,
-                                maxHeight: 200,
+                                maxHeight: 400,
                                 overflowY: "auto",
                                 backgroundColor: "#0a0a0a",
                                 borderRadius: 16,
@@ -514,37 +514,40 @@ export default function EnterpriseDashboardHiveMindPage() {
                                 backdropFilter: "blur(20px)"
                             }}
                         >
-                            {chatMessages.slice(-4).map((msg, i) => (
-                                <div
-                                    key={i}
-                                    style={{
-                                        padding: "14px 18px",
-                                        borderBottom: i < chatMessages.length - 1 ? "1px solid #1a1a1a" : "none"
-                                    }}
-                                >
-                                    <div style={{
-                                        fontSize: 10,
-                                        color: msg.role === "assistant" ? "#fff" : "#666",
-                                        fontFamily: "JetBrains Mono, monospace",
-                                        marginBottom: 6,
-                                        textTransform: "uppercase",
-                                        letterSpacing: "0.05em"
-                                    }}>
-                                        {msg.role === "user" ? "You" : "HiveMind"}
-                                        {msg.confidence && (
-                                            <span style={{ marginLeft: 12, color: "#444" }}>
-                                                {(msg.confidence * 100).toFixed(0)}% confidence
-                                            </span>
-                                        )}
+                            {/* Only show the last message */}
+                            {(() => {
+                                const msg = chatMessages[chatMessages.length - 1];
+                                return (
+                                    <div
+                                        key={msg.timestamp.getTime()}
+                                        style={{
+                                            padding: "20px 24px"
+                                        }}
+                                    >
+                                        <div style={{
+                                            fontSize: 10,
+                                            color: msg.role === "assistant" ? "#fff" : "#666",
+                                            fontFamily: "JetBrains Mono, monospace",
+                                            marginBottom: 12,
+                                            textTransform: "uppercase",
+                                            letterSpacing: "0.05em"
+                                        }}>
+                                            {msg.role === "user" ? "You" : "HiveMind"}
+                                            {msg.confidence && (
+                                                <span style={{ marginLeft: 12, color: "#444" }}>
+                                                    {(msg.confidence * 100).toFixed(0)}% confidence
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div style={{ fontSize: 16, lineHeight: 1.6, color: "#fff" }}>
+                                            {msg.content}
+                                        </div>
                                     </div>
-                                    <div style={{ fontSize: 14, lineHeight: 1.5, color: "#ccc" }}>
-                                        {msg.content}
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })()}
                             {isQuerying && (
                                 <div style={{
-                                    padding: "14px 18px",
+                                    padding: "20px 24px",
                                     display: "flex",
                                     alignItems: "center",
                                     gap: 10,
