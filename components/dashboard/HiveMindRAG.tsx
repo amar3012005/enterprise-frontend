@@ -283,7 +283,7 @@ export default function HiveMindRAG({
             const offsetY = (h - scale) / 2;
 
             const drawPlexus = (allNodes: any[]) => {
-                ctx.lineWidth = 0.5;
+                ctx.lineWidth = 0.8;
                 for (let i = 0; i < allNodes.length; i++) {
                     const p1 = allNodes[i];
                     for (let j = i + 1; j < Math.min(i + 20, allNodes.length); j++) {
@@ -291,7 +291,7 @@ export default function HiveMindRAG({
                         const dist = Math.hypot(p1.dx - p2.dx, p1.dy - p2.dy);
                         const maxDist = scale * 0.12;
                         if (dist < maxDist) {
-                            const alpha = (1 - dist / maxDist) * 0.15 * (isDark ? 1 : 0.5);
+                            const alpha = (1 - dist / maxDist) * 0.35 * (isDark ? 1 : 0.5);
                             ctx.strokeStyle = isDark ? `rgba(255,255,255,${alpha})` : `rgba(0,0,0,${alpha})`;
                             ctx.beginPath(); ctx.moveTo(p1.dx, p1.dy); ctx.lineTo(p2.dx, p2.dy); ctx.stroke();
                         }
@@ -324,8 +324,9 @@ export default function HiveMindRAG({
 
             bgNodes.forEach((p, i) => {
                 const pulse = Math.sin(time * 2 + (p.pulse || i * 0.1)) * 0.3 + 0.7;
-                ctx.fillStyle = isDark ? `rgba(255,255,255,${p.alpha * pulse})` : `rgba(0,0,0,0.1)`;
-                ctx.beginPath(); ctx.arc(p.dx, p.dy, p.size, 0, Math.PI * 2); ctx.fill();
+                const brightAlpha = Math.min(1, p.alpha * 1.8 * pulse);
+                ctx.fillStyle = isDark ? `rgba(255,255,255,${brightAlpha})` : `rgba(0,0,0,0.15)`;
+                ctx.beginPath(); ctx.arc(p.dx, p.dy, p.size * 1.2, 0, Math.PI * 2); ctx.fill();
             });
 
             realNodes.forEach((p) => {
@@ -335,25 +336,25 @@ export default function HiveMindRAG({
 
                 // Highlight NEW features (< 24h) with a pulsing ring
                 if (p.isRecent) {
-                    const pulseRing = 10 + Math.sin(time * 3) * 4;
-                    ctx.strokeStyle = "#A63E1B";
-                    ctx.lineWidth = 1.5;
-                    ctx.globalAlpha = 0.6 + Math.sin(time * 3) * 0.4;
+                    const pulseRing = 12 + Math.sin(time * 3) * 5;
+                    ctx.strokeStyle = "#ff6b35";
+                    ctx.lineWidth = 2;
+                    ctx.globalAlpha = 0.8 + Math.sin(time * 3) * 0.2;
                     ctx.beginPath();
                     ctx.arc(p.dx, p.dy, pulseRing, 0, Math.PI * 2);
                     ctx.stroke();
                 }
 
                 if (isHovered || mInf > 0.1) {
-                    const g = ctx.createRadialGradient(p.dx, p.dy, 0, p.dx, p.dy, 15);
-                    g.addColorStop(0, "#A63E1B"); g.addColorStop(1, "transparent");
-                    ctx.fillStyle = g; ctx.globalAlpha = 0.4 + mInf * 0.3;
-                    ctx.beginPath(); ctx.arc(p.dx, p.dy, 15, 0, Math.PI * 2); ctx.fill();
+                    const g = ctx.createRadialGradient(p.dx, p.dy, 0, p.dx, p.dy, 20);
+                    g.addColorStop(0, "#ff6b35"); g.addColorStop(1, "transparent");
+                    ctx.fillStyle = g; ctx.globalAlpha = 0.6 + mInf * 0.4;
+                    ctx.beginPath(); ctx.arc(p.dx, p.dy, 20, 0, Math.PI * 2); ctx.fill();
                 }
 
-                ctx.fillStyle = isHovered ? "#fff" : "#A63E1B";
-                ctx.globalAlpha = isHovered ? 1.0 : (0.7 + mInf * 0.3);
-                const size = isHovered ? 5 : 3;
+                ctx.fillStyle = isHovered ? "#fff" : "#ff6b35";
+                ctx.globalAlpha = isHovered ? 1.0 : (0.9 + mInf * 0.1);
+                const size = isHovered ? 6 : 4;
                 ctx.beginPath(); ctx.arc(p.dx, p.dy, size, 0, Math.PI * 2); ctx.fill();
             });
 

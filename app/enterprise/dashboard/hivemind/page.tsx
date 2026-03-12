@@ -91,6 +91,7 @@ export default function EnterpriseDashboardHiveMindPage() {
     const [entryTopic, setEntryTopic] = useState("general");
     const [ruleSeverity, setRuleSeverity] = useState<"standard" | "critical">("standard");
     const [tenantId, setTenantId] = useState<string | null>(null);
+    const [isChatMinimized, setIsChatMinimized] = useState(false);
 
     const getDashboardContext = useCallback((tenantId: string | null) => ({
         surface: "hivemind_dashboard",
@@ -148,6 +149,7 @@ export default function EnterpriseDashboardHiveMindPage() {
         setChatMessages(prev => [...prev, userMessage]);
         setChatInput("");
         setIsQuerying(true);
+        setIsChatMinimized(false); // Show chat when new query is submitted
 
         try {
             const { baseUrl: ragBase, tenantId, token } = getRagCredentials();
@@ -199,6 +201,7 @@ export default function EnterpriseDashboardHiveMindPage() {
         if (!chatInput.trim()) return;
 
         setIsQuerying(true);
+        setIsChatMinimized(false); // Show chat when new knowledge is submitted
         try {
             const { baseUrl: ragBase, tenantId, token } = getRagCredentials();
             if (!ragBase) throw new Error("RAG not configured");
@@ -497,13 +500,14 @@ export default function EnterpriseDashboardHiveMindPage() {
                 padding: "0 24px",
                 zIndex: 20
             }}>
-                {/* Chat Messages - Only show last message */}
+                {/* Chat Messages - Only show last message with minimize button */}
                 <AnimatePresence>
-                    {chatMessages.length > 0 && (
+                    {chatMessages.length > 0 && !isChatMinimized && (
                         <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: "auto" }}
-                            exit={{ opacity: 0, height: 0 }}
+                            initial={{ opacity: 0, y: 50 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -100, transition: { duration: 0.5, ease: "easeInOut" } }}
+                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
                             style={{
                                 marginBottom: 16,
                                 maxHeight: 400,
@@ -514,6 +518,38 @@ export default function EnterpriseDashboardHiveMindPage() {
                                 backdropFilter: "blur(20px)"
                             }}
                         >
+                            {/* Minimize button */}
+                            <div style={{
+                                display: "flex",
+                                justifyContent: "flex-end",
+                                padding: "8px 12px 0",
+                                borderBottom: "1px solid #1a1a1a"
+                            }}>
+                                <button
+                                    onClick={() => setIsChatMinimized(true)}
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 4,
+                                        padding: "4px 8px",
+                                        backgroundColor: "transparent",
+                                        border: "none",
+                                        color: "#666",
+                                        fontSize: 11,
+                                        fontFamily: "JetBrains Mono, monospace",
+                                        cursor: "pointer",
+                                        transition: "color 0.2s"
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.color = "#fff"}
+                                    onMouseLeave={(e) => e.currentTarget.style.color = "#666"}
+                                >
+                                    <span>HIDE</span>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M6 9l6 6 6-6"/>
+                                    </svg>
+                                </button>
+                            </div>
+
                             {/* Only show the last message */}
                             {(() => {
                                 const msg = chatMessages[chatMessages.length - 1];
@@ -521,7 +557,7 @@ export default function EnterpriseDashboardHiveMindPage() {
                                     <div
                                         key={msg.timestamp.getTime()}
                                         style={{
-                                            padding: "20px 24px"
+                                            padding: "16px 24px 20px"
                                         }}
                                     >
                                         <div style={{
@@ -565,6 +601,36 @@ export default function EnterpriseDashboardHiveMindPage() {
                         </motion.div>
                     )}
                 </AnimatePresence>
+
+                {/* Show button when minimized */}
+                {isChatMinimized && chatMessages.length > 0 && (
+                    <motion.button
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        onClick={() => setIsChatMinimized(false)}
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 6,
+                            marginBottom: 16,
+                            padding: "8px 16px",
+                            backgroundColor: "#0a0a0a",
+                            border: "1px solid #333",
+                            borderRadius: 999,
+                            color: "#fff",
+                            fontSize: 12,
+                            fontFamily: "JetBrains Mono, monospace",
+                            cursor: "pointer",
+                            alignSelf: "center"
+                        }}
+                    >
+                        <span>SHOW RESPONSE</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M18 15l-6-6-6 6"/>
+                        </svg>
+                    </motion.button>
+                )}
 
                 <div style={{
                     display: "flex",
