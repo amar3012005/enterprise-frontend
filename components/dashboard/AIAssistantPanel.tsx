@@ -1073,7 +1073,7 @@ export default function AIAssistantPanel({
                     </motion.div>
                 </div>
 
-                {/* Status & Metrics Row */}
+                {/* Status Row */}
                 <div style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -1082,9 +1082,6 @@ export default function AIAssistantPanel({
                     justifyContent: 'center'
                 }}>
                     <HUDStatus state={agentState} isDark={isDark} />
-                    <HUDMetric label="TTFT" value={metrics.ttft || 0} unit="ms" delay={0.1} />
-                    <HUDMetric label="TTFC" value={metrics.ttfc || 0} unit="ms" delay={0.15} />
-                    <HUDMetric label="RATIO" value={metrics.ratio > 0 ? metrics.ratio.toFixed(2) : '-'} delay={0.2} />
                 </div>
 
                 {/* Transcript Area - Compact */}
@@ -1145,21 +1142,22 @@ export default function AIAssistantPanel({
                             </div>
                         )}
 
-                        {transcripts.map((msg) => (
+                        {/* Show only the last transcript (current turn) */}
+                        {transcripts.length > 0 && (
                             <motion.div
-                                key={msg.id}
-                                initial={{ opacity: 0, x: msg.role === 'user' ? -10 : 10 }}
+                                key={transcripts[transcripts.length - 1].id}
+                                initial={{ opacity: 0, x: transcripts[transcripts.length - 1].role === 'user' ? -10 : 10 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ type: "spring", stiffness: 300, damping: 25 }}
                                 style={{
-                                    alignSelf: msg.role === 'user' ? 'flex-start' : 'flex-end',
+                                    alignSelf: transcripts[transcripts.length - 1].role === 'user' ? 'flex-start' : 'flex-end',
                                     maxWidth: '90%',
                                     padding: '8px 10px',
-                                    borderRadius: msg.role === 'user' ? '6px 6px 6px 2px' : '6px 6px 2px 6px',
-                                    backgroundColor: msg.role === 'user'
+                                    borderRadius: transcripts[transcripts.length - 1].role === 'user' ? '6px 6px 6px 2px' : '6px 6px 2px 6px',
+                                    backgroundColor: transcripts[transcripts.length - 1].role === 'user'
                                         ? (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)')
                                         : (isDark ? 'rgba(59, 130, 246, 0.12)' : 'rgba(59, 130, 246, 0.08)'),
-                                    border: msg.role === 'user'
+                                    border: transcripts[transcripts.length - 1].role === 'user'
                                         ? (isDark ? '1px solid rgba(255,255,255,0.04)' : '1px solid rgba(0,0,0,0.04)')
                                         : '1px solid rgba(59, 130, 246, 0.15)',
                                     color: isDark ? '#fff' : '#1a1a1a',
@@ -1175,11 +1173,11 @@ export default function AIAssistantPanel({
                                     marginRight: '6px',
                                     textTransform: 'uppercase'
                                 }}>
-                                    {msg.role === 'user' ? '>' : '<'}
+                                    {transcripts[transcripts.length - 1].role === 'user' ? '>' : '<'}
                                 </span>
-                                {msg.text}
+                                {transcripts[transcripts.length - 1].text}
                             </motion.div>
-                        ))}
+                        )}
 
                         {currentTranscript && (
                             <motion.div

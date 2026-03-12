@@ -130,21 +130,19 @@ export default function EnterpriseAgentDashboard() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3 }}
             style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 340px',
+                display: 'flex',
                 gap: '16px',
                 padding: '0',
-                height: 'calc(100vh - 120px)', // Fill viewport minus header/padding
-                alignItems: 'stretch',
+                height: '680px', // Fixed total height
                 overflow: 'hidden'
             }}
         >
-            {/* Left Column - Visualizer */}
+            {/* Left Column - Visualizer - Fixed width and height */}
             <motion.div
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1, duration: 0.3 }}
-                style={{ height: '100%' }}
+                style={{ width: '600px', height: '680px', flexShrink: 0 }}
             >
                 <AgentVisualizer
                     agentName={currentAgent.agent_name}
@@ -155,7 +153,7 @@ export default function EnterpriseAgentDashboard() {
                 />
             </motion.div>
 
-            {/* Right Column - AI Panel & Stats */}
+            {/* Right Column - AI Panel & Stats - Fixed width */}
             <motion.div
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -164,18 +162,22 @@ export default function EnterpriseAgentDashboard() {
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '16px',
-                    height: '100%'
+                    width: '340px',
+                    height: '680px',
+                    flexShrink: 0
                 }}
             >
-                <div style={{ flex: 1, minHeight: 0 }}>
+                {/* AI Panel - Fixed height */}
+                <div style={{ height: '480px', width: '340px', flexShrink: 0 }}>
                     <AIAssistantPanel agentId={agentId} fallbackAgent={currentAgent} />
                 </div>
 
+                {/* Stats Cards - Fixed height */}
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.25, duration: 0.3 }}
-                    style={{ flexShrink: 0 }}
+                    style={{ height: '184px', width: '340px', flexShrink: 0 }}
                 >
                     <StatsCards
                         totalCalls={currentAgent?.stats?.total_calls ?? 0}
