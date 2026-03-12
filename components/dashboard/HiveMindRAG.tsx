@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/context/ThemeContext";
 import { Clock, Info } from "lucide-react";
 
-// Derive dynamic credentials and RAG API base URL from tenant subdomain
+// Derive dynamic credentials and RAG API base URL from tenant
+// Uses subdomain (simple name like "davinci", "bundb") NOT tenant_id (UUID)
 function getRagCredentials() {
     if (typeof window === "undefined") return { baseUrl: null, tenantId: null, token: null };
     try {
@@ -14,12 +15,13 @@ function getRagCredentials() {
         if (!tenant) return { baseUrl: null, tenantId: null, token };
 
         const parsedTenant = JSON.parse(tenant);
-        const { tenant_id } = parsedTenant;
+        // Use subdomain for WebSocket/API compatibility (simple name, not UUID)
+        const tenantId = parsedTenant?.subdomain || parsedTenant?.tenant_id || "davinci";
 
         return {
             // Point everything to the Orchestrator EU Proxy (Port 8030)
             baseUrl: `https://demo.davinciai.eu:8030`,
-            tenantId: tenant_id || "davinci",
+            tenantId,
             token
         };
     } catch { return { baseUrl: null, tenantId: null, token: null }; }
@@ -163,7 +165,7 @@ export default function HiveMindRAG({
         setLoading(true);
         setConnectionStatus("connecting");
         try {
-            const url = `${ragBase}/api/v1/hive-mind/visualize?algorithm=tsne&limit=250&tenant_id=${encodeURIComponent(tenantId || 'davinci')}`;
+            const url = `/rag-api/api/v1/hive-mind/visualize?algorithm=tsne&limit=200&tenant_id=${encodeURIComponent(tenantId || 'davinci')}`;
             const response = await fetch(url, {
                 headers: {
                     "Authorization": token ? `Bearer ${token}` : ""

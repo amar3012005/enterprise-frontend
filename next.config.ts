@@ -20,6 +20,10 @@ const nextConfig: NextConfig = {
         destination: `${API_URL}/api/:path*`,
       },
       {
+        source: "/rag-api/:path*",
+        destination: `https://demo.davinciai.eu:8030/:path*`,
+      },
+      {
         source: "/webhooks/:path*",
         destination: `${API_URL}/webhooks/:path*`,
       },

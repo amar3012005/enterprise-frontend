@@ -1,25 +1,20 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    Send,
     Mic,
-    Plus,
-    Sparkles,
     RefreshCw,
     Paperclip,
-    Globe,
-    Settings,
-    Folder,
 } from "lucide-react";
-
-
 import { useTheme } from "@/context/ThemeContext";
 import { useAgents } from "@/context/AgentContext";
+import HiveMindRAG from "@/components/dashboard/HiveMindRAG";
+import AgentSkillsModal from "@/components/dashboard/AgentSkillsModal";
 
-// Derive dynamic credentials and RAG API base URL from tenant subdomain
+// Derive dynamic credentials and RAG API base URL from tenant
+// Uses subdomain (simple name like "davinci", "bundb") NOT tenant_id (UUID)
 function getRagCredentials() {
     if (typeof window === "undefined") return { baseUrl: null, tenantId: null, token: null };
     try {
@@ -28,12 +23,13 @@ function getRagCredentials() {
         if (!tenant) return { baseUrl: null, tenantId: null, token };
 
         const parsedTenant = JSON.parse(tenant);
-        const { tenant_id } = parsedTenant;
+        // Use subdomain for WebSocket/API compatibility (simple name, not UUID)
+        const tenantId = parsedTenant?.subdomain || parsedTenant?.tenant_id || "davinci";
 
         return {
             // Point everything to the Orchestrator EU Proxy (Port 8030)
             baseUrl: `https://demo.davinciai.eu:8030`,
-            tenantId: tenant_id || "davinci",
+            tenantId,
             token
         };
     } catch { return { baseUrl: null, tenantId: null, token: null }; }
@@ -65,19 +61,25 @@ interface ChatMessage {
     confidence?: number;
 }
 
-import HiveMindRAG from "@/components/dashboard/HiveMindRAG";
-import AgentSkillsModal from "@/components/dashboard/AgentSkillsModal";
+type KnowledgeInputMode = "chat" | "skill" | "rule" | "knowledge";
+
+const HIVEMIND_DASHBOARD_SYSTEM_PROMPT = `
+You are the HiveMind enterprise analyst interface for client teams.
+Answer using the customer insights TARA collected while speaking to customers.
+Prioritize pains, objections, buying intent, brand perception, repeated requests, conversion blockers, and the language customers naturally use.
+When evidence is weak, say so clearly.
+When useful, structure the answer into customer insights, business implications, and recommended next steps.
+If the operator proposes a new skill, rule, or knowledge item, rewrite it cleanly so it can be stored in HiveMind for future TARA conversations.
+`.trim();
 
 export default function EnterpriseDashboardHiveMindPage() {
     const router = useRouter();
-    const { theme } = useTheme();
-    const isDark = theme === "dark";
+    useTheme();
     const { selectedAgent, loading: agentLoading } = useAgents();
 
     const [points, setPoints] = useState<KnowledgePoint[]>([]);
     const [vizData, setVizData] = useState<VisualizationData | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [hoveredPoint, setHoveredPoint] = useState<KnowledgePoint | null>(null);
+    const [, setLoading] = useState(false);
     const [chatInput, setChatInput] = useState("");
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
     const [isQuerying, setIsQuerying] = useState(false);
@@ -85,7 +87,18 @@ export default function EnterpriseDashboardHiveMindPage() {
     const [timeRange, setTimeRange] = useState<"1D" | "1W" | "1M">("1D");
     const [uptime, setUptime] = useState("~1 days");
     const [isSkillsModalOpen, setIsSkillsModalOpen] = useState(false);
-    const [isAgentSkillMode, setIsAgentSkillMode] = useState(false);
+    const [inputMode, setInputMode] = useState<KnowledgeInputMode>("chat");
+    const [entryTopic, setEntryTopic] = useState("general");
+    const [ruleSeverity, setRuleSeverity] = useState<"standard" | "critical">("standard");
+    const [tenantId, setTenantId] = useState<string | null>(null);
+
+    const getDashboardContext = useCallback((tenantId: string | null) => ({
+        surface: "hivemind_dashboard",
+        dashboard_mode: "enterprise_insights",
+        tenant_id: tenantId || "davinci",
+        system_prompt: HIVEMIND_DASHBOARD_SYSTEM_PROMPT,
+        selected_agent: selectedAgent?.agent_name || null,
+    }), [selectedAgent]);
 
     // Fetch visualization data from RAG API
     const loadVisualization = useCallback(async () => {
@@ -98,7 +111,7 @@ export default function EnterpriseDashboardHiveMindPage() {
         setConnectionStatus("connecting");
 
         try {
-            const url = `${ragBase}/api/v1/hive-mind/visualize?algorithm=tsne&limit=200&tenant_id=${encodeURIComponent(tenantId || 'davinci')}`;
+            const url = `${ragBase}/hivemind/visualize?algorithm=tsne&limit=200&tenant_id=${encodeURIComponent(tenantId || "davinci")}`;
             const response = await fetch(url, {
                 headers: {
                     "Authorization": token ? `Bearer ${token}` : ""
@@ -139,7 +152,7 @@ export default function EnterpriseDashboardHiveMindPage() {
         try {
             const { baseUrl: ragBase, tenantId, token } = getRagCredentials();
             if (!ragBase) throw new Error("RAG not configured");
-            const response = await fetch(`${ragBase}/api/v1/query?tenant_id=${encodeURIComponent(tenantId || 'davinci')}`, {
+            const response = await fetch(`${ragBase}/hivemind/query?tenant_id=${encodeURIComponent(tenantId || "davinci")}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -147,6 +160,9 @@ export default function EnterpriseDashboardHiveMindPage() {
                 },
                 body: JSON.stringify({
                     query: chatInput,
+                    tenant_id: tenantId || "davinci",
+                    agent_name: selectedAgent?.agent_name || undefined,
+                    context: getDashboardContext(tenantId),
                     history_context: chatMessages.slice(-6).map(m => ({
                         role: m.role,
                         content: m.content
@@ -179,9 +195,7 @@ export default function EnterpriseDashboardHiveMindPage() {
         }
     };
 
-    // Submit agent skill directly
-    // Submit agent skill directly
-    const handleAgentSkillSubmit = async () => {
+    const handleKnowledgeSubmit = async () => {
         if (!chatInput.trim()) return;
 
         setIsQuerying(true);
@@ -191,12 +205,13 @@ export default function EnterpriseDashboardHiveMindPage() {
 
             const payload = {
                 text: chatInput,
-                type: "agent_skill",
-                topic: "general",
+                type: inputMode === "rule" ? "agent_rule" : inputMode === "knowledge" ? "general_kb" : "agent_skill",
+                topic: entryTopic,
+                ...(inputMode === "rule" ? { severity: ruleSeverity } : {}),
                 tenant_id: tenantId
             };
 
-            const response = await fetch(`${ragBase}/api/v1/skills?tenant_id=${encodeURIComponent(tenantId || 'davinci')}`, {
+            const response = await fetch(`${ragBase}/hivemind/skills?tenant_id=${encodeURIComponent(tenantId || "davinci")}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -206,20 +221,23 @@ export default function EnterpriseDashboardHiveMindPage() {
             });
 
             if (response.ok) {
+                const label = inputMode === "rule" ? "rule" : inputMode === "knowledge" ? "knowledge entry" : "skill";
                 const successMessage: ChatMessage = {
                     role: "assistant",
-                    content: `✅ Agent skill added successfully: "${chatInput}"`,
+                    content: `Saved ${label} to HiveMind for ${(tenantId || "davinci").toUpperCase()}: "${chatInput}"`,
                     timestamp: new Date()
                 };
                 setChatMessages(prev => [...prev, successMessage]);
                 setChatInput("");
+                setEntryTopic("general");
+                setRuleSeverity("standard");
             } else {
-                throw new Error("Failed to add skill");
+                throw new Error("Failed to add entry");
             }
         } catch (error) {
             const errorMessage: ChatMessage = {
                 role: "assistant",
-                content: "Failed to add agent skill. Please try again.",
+                content: "Failed to save the HiveMind entry. Please try again.",
                 timestamp: new Date()
             };
             setChatMessages(prev => [...prev, errorMessage]);
@@ -228,12 +246,33 @@ export default function EnterpriseDashboardHiveMindPage() {
         }
     };
 
+    const inputPlaceholder =
+        inputMode === "chat"
+            ? "Ask HiveMind for customer insights, objections, demand signals, or trends..."
+            : inputMode === "skill"
+                ? "Add a new TARA skill the voice agent should use..."
+                : inputMode === "rule"
+                    ? "Add a new rule or guardrail for TARA..."
+                    : "Add new reusable knowledge for HiveMind and future conversations...";
+
+    const showEntryMeta = inputMode !== "chat";
+
 
     useEffect(() => {
         const storedTenant = localStorage.getItem("tenant");
         if (!storedTenant) {
             router.push("/login");
             return;
+        }
+
+        // Extract tenant identifier from localStorage
+        // Uses subdomain (simple name) for WebSocket/API compatibility
+        try {
+            const parsedTenant = JSON.parse(storedTenant);
+            const extractedTenantId = parsedTenant?.subdomain || parsedTenant?.tenant_id || "davinci";
+            setTenantId(extractedTenantId);
+        } catch {
+            setTenantId("davinci");
         }
 
         // Load visualization on mount
@@ -294,7 +333,7 @@ export default function EnterpriseDashboardHiveMindPage() {
                         letterSpacing: "-0.03em",
                         color: "#fff"
                     }}>
-                        TARA
+                        HIVEMIND
                     </h1>
                     <p style={{
                         fontSize: 14,
@@ -304,6 +343,37 @@ export default function EnterpriseDashboardHiveMindPage() {
                     }}>
                         Enterprise-grade voice agent for Davinci AI
                     </p>
+                    <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        marginTop: 12,
+                        fontSize: 12,
+                        fontFamily: "JetBrains Mono, monospace"
+                    }}>
+                        {tenantId && (
+                            <span style={{
+                                padding: "4px 10px",
+                                backgroundColor: "rgba(34, 197, 94, 0.15)",
+                                color: "#22c55e",
+                                borderRadius: 6,
+                                border: "1px solid rgba(34, 197, 94, 0.25)"
+                            }}>
+                                TENANT: {tenantId.toUpperCase()}
+                            </span>
+                        )}
+                        {selectedAgent?.agent_name && (
+                            <span style={{
+                                padding: "4px 10px",
+                                backgroundColor: "rgba(100, 100, 100, 0.15)",
+                                color: "#aaa",
+                                borderRadius: 6,
+                                border: "1px solid rgba(100, 100, 100, 0.25)"
+                            }}>
+                                AGENT: {selectedAgent.agent_name.toUpperCase()}
+                            </span>
+                        )}
+                    </div>
                 </div>
 
                 {/* Right - Status */}
@@ -419,7 +489,7 @@ export default function EnterpriseDashboardHiveMindPage() {
             {/* Chat Interface - Bottom Center */}
             <div style={{
                 position: "absolute",
-                bottom: 100,
+                bottom: 56,
                 left: "50%",
                 transform: "translateX(-50%)",
                 width: "100%",
@@ -438,7 +508,7 @@ export default function EnterpriseDashboardHiveMindPage() {
                                 marginBottom: 16,
                                 maxHeight: 200,
                                 overflowY: "auto",
-                                backgroundColor: "rgba(0, 0, 0, 0.9)",
+                                backgroundColor: "#0a0a0a",
                                 borderRadius: 16,
                                 border: "1px solid #222",
                                 backdropFilter: "blur(20px)"
@@ -454,7 +524,7 @@ export default function EnterpriseDashboardHiveMindPage() {
                                 >
                                     <div style={{
                                         fontSize: 10,
-                                        color: msg.role === "assistant" ? "#22c55e" : "#666",
+                                        color: msg.role === "assistant" ? "#fff" : "#666",
                                         fontFamily: "JetBrains Mono, monospace",
                                         marginBottom: 6,
                                         textTransform: "uppercase",
@@ -478,7 +548,7 @@ export default function EnterpriseDashboardHiveMindPage() {
                                     display: "flex",
                                     alignItems: "center",
                                     gap: 10,
-                                    color: "#444"
+                                    color: "#666"
                                 }}>
                                     <motion.div
                                         animate={{ rotate: 360 }}
@@ -493,23 +563,144 @@ export default function EnterpriseDashboardHiveMindPage() {
                     )}
                 </AnimatePresence>
 
+                <div style={{
+                    display: "flex",
+                    gap: 8,
+                    marginBottom: 12,
+                    justifyContent: "center",
+                    flexWrap: "wrap"
+                }}>
+                    {([
+                        { key: "chat", label: "Insights" },
+                        { key: "skill", label: "New Skill" },
+                        { key: "rule", label: "New Rule" },
+                        { key: "knowledge", label: "Knowledge Base" },
+                    ] as const).map((mode) => (
+                        <button
+                            key={mode.key}
+                            onClick={() => setInputMode(mode.key)}
+                            style={{
+                                padding: "8px 14px",
+                                borderRadius: 999,
+                                border: inputMode === mode.key ? "1px solid #fff" : "1px solid #333",
+                                backgroundColor: inputMode === mode.key ? "rgba(255, 255, 255, 0.1)" : "transparent",
+                                color: inputMode === mode.key ? "#fff" : "#666",
+                                fontSize: 12,
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                letterSpacing: "0.02em",
+                                transition: "all 0.2s"
+                            }}
+                        >
+                            {mode.label}
+                        </button>
+                    ))}
+                </div>
+
+                {showEntryMeta && (
+                    <div style={{
+                        display: "flex",
+                        gap: 10,
+                        marginBottom: 12,
+                        padding: "10px 12px",
+                        backgroundColor: "#0a0a0a",
+                        border: "1px solid #222",
+                        borderRadius: 18,
+                        backdropFilter: "blur(20px)",
+                        boxShadow: "0 12px 32px rgba(0,0,0,0.45)",
+                        flexWrap: "wrap"
+                    }}>
+                        <div style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 6,
+                            minWidth: 180,
+                            flex: 1
+                        }}>
+                            <span style={{
+                                fontSize: 10,
+                                letterSpacing: "0.08em",
+                                textTransform: "uppercase",
+                                color: "#666",
+                                fontWeight: 700
+                            }}>
+                                Category
+                            </span>
+                            <input
+                                type="text"
+                                value={entryTopic}
+                                onChange={(e) => setEntryTopic(e.target.value)}
+                                placeholder="general"
+                                style={{
+                                    height: 38,
+                                    borderRadius: 12,
+                                    border: "1px solid #333",
+                                    backgroundColor: "#111",
+                                    color: "#fff",
+                                    padding: "0 12px",
+                                    outline: "none",
+                                    fontSize: 13,
+                                    fontFamily: "Inter, sans-serif"
+                                }}
+                            />
+                        </div>
+
+                        {inputMode === "rule" && (
+                            <div style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 6,
+                                minWidth: 150
+                            }}>
+                                <span style={{
+                                    fontSize: 10,
+                                    letterSpacing: "0.08em",
+                                    textTransform: "uppercase",
+                                    color: "#666",
+                                    fontWeight: 700
+                                }}>
+                                    Severity
+                                </span>
+                                <select
+                                    value={ruleSeverity}
+                                    onChange={(e) => setRuleSeverity(e.target.value as "standard" | "critical")}
+                                    style={{
+                                        height: 38,
+                                        borderRadius: 12,
+                                        border: "1px solid #333",
+                                        backgroundColor: "#111",
+                                        color: "#fff",
+                                        padding: "0 12px",
+                                        outline: "none",
+                                        fontSize: 13,
+                                        fontFamily: "Inter, sans-serif"
+                                    }}
+                                >
+                                    <option value="standard">standard</option>
+                                    <option value="critical">critical</option>
+                                </select>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Chat Input */}
                 <div style={{
                     display: "flex",
                     alignItems: "center",
                     gap: 12,
                     padding: "16px 24px",
-                    backgroundColor: "rgba(30, 30, 30, 0.98)",
+                    background: "#0a0a0a",
                     borderRadius: 28,
-                    border: "1px solid #2a2a2a",
+                    border: "1px solid #222",
                     backdropFilter: "blur(20px)",
-                    boxShadow: "0 10px 40px rgba(0,0,0,0.6)"
+                    boxShadow: "0 18px 48px rgba(0,0,0,0.62)"
                 }}>
                     {/* Left Icons */}
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                         <button
                             onClick={() => setIsSkillsModalOpen(true)}
-                            title="Attach file"
+                            title="Upload file"
                             style={{
                                 width: 32,
                                 height: 32,
@@ -528,93 +719,19 @@ export default function EnterpriseDashboardHiveMindPage() {
                         >
                             <Paperclip size={20} />
                         </button>
-
-                        <div style={{ width: 1, height: 20, backgroundColor: "#333" }} />
-
-                        <button
-                            title="Web search"
-                            style={{
-                                width: 32,
-                                height: 32,
-                                borderRadius: 8,
-                                backgroundColor: "transparent",
-                                border: "none",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                cursor: "pointer",
-                                color: "#888",
-                                transition: "all 0.2s"
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = "#fff"}
-                            onMouseLeave={(e) => e.currentTarget.style.color = "#888"}
-                        >
-                            <Globe size={20} />
-                        </button>
-
-                        <div style={{ width: 1, height: 20, backgroundColor: "#333" }} />
-
-                        <button
-                            onClick={() => setIsAgentSkillMode(!isAgentSkillMode)}
-                            title="Agent Skill Mode"
-                            style={{
-                                width: 32,
-                                height: 32,
-                                borderRadius: 8,
-                                backgroundColor: isAgentSkillMode ? "#06b6d4" : "transparent",
-                                border: "none",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                cursor: "pointer",
-                                color: isAgentSkillMode ? "#000" : "#888",
-                                transition: "all 0.2s"
-                            }}
-                            onMouseEnter={(e) => {
-                                if (!isAgentSkillMode) e.currentTarget.style.color = "#fff";
-                            }}
-                            onMouseLeave={(e) => {
-                                if (!isAgentSkillMode) e.currentTarget.style.color = "#888";
-                            }}
-                        >
-                            <Sparkles size={20} />
-                        </button>
-
-                        <div style={{ width: 1, height: 20, backgroundColor: "#333" }} />
-
-                        <button
-                            title="Browse files"
-                            style={{
-                                width: 32,
-                                height: 32,
-                                borderRadius: 8,
-                                backgroundColor: "transparent",
-                                border: "none",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                cursor: "pointer",
-                                color: "#888",
-                                transition: "all 0.2s"
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = "#fff"}
-                            onMouseLeave={(e) => e.currentTarget.style.color = "#888"}
-                        >
-                            <Folder size={20} />
-                        </button>
                     </div>
 
                     <input
                         type="text"
-                        placeholder={isAgentSkillMode ? "Type agent skill here..." : "Type your message here..."}
+                        placeholder={inputPlaceholder}
                         value={chatInput}
                         onChange={(e) => setChatInput(e.target.value)}
                         onKeyDown={(e) => {
                             if (e.key === "Enter" && !e.shiftKey) {
-                                if (isAgentSkillMode) {
-                                    handleAgentSkillSubmit();
-                                } else {
+                                if (inputMode === "chat") {
                                     handleQuery();
+                                } else {
+                                    handleKnowledgeSubmit();
                                 }
                             }
                         }}
@@ -625,7 +742,7 @@ export default function EnterpriseDashboardHiveMindPage() {
                             backgroundColor: "transparent",
                             border: "none",
                             outline: "none",
-                            color: "#aaa",
+                            color: "#fff",
                             fontSize: 15,
                             fontFamily: "Inter, sans-serif"
                         }}

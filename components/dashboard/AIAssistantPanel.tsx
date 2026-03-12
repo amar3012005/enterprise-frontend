@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { Play, PhoneOff, Activity, Zap, MessageSquare } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Play, PhoneOff, Activity, Zap, MessageSquare, Mic, Volume2, Clock } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useTheme } from "@/context/ThemeContext";
 import { apiFetch } from "@/lib/api";
@@ -11,10 +12,10 @@ const Orb = dynamic<any>(() => import("@/components/ui/orb").then(mod => mod.Orb
     ssr: false,
     loading: () => (
         <div style={{
-            width: '200px',
-            height: '200px',
+            width: '100%',
+            height: '100%',
             borderRadius: '50%',
-            backgroundColor: 'rgba(255,255,255,0.05)',
+            backgroundColor: 'rgba(255,255,255,0.03)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center'
@@ -22,29 +23,143 @@ const Orb = dynamic<any>(() => import("@/components/ui/orb").then(mod => mod.Orb
     )
 });
 
-function MetricPill({ icon, label, value, color, compact = false }: { icon: any, label: string, value: string, color: string, compact?: boolean }) {
+interface TranscriptMessage {
+    id: string;
+    role: 'user' | 'agent';
+    text: string;
+    timestamp: number;
+    isFinal: boolean;
+}
+
+// HUD-style Metric Display
+function HUDMetric({ label, value, unit = '', color = '#22c55e', delay = 0 }: {
+    label: string;
+    value: string | number;
+    unit?: string;
+    color?: string;
+    delay?: number;
+}) {
     const { theme } = useTheme();
     const isDark = theme === 'dark';
 
     return (
-        <div style={{
-            backgroundColor: isDark ? '#111' : '#f5f5f5',
-            padding: compact ? '6px 10px' : '8px 12px',
-            borderRadius: compact ? '10px' : '12px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            flex: 1,
-            border: isDark ? '1px solid #222' : '1px solid #eee',
-            boxShadow: isDark ? 'none' : '0 2px 8px rgba(0,0,0,0.05)',
-            transition: 'all 0.3s ease'
-        }}>
-            <div style={{ color, display: 'flex', alignItems: 'center' }}>{icon}</div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ color: '#666', fontSize: compact ? '7px' : '8px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px' }}>{label}</span>
-                <span style={{ color: isDark ? '#fff' : '#1a1a1a', fontSize: compact ? '11px' : '12px', fontWeight: 'bold' }}>{value}</span>
+        <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay, duration: 0.3 }}
+            style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '2px',
+                padding: '8px 10px',
+                backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.04)',
+                borderRadius: '6px',
+                minWidth: '70px',
+            }}
+        >
+            <span style={{
+                fontSize: '9px',
+                fontWeight: 500,
+                color: isDark ? '#666' : '#888',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                fontFamily: 'JetBrains Mono, monospace'
+            }}>
+                {label}
+            </span>
+            <div style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                gap: '3px'
+            }}>
+                <span style={{
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: isDark ? '#fff' : '#1a1a1a',
+                    fontFamily: 'JetBrains Mono, monospace',
+                    fontVariantNumeric: 'tabular-nums'
+                }}>
+                    {value}
+                </span>
+                {unit && (
+                    <span style={{
+                        fontSize: '10px',
+                        color: isDark ? '#555' : '#999',
+                        fontFamily: 'JetBrains Mono, monospace'
+                    }}>
+                        {unit}
+                    </span>
+                )}
             </div>
-        </div>
+        </motion.div>
+    );
+}
+
+// HUD Status Indicator
+function HUDStatus({ state, isDark }: { state: 'listening' | 'talking' | 'thinking' | null, isDark: boolean }) {
+    if (!state) return null;
+
+    const config = {
+        listening: { color: '#22c55e', label: 'RX', sublabel: 'RECEIVING' },
+        talking: { color: '#3b82f6', label: 'TX', sublabel: 'TRANSMITTING' },
+        thinking: { color: '#f59e0b', label: 'PROC', sublabel: 'PROCESSING' }
+    };
+
+    const { color, label, sublabel } = config[state];
+
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '6px 10px',
+                backgroundColor: `${color}08`,
+                border: `1px solid ${color}20`,
+                borderRadius: '4px',
+            }}
+        >
+            <motion.div
+                animate={state === 'listening' ? {
+                    opacity: [1, 0.4, 1],
+                } : state === 'talking' ? {
+                    scale: [1, 1.2, 1],
+                } : {
+                    rotate: [0, 180, 360]
+                }}
+                transition={{ duration: state === 'thinking' ? 2 : 1.2, repeat: Infinity, ease: "easeInOut" }}
+                style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    backgroundColor: color,
+                    boxShadow: `0 0 8px ${color}`
+                }}
+            />
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
+                <span style={{
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    color: color,
+                    fontFamily: 'JetBrains Mono, monospace',
+                    letterSpacing: '0.05em'
+                }}>
+                    {label}
+                </span>
+                <span style={{
+                    fontSize: '8px',
+                    color: isDark ? '#555' : '#888',
+                    fontFamily: 'JetBrains Mono, monospace',
+                    letterSpacing: '0.05em'
+                }}>
+                    {sublabel}
+                </span>
+            </div>
+        </motion.div>
     );
 }
 
@@ -64,6 +179,7 @@ export default function AIAssistantPanel({
     useEffect(() => {
         setIsMounted(true);
     }, []);
+
     // Call State
     const [isCallActive, setIsCallActive] = useState(false);
     const [agentState, setAgentState] = useState<'listening' | 'talking' | 'thinking' | null>(null);
@@ -80,12 +196,17 @@ export default function AIAssistantPanel({
     });
     const [micStream, setMicStream] = useState<MediaStream | null>(null);
 
+    // Transcript State
+    const [transcripts, setTranscripts] = useState<TranscriptMessage[]>([]);
+    const [currentTranscript, setCurrentTranscript] = useState<string>('');
+    const transcriptContainerRef = useRef<HTMLDivElement>(null);
+
     // Voice Agent WebSocket
     const wsRef = useRef<WebSocket | null>(null);
-    const audioWsRef = useRef<WebSocket | null>(null); // Dedicated audio stream WebSocket
+    const audioWsRef = useRef<WebSocket | null>(null);
     const audioCtxRef = useRef<AudioContext | null>(null);
     const wsConnectedRef = useRef(false);
-    const audioStreamActiveRef = useRef(false); // Track if dedicated audio stream is active
+    const audioStreamActiveRef = useRef(false);
     const sessionIdRef = useRef<string | null>(null);
     const audioWorkletRef = useRef<ScriptProcessorNode | null>(null);
     const binaryQueueRef = useRef<ArrayBuffer[]>([]);
@@ -104,18 +225,26 @@ export default function AIAssistantPanel({
     const [isLoadingAgent, setIsLoadingAgent] = useState(true);
     const isPhoneLayout = layoutMode === 'phone';
 
-    // Turn Timing Refs (matching reference client.html)
+    // Turn Timing Refs
     const turnStartTimeRef = useRef<number | null>(null);
     const hasTtftForTurnRef = useRef(false);
     const hasTtfcForTurnRef = useRef(false);
     const agentResponseBufferRef = useRef<string>("");
+    const currentAgentMessageRef = useRef<string>("");
 
     // Login Mode & Demo Call Limit
     const [loginMode, setLoginMode] = useState<string>('demo');
-    const DEMO_CALL_LIMIT = 300; // 5 minutes in seconds
-    const DEMO_WARNING_TIME = 270; // 4:30 in seconds
+    const DEMO_CALL_LIMIT = 300;
+    const DEMO_WARNING_TIME = 270;
 
-    // Helper to mark turn start (called when final transcript arrives)
+    // Auto-scroll transcript
+    useEffect(() => {
+        if (transcriptContainerRef.current) {
+            transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
+        }
+    }, [transcripts, currentTranscript]);
+
+    // Helper to mark turn start
     const markTurnStart = () => {
         turnStartTimeRef.current = performance.now();
         hasTtftForTurnRef.current = false;
@@ -125,12 +254,11 @@ export default function AIAssistantPanel({
 
     const VOICE_API_KEY = process.env.NEXT_PUBLIC_VOICE_API_KEY || "sk_car_ChbYsPTQzZjruzRRPLy2zK";
 
-    // Fetch Agent Data from Database (falls back to prop data for demo agents)
+    // Fetch Agent Data
     useEffect(() => {
         if (!agentId) return;
 
         const fetchAgent = async () => {
-            // Optimization: Skip API call for known demo agent to avoid 404 in console
             if (agentId === "agent-demo-001") {
                 setAgentData(fallbackAgent);
                 setIsLoadingAgent(false);
@@ -140,7 +268,6 @@ export default function AIAssistantPanel({
             try {
                 const response = await apiFetch(`/api/agents/${agentId}`);
                 if (!response.ok) {
-                    // Agent not in DB — use fallback data (e.g. demo TARA agent)
                     if (fallbackAgent?.websocket_url) {
                         setAgentData(fallbackAgent);
                     }
@@ -149,7 +276,6 @@ export default function AIAssistantPanel({
                 const data = await response.json();
                 setAgentData(data);
             } catch (err) {
-                // Network error — use fallback if available
                 if (fallbackAgent?.websocket_url) {
                     setAgentData(fallbackAgent);
                 }
@@ -161,7 +287,7 @@ export default function AIAssistantPanel({
         fetchAgent();
     }, [agentId, fallbackAgent]);
 
-    // Retrieve login mode from localStorage
+    // Retrieve login mode
     useEffect(() => {
         const storedLoginMode = localStorage.getItem('login_mode') || 'demo';
         setLoginMode(storedLoginMode);
@@ -170,18 +296,15 @@ export default function AIAssistantPanel({
     // Demo Mode Call Limit Enforcement
     useEffect(() => {
         if (loginMode === 'demo' && isCallActive) {
-            // Warning at 4:30
             if (callDuration === DEMO_WARNING_TIME) {
                 alert('⏰ Demo call will end in 30 seconds');
             }
-            // Auto-disconnect at 5:00
             if (callDuration >= DEMO_CALL_LIMIT) {
                 endCall();
                 alert('⏱️ Demo call limit (5 minutes) reached. Upgrade to Enterprise for unlimited calls.');
             }
         }
     }, [callDuration, loginMode, isCallActive]);
-
 
     // Volume Analyzer for Responsive Orb
     useEffect(() => {
@@ -216,7 +339,6 @@ export default function AIAssistantPanel({
     // Sync agent state
     useEffect(() => {
         if (connectionStatus === 'connected') {
-            // Only show talking if speaking, otherwise listening if ready
             setAgentState(agentIsSpeaking ? 'talking' : 'listening');
         } else if (connectionStatus === 'connecting') {
             setAgentState('thinking');
@@ -225,20 +347,16 @@ export default function AIAssistantPanel({
         }
     }, [agentIsSpeaking, connectionStatus]);
 
-    // Connect to dedicated audio WebSocket stream (matching tara-widget.js pattern)
+    // Connect to dedicated audio WebSocket
     const connectAudioWebSocket = (sessionId: string, baseWsUrl: string) => {
         if (!sessionId || !baseWsUrl) {
             console.warn('⚠️ Cannot connect audio WebSocket: missing sessionId or baseWsUrl');
             return;
         }
 
-        // Extract base URL correctly (remove /ws if it exists)
         const baseUrl = baseWsUrl.replace(/\/ws\/?(\?.*)?$/, '');
-
-        // Extract existing query params from baseWsUrl (like tenant_id)
         const urlObj = new URL(baseWsUrl);
         const tenantId = urlObj.searchParams.get('tenant_id') || 'davinci';
-
         const audioUrl = `${baseUrl}/stream?session_id=${encodeURIComponent(sessionId)}&tenant_id=${encodeURIComponent(tenantId)}`;
 
         console.log('🔊 Connecting dedicated audio WebSocket:', audioUrl);
@@ -254,12 +372,10 @@ export default function AIAssistantPanel({
 
         audioWs.onmessage = (e) => {
             if (e.data instanceof ArrayBuffer) {
-                // Audio chunk received on dedicated stream
                 if (!playbackStartTimeRef.current) playbackStartTimeRef.current = Date.now();
                 setAgentIsSpeaking(true);
                 audioStreamCompleteRef.current = false;
 
-                // Record TTFC on first audio chunk
                 if (turnStartTimeRef.current && !hasTtfcForTurnRef.current) {
                     const ttfc = Math.round(performance.now() - turnStartTimeRef.current);
                     setMetrics(prev => ({ ...prev, ttfc }));
@@ -268,7 +384,6 @@ export default function AIAssistantPanel({
 
                 playAudioChunk(e.data);
             } else {
-                // JSON message on audio stream (e.g., stream_complete)
                 try {
                     const data = JSON.parse(e.data);
                     if (data.type === 'stream_complete') {
@@ -320,21 +435,17 @@ export default function AIAssistantPanel({
         setConnectionStatus('connecting');
         setAgentState('thinking');
         setCallDuration(0);
+        setTranscripts([]);
+        setCurrentTranscript('');
 
         const customWsUrl = agentData.websocket_url;
-
         const cartesiaId = agentData.cartesia_agent_id;
         const selectedVoice = agentData.voice || agentData.voice_name || agentData.voice_id;
         const isCustomProtocol = !!customWsUrl && customWsUrl !== "not_set";
-
         const normalizedCustomWsUrl = isCustomProtocol
             ? String(customWsUrl).replace(/^http:\/\//i, 'ws://').replace(/^https:\/\//i, 'wss://')
             : customWsUrl;
-
-        // Extract base URL correctly (remove /ws if it exists)
         const baseUrl = normalizedCustomWsUrl ? String(normalizedCustomWsUrl).replace(/\/ws\/?(\?.*)?$/, '') : '';
-
-        // Any custom WebSocket URL is treated as a unified Voice Orchestrator (Tara-compatible)
         const wsUrlTemp = isCustomProtocol
             ? `${baseUrl}/ws`
             : `wss://api.cartesia.ai/agents/stream/${cartesiaId}?api_key=${VOICE_API_KEY}&cartesia-version=2025-04-16`;
@@ -342,14 +453,12 @@ export default function AIAssistantPanel({
         const userId = typeof window !== 'undefined' ? (localStorage.getItem('user_id') || localStorage.getItem('access_token') || "anonymous_user") : "anonymous_user";
         const storedTenant = typeof window !== 'undefined' ? localStorage.getItem('tenant') : null;
         const tenantInfo = storedTenant ? JSON.parse(storedTenant) : null;
-
-        // Use literal Brand Slug from tenantInfo or fallback to 'davinci'
-        const tenantId = tenantInfo?.tenant_id || "davinci";
+        // Use subdomain for WebSocket/API compatibility (simple name, not UUID)
+        const tenantId = tenantInfo?.subdomain || tenantInfo?.tenant_id || "davinci";
         const agentIdToUse = agentData?.agent_id || agentId || "tara";
         const agentName = agentData?.agent_name || "Tara AI";
         let defaultSessionId = crypto.randomUUID();
 
-        // Optimized Handshake URL (Option 1 - Strictly using brand names/slugs)
         const wsUrl = isCustomProtocol
             ? `${baseUrl}/ws?tenant_id=${encodeURIComponent(tenantId)}&agent_id=${encodeURIComponent(agentIdToUse)}&session_type=webcall&user_id=${encodeURIComponent(userId)}&agent_name=${encodeURIComponent(agentName)}&session_id=${encodeURIComponent(defaultSessionId)}`
             : wsUrlTemp;
@@ -364,7 +473,6 @@ export default function AIAssistantPanel({
             sessionIdRef.current = sessionId;
 
             if (isCustomProtocol) {
-                // Dynamic Unified Handshake — matches Orchestrator session_config schema
                 console.log(`🚀 Handshake for ${agentName} (Tenant: ${tenantId})`);
                 ws.send(JSON.stringify({
                     type: 'session_config',
@@ -384,11 +492,8 @@ export default function AIAssistantPanel({
                 }));
 
                 ws.send(JSON.stringify({ type: 'start_session', timestamp: Date.now() / 1000 }));
-
-                // Keep audio stream for legacy/dedicated support if NOT on the main WS
                 connectAudioWebSocket(sessionId, wsUrlTemp);
-            }
-            else {
+            } else {
                 ws.send(JSON.stringify({
                     event: "start",
                     config: { input_format: "pcm_44100" }
@@ -440,7 +545,6 @@ export default function AIAssistantPanel({
 
         ws.onmessage = async (e) => {
             if (e.data instanceof ArrayBuffer) {
-                // Push binary data to queue for playback (unified socket pattern)
                 binaryQueueRef.current.push(e.data);
                 return;
             }
@@ -451,7 +555,6 @@ export default function AIAssistantPanel({
                 if (data.type === 'session_ready' || (data.type === 'state_update' && data.state === 'listening')) {
                     wsConnectedRef.current = true;
 
-                    // Capture dynamic audio format and sample rate from backend config
                     if (data.audio_format || data.format) {
                         audioConfigRef.current.format = data.audio_format || data.format;
                     }
@@ -469,8 +572,17 @@ export default function AIAssistantPanel({
                     }
                 } else if (data.type === 'transcript') {
                     if (data.is_final && data.text && data.text.trim()) {
-                        // Mark turn start for TTFT/TTFC (matching reference client.html line 1212)
                         markTurnStart();
+                        setTranscripts(prev => [...prev, {
+                            id: crypto.randomUUID(),
+                            role: 'user',
+                            text: data.text,
+                            timestamp: Date.now(),
+                            isFinal: true
+                        }]);
+                        setCurrentTranscript('');
+                    } else if (data.text && !data.is_final) {
+                        setCurrentTranscript(data.text);
                     }
                     setMetrics(prev => ({
                         ...prev,
@@ -483,13 +595,23 @@ export default function AIAssistantPanel({
                 } else if (data.type === 'agent_response') {
                     if (data.text && data.text.trim()) {
                         if (data.is_streaming) {
-                            // Record TTFT on first token (matching reference client.html line 1225)
                             if (turnStartTimeRef.current && !hasTtftForTurnRef.current) {
                                 const ttft = Math.round(performance.now() - turnStartTimeRef.current);
                                 setMetrics(prev => ({ ...prev, ttft }));
                                 hasTtftForTurnRef.current = true;
                             }
-                            agentResponseBufferRef.current += data.text;
+                            currentAgentMessageRef.current += data.text;
+                            setCurrentTranscript(currentAgentMessageRef.current);
+                        } else {
+                            setTranscripts(prev => [...prev, {
+                                id: crypto.randomUUID(),
+                                role: 'agent',
+                                text: currentAgentMessageRef.current || data.text,
+                                timestamp: Date.now(),
+                                isFinal: true
+                            }]);
+                            currentAgentMessageRef.current = '';
+                            setCurrentTranscript('');
                         }
                     }
                 } else if (data.type === 'audio_chunk') {
@@ -504,14 +626,13 @@ export default function AIAssistantPanel({
                     setAgentIsSpeaking(true);
                     audioStreamCompleteRef.current = false;
 
-                    // client.html-compatible mode for localhost/tara:
-                    // pair JSON metadata with queued binary chunks from the same /ws.
+                    if (turnStartTimeRef.current && !hasTtfcForTurnRef.current) {
+                        const ttfc = Math.round(performance.now() - turnStartTimeRef.current);
+                        setMetrics(prev => ({ ...prev, ttfc }));
+                        hasTtfcForTurnRef.current = true;
+                    }
+
                     if (isCustomProtocol && data.binary_sent && binaryQueueRef.current.length > 0) {
-                        if (turnStartTimeRef.current && !hasTtfcForTurnRef.current) {
-                            const ttfc = Math.round(performance.now() - turnStartTimeRef.current);
-                            setMetrics(prev => ({ ...prev, ttfc }));
-                            hasTtfcForTurnRef.current = true;
-                        }
                         const binChunk = binaryQueueRef.current.shift();
                         if (binChunk) {
                             playAudioChunk(binChunk, audioConfigRef.current.format === 'pcm_s16le');
@@ -519,7 +640,6 @@ export default function AIAssistantPanel({
                     } else {
                         const audioB64 = data.data || data.audio;
                         if (audioB64) {
-                            // Record TTFC on first audio chunk
                             if (turnStartTimeRef.current && !hasTtfcForTurnRef.current) {
                                 const ttfc = Math.round(performance.now() - turnStartTimeRef.current);
                                 setMetrics(prev => ({ ...prev, ttfc }));
@@ -567,6 +687,16 @@ export default function AIAssistantPanel({
                 } else if (data.type === "transcript") {
                     if (data.is_final && data.text && data.text.trim()) {
                         markTurnStart();
+                        setTranscripts(prev => [...prev, {
+                            id: crypto.randomUUID(),
+                            role: 'user',
+                            text: data.text,
+                            timestamp: Date.now(),
+                            isFinal: true
+                        }]);
+                        setCurrentTranscript('');
+                    } else if (data.text && !data.is_final) {
+                        setCurrentTranscript(data.text);
                     }
                 } else if (data.event === 'clear') {
                     setAgentIsSpeaking(false);
@@ -593,7 +723,6 @@ export default function AIAssistantPanel({
         const sampleRate = audioConfigRef.current.sampleRate;
 
         if (data instanceof ArrayBuffer) {
-            // Check if we need to convert from Int16 to Float32
             if (format === 'pcm_s16le' || forceInt16) {
                 const int16 = new Int16Array(data);
                 float32 = new Float32Array(int16.length);
@@ -616,7 +745,6 @@ export default function AIAssistantPanel({
                     float32[i] = int16[i] / 32768.0;
                 }
             } else {
-                // Default to Float32 (4 bytes per sample)
                 float32 = new Float32Array(bytes.buffer);
             }
         }
@@ -630,10 +758,6 @@ export default function AIAssistantPanel({
             source.connect(audioCtxRef.current.destination);
 
             const now = audioCtxRef.current.currentTime;
-
-            // --- Strict Scheduling with Drift Correction ---
-            // If chunks arrive slightly late, play immediately (drift correction)
-            // If they arrive on time/early, queue precisely at the end of the previous chunk
             let startAt = lastPlaybackTimeRef.current;
             if (startAt < now) {
                 startAt = now;
@@ -663,7 +787,6 @@ export default function AIAssistantPanel({
     };
 
     const endCall = async () => {
-        // Capture data for backend sync before clearing state
         const finalDuration = callDuration;
         const finalMetrics = { ...metrics };
         const finalAgentId = agentId;
@@ -676,7 +799,6 @@ export default function AIAssistantPanel({
             wsRef.current = null;
         }
 
-        // Close dedicated audio WebSocket if active
         if (audioWsRef.current) {
             audioWsRef.current.close();
             audioWsRef.current = null;
@@ -684,7 +806,6 @@ export default function AIAssistantPanel({
         }
         binaryQueueRef.current = [];
 
-        // Sync with Backend
         if (finalDuration > 0) {
             try {
                 const response = await fetch(`/api/metrics`, {
@@ -724,6 +845,9 @@ export default function AIAssistantPanel({
         setAgentState(null);
         setMicStream(null);
         setCallDuration(0);
+        setTranscripts([]);
+        setCurrentTranscript('');
+        currentAgentMessageRef.current = '';
         setMetrics({
             latency: 0,
             logprob: 0,
@@ -735,131 +859,441 @@ export default function AIAssistantPanel({
         });
     };
 
+    const formatDuration = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
     if (!isMounted || isLoadingAgent || !agentData) {
         return (
             <div style={{
-                backgroundColor: isDark ? '#000' : '#fff',
-                borderRadius: isPhoneLayout ? '36px' : '32px',
-                padding: isPhoneLayout ? 'clamp(14px, 3vw, 24px)' : '48px 32px',
-                height: isPhoneLayout ? 'min(88vh, 820px)' : '600px',
+                backgroundColor: isDark ? '#111' : '#fff',
+                borderRadius: '12px',
+                padding: '20px',
+                height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.3)' : '0 4px 20px rgba(0,0,0,0.05)',
-                border: isDark ? '1px solid #222' : '1px solid #eee',
-                position: 'relative',
-                color: isDark ? '#fff' : '#1a1a1a',
-                transition: 'all 0.3s ease'
+                border: isDark ? '1px solid #222' : '1px solid #e5e5e5',
             }}>
-                <div style={{ width: isPhoneLayout ? '170px' : '200px', height: isPhoneLayout ? '170px' : '200px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {!isMounted || isLoadingAgent ? "Loading..." : "Error loading agent"}
-                </div>
+                <motion.div
+                    animate={{ opacity: [0.4, 0.8, 0.4] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                    style={{
+                        width: '120px',
+                        height: '120px',
+                        borderRadius: '50%',
+                        backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        color: isDark ? '#444' : '#999',
+                        fontFamily: 'JetBrains Mono, monospace'
+                    }}
+                >
+                    {!isMounted || isLoadingAgent ? "INITIALIZING..." : "ERROR"}
+                </motion.div>
             </div>
         );
     }
 
     return (
-        <div style={{
-            backgroundColor: isDark ? '#000' : '#fff',
-            borderRadius: isPhoneLayout ? '36px' : '32px',
-            padding: isPhoneLayout ? 'clamp(14px, 3vw, 24px)' : '48px 32px',
-            height: isPhoneLayout ? 'min(88vh, 820px)' : '600px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.3)' : '0 4px 20px rgba(0,0,0,0.05)',
-            border: isDark ? '1px solid #222' : '1px solid #eee',
-            position: 'relative',
-            color: isDark ? '#fff' : '#1a1a1a',
-            transition: 'all 0.3s ease'
-        }}>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+            style={{
+                backgroundColor: isDark ? '#0a0a0a' : '#fff',
+                borderRadius: '12px',
+                padding: '16px',
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                border: isDark ? '1px solid #111' : '1px solid #e5e5e5',
+                position: 'relative',
+                overflow: 'hidden'
+            }}
+        >
+
+            {/* Header - Compact HUD Style */}
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '12px',
+                paddingBottom: '12px',
+                borderBottom: isDark ? '1px solid #222' : '1px solid #e5e5e5',
+                position: 'relative',
+                zIndex: 1
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{
+                        padding: '4px 8px',
+                        backgroundColor: isDark ? '#0a0a0a' : '#f5f5f5',
+                        border: isDark ? '1px solid #333' : '1px solid #ddd',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        color: isDark ? '#666' : '#888',
+                        fontFamily: 'JetBrains Mono, monospace',
+                        letterSpacing: '0.1em'
+                    }}>
+                        SYS.AI
+                    </div>
+                    <div>
+                        <h3 style={{
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            color: isDark ? '#fff' : '#1a1a1a',
+                            margin: 0,
+                            letterSpacing: '0.02em'
+                        }}>
+                            {agentData?.agent_name || "TARA"}
+                        </h3>
+                    </div>
+                </div>
+
+                <AnimatePresence mode="wait">
+                    {isCallActive ? (
+                        <motion.div
+                            key="active"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '4px 10px',
+                                backgroundColor: isDark ? 'rgba(34, 197, 94, 0.08)' : 'rgba(34, 197, 94, 0.05)',
+                                border: `1px solid ${isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.15)'}`,
+                                borderRadius: '4px',
+                                color: '#22c55e'
+                            }}
+                        >
+                            <Clock size={12} />
+                            <motion.span
+                                animate={loginMode === 'demo' && callDuration >= DEMO_WARNING_TIME ? {
+                                    color: ['#ef4444', '#f87171', '#ef4444']
+                                } : {}}
+                                transition={{ duration: 1, repeat: Infinity }}
+                                style={{
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    fontFamily: 'JetBrains Mono, monospace',
+                                    fontVariantNumeric: 'tabular-nums'
+                                }}
+                            >
+                                {formatDuration(callDuration)}
+                            </motion.span>
+                            {loginMode === 'demo' && (
+                                <span style={{ fontSize: '9px', opacity: 0.6, fontFamily: 'JetBrains Mono, monospace' }}>/5:00</span>
+                            )}
+                        </motion.div>
+                    ) : (
+                        <motion.div
+                            key="inactive"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '4px 10px',
+                                backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                                border: isDark ? '1px solid #333' : '1px solid #ddd',
+                                borderRadius: '4px',
+                                color: isDark ? '#666' : '#888'
+                            }}
+                        >
+                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#666' }} />
+                            <span style={{ fontSize: '11px', fontWeight: 500, fontFamily: 'JetBrains Mono, monospace' }}>STANDBY</span>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+
+            {/* Main Content - Compact Layout */}
+            <div style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '12px',
+                position: 'relative',
+                zIndex: 1
+            }}>
+                {/* Orb Container - 180px as requested */}
                 <div style={{
-                    width: isPhoneLayout ? '170px' : '200px',
-                    height: isPhoneLayout ? '170px' : '200px',
+                    width: '180px',
+                    height: '180px',
                     position: 'relative',
-                    marginBottom: isPhoneLayout ? '28px' : '48px',
                     borderRadius: '50%',
-                    backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)',
                     display: 'flex',
                     alignItems: 'center',
+                    justifyContent: 'center',
+                    border: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)',
+                }}>
+                    {/* HUD Ring Decoration */}
+                    <div style={{
+                        position: 'absolute',
+                        inset: '-4px',
+                        borderRadius: '50%',
+                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                        pointerEvents: 'none'
+                    }} />
+                    <div style={{
+                        position: 'absolute',
+                        inset: '-8px',
+                        borderRadius: '50%',
+                        border: `1px dashed ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
+                        pointerEvents: 'none'
+                    }} />
+
+                    <motion.div
+                        animate={agentState === 'talking' ? {
+                            scale: [1, 1.02, 1],
+                        } : {}}
+                        transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut" }}
+                        style={{ width: '160px', height: '160px' }}
+                    >
+                        <Orb
+                            agentState={agentState}
+                            volumeMode="manual"
+                            manualInput={userVolume}
+                            manualOutput={agentIsSpeaking ? (0.6 + Math.random() * 0.4) : 0}
+                            colors={["#CADCFC", "#A0B9D1"]}
+                        />
+                    </motion.div>
+                </div>
+
+                {/* Status & Metrics Row */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    flexWrap: 'wrap',
                     justifyContent: 'center'
                 }}>
-                    <Orb
-                        agentState={agentState}
-                        volumeMode="manual"
-                        manualInput={userVolume}
-                        manualOutput={agentIsSpeaking ? (0.6 + Math.random() * 0.4) : 0}
-                        colors={["#CADCFC", "#A0B9D1"]}
-                    />
+                    <HUDStatus state={agentState} isDark={isDark} />
+                    <HUDMetric label="TTFT" value={metrics.ttft || 0} unit="ms" delay={0.1} />
+                    <HUDMetric label="TTFC" value={metrics.ttfc || 0} unit="ms" delay={0.15} />
+                    <HUDMetric label="RATIO" value={metrics.ratio > 0 ? metrics.ratio.toFixed(2) : '-'} delay={0.2} />
                 </div>
 
-                <div style={{ textAlign: 'center', marginBottom: isPhoneLayout ? '20px' : '32px' }}>
-                    <div style={{ marginBottom: isPhoneLayout ? '8px' : '12px' }}>
-                        <div style={{
-                            padding: isPhoneLayout ? '5px 12px' : '6px 16px',
-                            backgroundColor: isDark ? '#111' : '#f5f5f5',
-                            border: isDark ? '1px solid #333' : '1px solid #eee',
-                            display: 'inline-block',
-                            marginBottom: '12px',
-                            borderRadius: '4px'
+                {/* Transcript Area - Compact */}
+                <div style={{
+                    flex: 1,
+                    width: '100%',
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                    borderRadius: '8px',
+                    padding: '10px',
+                    border: isDark ? '1px solid #1a1a1a' : '1px solid #e5e5e5',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column'
+                }}>
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        marginBottom: '8px',
+                        paddingBottom: '8px',
+                        borderBottom: isDark ? '1px solid #1a1a1a' : '1px solid #e5e5e5'
+                    }}>
+                        <MessageSquare size={12} color={isDark ? '#444' : '#888'} />
+                        <span style={{
+                            fontSize: '10px',
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.08em',
+                            color: isDark ? '#666' : '#888',
+                            fontFamily: 'JetBrains Mono, monospace'
                         }}>
-                            <p style={{ fontSize: '9px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.25em', margin: 0 }}>DAVINCI</p>
-                        </div>
-                        <h3 style={{ fontSize: isPhoneLayout ? '22px' : '28px', fontWeight: 700, color: isDark ? '#fff' : '#1a1a1a', textTransform: 'uppercase', letterSpacing: '0.15em', margin: isPhoneLayout ? '0 0 10px 0' : '0 0 16px 0' }}>{agentData?.agent_name || "TARA"}</h3>
+                            LOG
+                        </span>
                     </div>
 
-                    {/* Always show timer */}
-                    <p style={{
-                        fontSize: isPhoneLayout ? '12px' : '13px',
-                        color: loginMode === 'demo' && callDuration >= DEMO_WARNING_TIME ? '#ef4444' : '#666',
-                        fontFamily: 'monospace',
-                        letterSpacing: '0.1em',
-                        margin: 0,
-                        fontWeight: 500,
-                        transition: 'color 0.3s ease'
-                    }}>
-                        {Math.floor(callDuration / 60)}:{(callDuration % 60).toString().padStart(2, '0')}
-                        {loginMode === 'demo' && isCallActive && (
-                            <span style={{ fontSize: '9px', marginLeft: '8px', opacity: 0.7 }}>
-                                / 5:00
-                            </span>
+                    <div
+                        ref={transcriptContainerRef}
+                        style={{
+                            flex: 1,
+                            overflowY: 'auto',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '6px'
+                        }}
+                    >
+                        {transcripts.length === 0 && !currentTranscript && !isCallActive && (
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                height: '100%',
+                                color: isDark ? '#444' : '#aaa',
+                                fontSize: '12px',
+                                textAlign: 'center',
+                                fontFamily: 'JetBrains Mono, monospace'
+                            }}>
+                                AWAITING INPUT...
+                            </div>
                         )}
-                    </p>
-                </div>
 
-                {/* Voice-only interaction - no text display */}
+                        {transcripts.map((msg) => (
+                            <motion.div
+                                key={msg.id}
+                                initial={{ opacity: 0, x: msg.role === 'user' ? -10 : 10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                                style={{
+                                    alignSelf: msg.role === 'user' ? 'flex-start' : 'flex-end',
+                                    maxWidth: '90%',
+                                    padding: '8px 10px',
+                                    borderRadius: msg.role === 'user' ? '6px 6px 6px 2px' : '6px 6px 2px 6px',
+                                    backgroundColor: msg.role === 'user'
+                                        ? (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)')
+                                        : (isDark ? 'rgba(59, 130, 246, 0.12)' : 'rgba(59, 130, 246, 0.08)'),
+                                    border: msg.role === 'user'
+                                        ? (isDark ? '1px solid rgba(255,255,255,0.04)' : '1px solid rgba(0,0,0,0.04)')
+                                        : '1px solid rgba(59, 130, 246, 0.15)',
+                                    color: isDark ? '#fff' : '#1a1a1a',
+                                    fontSize: '12px',
+                                    lineHeight: 1.4,
+                                    wordBreak: 'break-word'
+                                }}
+                            >
+                                <span style={{
+                                    fontSize: '9px',
+                                    color: isDark ? '#555' : '#888',
+                                    fontFamily: 'JetBrains Mono, monospace',
+                                    marginRight: '6px',
+                                    textTransform: 'uppercase'
+                                }}>
+                                    {msg.role === 'user' ? '>' : '<'}
+                                </span>
+                                {msg.text}
+                            </motion.div>
+                        ))}
 
-                {/* Performance Metrics */}
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: isPhoneLayout ? '6px' : '8px',
-                    width: '100%',
-                    maxWidth: isPhoneLayout ? '300px' : '320px',
-                    marginTop: isPhoneLayout ? '20px' : '32px'
-                }}>
-                    <MetricPill icon={<Zap size={isPhoneLayout ? 9 : 10} />} label="TTFT" value={`${metrics.ttft}ms`} color="#22c55e" compact={isPhoneLayout} />
-                    <MetricPill icon={<Activity size={isPhoneLayout ? 9 : 10} />} label="TTFC" value={`${metrics.ttfc}ms`} color="#3b82f6" compact={isPhoneLayout} />
-                    <MetricPill icon={<MessageSquare size={isPhoneLayout ? 9 : 10} />} label="Ratio" value={metrics.ratio.toFixed(2)} color="#f59e0b" compact={isPhoneLayout} />
+                        {currentTranscript && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                style={{
+                                    alignSelf: agentIsSpeaking ? 'flex-end' : 'flex-start',
+                                    maxWidth: '90%',
+                                    padding: '8px 10px',
+                                    borderRadius: agentIsSpeaking ? '6px 6px 2px 6px' : '6px 6px 6px 2px',
+                                    backgroundColor: agentIsSpeaking
+                                        ? (isDark ? 'rgba(59, 130, 246, 0.08)' : 'rgba(59, 130, 246, 0.05)')
+                                        : (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'),
+                                    border: agentIsSpeaking
+                                        ? '1px dashed rgba(59, 130, 246, 0.2)'
+                                        : (isDark ? '1px dashed rgba(255,255,255,0.06)' : '1px dashed rgba(0,0,0,0.06)'),
+                                    color: isDark ? '#aaa' : '#666',
+                                    fontSize: '12px',
+                                    lineHeight: 1.4,
+                                    wordBreak: 'break-word'
+                                }}
+                            >
+                                <span style={{
+                                    fontSize: '9px',
+                                    color: isDark ? '#555' : '#888',
+                                    fontFamily: 'JetBrains Mono, monospace',
+                                    marginRight: '6px'
+                                }}>
+                                    {agentIsSpeaking ? '<' : '>'}
+                                </span>
+                                {currentTranscript}
+                                <motion.span
+                                    animate={{ opacity: [0.4, 1, 0.4] }}
+                                    transition={{ duration: 1, repeat: Infinity }}
+                                    style={{ marginLeft: '4px' }}
+                                >
+                                    ▊
+                                </motion.span>
+                            </motion.div>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px', marginTop: 'auto', width: '100%', justifyContent: 'center' }}>
-                {!isCallActive ? (
-                    <button onClick={startCall} style={{ padding: isPhoneLayout ? '12px 24px' : '14px 48px', width: isPhoneLayout ? '100%' : 'auto', maxWidth: isPhoneLayout ? '300px' : undefined, backgroundColor: isDark ? '#fff' : '#000', color: isDark ? '#000' : '#fff', fontSize: isPhoneLayout ? '10px' : '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', transition: 'all 0.2s' }}>
-                        <Play size={isPhoneLayout ? 12 : 14} fill="currentColor" />
-                        Start Call
-                    </button>
-                ) : (
-                    <button onClick={endCall} style={{ padding: isPhoneLayout ? '12px 24px' : '14px 40px', width: isPhoneLayout ? '100%' : 'auto', maxWidth: isPhoneLayout ? '300px' : undefined, backgroundColor: '#ef4444', color: '#fff', fontSize: isPhoneLayout ? '10px' : '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', transition: 'all 0.2s' }}>
-                        <PhoneOff size={isPhoneLayout ? 12 : 13} />
-                        End Call
-                    </button>
-                )}
+            {/* Call Button - Compact */}
+            <div style={{
+                marginTop: '12px',
+                paddingTop: '12px',
+                borderTop: isDark ? '1px solid #222' : '1px solid #e5e5e5',
+                position: 'relative',
+                zIndex: 1
+            }}>
+                <AnimatePresence mode="wait">
+                    {!isCallActive ? (
+                        <motion.button
+                            key="start"
+                            onClick={startCall}
+                            whileHover={{ scale: 1.01 }}
+                            whileTap={{ scale: 0.98 }}
+                            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                            style={{
+                                width: '100%',
+                                padding: '12px 20px',
+                                backgroundColor: isDark ? '#fff' : '#0a0a0a',
+                                color: isDark ? '#0a0a0a' : '#fff',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.1em',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
+                                fontFamily: 'JetBrains Mono, monospace'
+                            }}
+                        >
+                            <Play size={14} fill="currentColor" />
+                            INITIATE
+                        </motion.button>
+                    ) : (
+                        <motion.button
+                            key="end"
+                            onClick={endCall}
+                            whileHover={{ scale: 1.01 }}
+                            whileTap={{ scale: 0.98 }}
+                            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                            style={{
+                                width: '100%',
+                                padding: '12px 20px',
+                                backgroundColor: '#ef4444',
+                                color: '#fff',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.1em',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
+                                fontFamily: 'JetBrains Mono, monospace'
+                            }}
+                        >
+                            <PhoneOff size={14} />
+                            TERMINATE
+                        </motion.button>
+                    )}
+                </AnimatePresence>
             </div>
-        </div>
+        </motion.div>
     );
 }

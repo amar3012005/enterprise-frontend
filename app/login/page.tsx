@@ -152,11 +152,11 @@ export default function LoginPage() {
             <img
               src="/Images/login_page.jpeg"
               alt="DaVinci AI Platform"
-              className={`w-full h-full object-cover transition-all duration-1000 ${isLeftHovered ? "scale-110" : "scale-105"}`}
+              className={`w-full h-full object-cover transition-all duration-1000 grayscale ${isLeftHovered ? "scale-110" : "scale-105"}`}
             />
           </div>
 
-          <div className={`absolute inset-0 transition-all duration-700 ${isDark ? "bg-gradient-to-b from-black/70 via-black/50 to-black/80" : "bg-gradient-to-b from-black/60 via-black/40 to-black/70"}`} />
+          <div className="absolute inset-0 bg-black/60" />
 
           <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
             <div
@@ -167,10 +167,7 @@ export default function LoginPage() {
                 alt="DaVinci AI Logo"
                 width={180}
                 height={180}
-                className={`transition-all duration-700 ${isLeftHovered
-                  ? "filter brightness-125 drop-shadow-[0_0_40px_rgba(255,87,34,0.6)]"
-                  : "filter brightness-110 drop-shadow-[0_0_30px_rgba(255,87,34,0.4)]"
-                  }`}
+                className="filter brightness-0 invert drop-shadow-[0_0_40px_rgba(255,255,255,0.3)]"
               />
             </div>
           </div>

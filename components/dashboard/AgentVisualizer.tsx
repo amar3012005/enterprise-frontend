@@ -2,7 +2,7 @@
 
 import { useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ChevronDown, Network } from "lucide-react";
+import { Network, MapPin, Calendar, CreditCard, ChevronDown } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 
 interface AgentVisualizerProps {
@@ -21,108 +21,207 @@ export default function AgentVisualizer({ agentName, agentDescription, totalCall
     const daysActive = createdAt ? Math.max(1, Math.floor((new Date().getTime() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24))) : 1;
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            {/* Main Visualizer Card */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
+            {/* Main Visualizer Card - HUD Style */}
             <div style={{
-                backgroundColor: isDark ? '#000' : '#fff',
-                borderRadius: '32px',
+                backgroundColor: isDark ? '#0a0a0a' : '#fff',
+                borderRadius: '12px',
                 padding: '0',
-                height: '600px',
+                flex: 1,
+                minHeight: 0,
                 position: 'relative',
                 display: 'flex',
                 flexDirection: 'column',
-                boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.2)' : '0 4px 20px rgba(0,0,0,0.05)',
+                border: isDark ? '1px solid #111' : '1px solid #e5e5e5',
                 color: isDark ? '#fff' : '#1a1a1a',
-                border: isDark ? 'none' : '1px solid #eee',
-                transition: 'all 0.3s ease',
                 overflow: 'hidden'
             }}>
-                {/* Header Overlay */}
+
+                {/* Corner Markers - HUD Style */}
+                <div style={{
+                    position: 'absolute',
+                    top: '12px',
+                    left: '12px',
+                    width: '20px',
+                    height: '20px',
+                    borderLeft: `2px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                    borderTop: `2px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                    pointerEvents: 'none'
+                }} />
+                <div style={{
+                    position: 'absolute',
+                    top: '12px',
+                    right: '12px',
+                    width: '20px',
+                    height: '20px',
+                    borderRight: `2px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                    borderTop: `2px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                    pointerEvents: 'none'
+                }} />
+                <div style={{
+                    position: 'absolute',
+                    bottom: '12px',
+                    left: '12px',
+                    width: '20px',
+                    height: '20px',
+                    borderLeft: `2px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                    borderBottom: `2px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                    pointerEvents: 'none'
+                }} />
+                <div style={{
+                    position: 'absolute',
+                    bottom: '12px',
+                    right: '12px',
+                    width: '20px',
+                    height: '20px',
+                    borderRight: `2px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                    borderBottom: `2px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                    pointerEvents: 'none'
+                }} />
+
+                {/* Header Overlay - Compact */}
                 <div style={{
                     position: 'absolute',
                     top: 0,
                     left: 0,
                     right: 0,
-                    padding: '32px 40px',
+                    padding: '16px 20px',
                     zIndex: 10,
-                    background: 'linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 70%, transparent 100%)',
+                    background: isDark
+                        ? 'linear-gradient(180deg, rgba(17,17,17,0.95) 0%, rgba(17,17,17,0.7) 60%, transparent 100%)'
+                        : 'linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.7) 60%, transparent 100%)',
                     pointerEvents: 'none'
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', pointerEvents: 'auto' }}>
                         <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                                <Network size={28} color="#ffffff" />
-                                <h1 style={{ fontSize: '36px', fontWeight: 700, margin: 0, color: '#fff', letterSpacing: '-0.02em' }}>{agentName}</h1>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                                <Network size={18} color={isDark ? '#fff' : '#1a1a1a'} />
+                                <h1 style={{
+                                    fontSize: '20px',
+                                    fontWeight: 600,
+                                    margin: 0,
+                                    color: isDark ? '#fff' : '#1a1a1a',
+                                    letterSpacing: '0.02em'
+                                }}>
+                                    {agentName}
+                                </h1>
                             </div>
-                            <p style={{ color: '#888', fontSize: '14px', margin: 0 }}>{agentDescription}</p>
+                            <p style={{
+                                color: isDark ? '#666' : '#888',
+                                fontSize: '12px',
+                                margin: 0,
+                                fontFamily: 'JetBrains Mono, monospace'
+                            }}>
+                                {agentDescription}
+                            </p>
                         </div>
 
-                        {/* Live Indicator */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{
-                                width: '8px',
-                                height: '8px',
-                                backgroundColor: '#ffffff',
-                                borderRadius: '50%',
-                                boxShadow: '0 0 12px rgba(255,255,255,0.5)',
-                                animation: 'pulse 2s infinite'
-                            }} />
-                            <span style={{ color: '#ffffff', fontSize: '12px', fontWeight: 600, letterSpacing: '0.05em', fontFamily: 'JetBrains Mono, monospace' }}>
-                                HIVEMIND ACTIVE
+                        {/* Live Indicator - HUD Style */}
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '6px 10px',
+                            backgroundColor: isDark ? 'rgba(34, 197, 94, 0.08)' : 'rgba(34, 197, 94, 0.05)',
+                            border: `1px solid ${isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.15)'}`,
+                            borderRadius: '4px'
+                        }}>
+                            <motion.div
+                                animate={{ opacity: [1, 0.3, 1] }}
+                                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                                style={{
+                                    width: '6px',
+                                    height: '6px',
+                                    backgroundColor: '#22c55e',
+                                    borderRadius: '50%',
+                                    boxShadow: '0 0 8px #22c55e'
+                                }}
+                            />
+                            <span style={{
+                                color: '#22c55e',
+                                fontSize: '10px',
+                                fontWeight: 600,
+                                letterSpacing: '0.08em',
+                                fontFamily: 'JetBrains Mono, monospace'
+                            }}>
+                                ACTIVE
                             </span>
-                            <span style={{ color: '#666', fontSize: '12px', fontFamily: 'JetBrains Mono, monospace' }}>
-                                ({daysActive}d uptime)
+                            <span style={{
+                                color: isDark ? '#444' : '#aaa',
+                                fontSize: '10px',
+                                fontFamily: 'JetBrains Mono, monospace'
+                            }}>
+                                {daysActive}D
                             </span>
-                            <style jsx>{`
-                                @keyframes pulse {
-                                    0% { transform: scale(0.95); opacity: 0.7; }
-                                    50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 16px rgba(255,255,255,0.4); }
-                                    100% { transform: scale(0.95); opacity: 0.7; }
-                                }
-                            `}</style>
                         </div>
                     </div>
                 </div>
 
                 {/* Generative HiveMind Visualization */}
                 <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-                    <HiveMindCanvas />
+                    <HiveMindCanvas isDark={isDark} />
                 </div>
 
-                {/* Time Range Controls */}
+                {/* Bottom Controls - HUD Style */}
                 <div style={{
                     position: 'absolute',
-                    bottom: '24px',
-                    left: '24px',
+                    bottom: '16px',
+                    left: '16px',
                     display: 'flex',
-                    gap: '8px',
-                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                    padding: '4px',
-                    borderRadius: '8px',
-                    backdropFilter: 'blur(10px)',
+                    gap: '4px',
                     zIndex: 10
                 }}>
-                    <TimeRangeButton label="1D" active />
-                    <TimeRangeButton label="1W" />
-                    <TimeRangeButton label="1M" />
+                    <TimeRangeButton label="1H" />
+                    <TimeRangeButton label="24H" active />
+                    <TimeRangeButton label="7D" />
+                    <TimeRangeButton label="30D" />
+                </div>
+
+                {/* Side Metrics - HUD Style */}
+                <div style={{
+                    position: 'absolute',
+                    right: '16px',
+                    top: '80px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    zIndex: 10
+                }}>
+                    <SideMetric label="NODES" value="284" />
+                    <SideMetric label="CONN" value="1.2K" />
+                    <SideMetric label="LAT" value="12ms" />
                 </div>
             </div>
 
-            {/* Bottom Info Cards - Now Outside */}
+            {/* Bottom Info Cards - Compact HUD Style */}
             <div style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 1fr 1fr',
-                gap: '16px'
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: '12px'
             }}>
-                <InfoCard label="My Location" value={location || "Not specified"} />
-                <InfoCard label="My Dates" value={`${totalCalls} Calls`} highlightedValue="10:25 AM" />
-                <InfoCard label="Payment Method" value="Credit Card" cardInfo="3451 **** **** 7896" />
+                <InfoCard
+                    icon={<MapPin size={14} />}
+                    label="LOCATION"
+                    value={location || "Not specified"}
+                />
+                <InfoCard
+                    icon={<Calendar size={14} />}
+                    label="CALLS"
+                    value={`${totalCalls.toLocaleString()}`}
+                    subvalue="10:25 UTC"
+                />
+                <InfoCard
+                    icon={<CreditCard size={14} />}
+                    label="BILLING"
+                    value="Enterprise"
+                    subvalue="3451 **** 7896"
+                />
             </div>
         </div>
     );
 }
 
-const HiveMindCanvas = () => {
+const HiveMindCanvas = ({ isDark }: { isDark: boolean }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const animationRef = useRef<number>(null!);
     const mouseRef = useRef({ x: -1000, y: -1000 });
@@ -142,10 +241,10 @@ const HiveMindCanvas = () => {
         ctx.scale(dpr, dpr);
 
         const particles: any[] = [];
-        const particleCount = 280; // High density for the cluster look
+        const particleCount = 280;
         const centerX = width / 2;
         const centerY = height / 2;
-        const clusterRadius = Math.min(width, height) * 0.45;
+        const clusterRadius = Math.min(width, height) * 0.42;
 
         for (let i = 0; i < particleCount; i++) {
             const angle = Math.random() * Math.PI * 2;
@@ -159,7 +258,7 @@ const HiveMindCanvas = () => {
                 angleOffset: Math.random() * Math.PI * 2,
                 rotationSpeed: (Math.random() - 0.5) * 0.002,
                 driftSpeed: 0.001 + Math.random() * 0.002,
-                size: Math.random() * 1.5 + 0.5,
+                size: Math.random() * 1.2 + 0.3,
                 twinkle: Math.random() * Math.PI * 2
             });
         }
@@ -168,7 +267,7 @@ const HiveMindCanvas = () => {
             const time = Date.now() * 0.001;
             ctx.clearRect(0, 0, width, height);
 
-            // Update particle positions with structured rotational drift
+            // Update particle positions
             particles.forEach((p) => {
                 p.baseAngle += p.rotationSpeed;
                 const dynamicR = p.baseR + Math.sin(time * 0.5 + p.angleOffset) * 5;
@@ -178,7 +277,7 @@ const HiveMindCanvas = () => {
                 p.twinkle += 0.03;
             });
 
-            // Draw bright connections first (underneath particles)
+            // Draw connections
             for (let i = 0; i < particles.length; i++) {
                 const p1 = particles[i];
                 for (let j = i + 1; j < particles.length; j++) {
@@ -186,14 +285,14 @@ const HiveMindCanvas = () => {
                     const dx = p1.x - p2.x;
                     const dy = p1.y - p2.y;
                     const distSq = dx * dx + dy * dy;
-                    const maxDist = 85;
+                    const maxDist = 70;
 
                     if (distSq < maxDist * maxDist) {
                         const dist = Math.sqrt(distSq);
-                        const alpha = (1 - dist / maxDist) * 0.35;
+                        const alpha = (1 - dist / maxDist) * (isDark ? 0.25 : 0.7);
                         ctx.beginPath();
-                        ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
-                        ctx.lineWidth = 0.6;
+                        ctx.strokeStyle = isDark ? `rgba(255, 255, 255, ${alpha})` : `rgba(0, 0, 0, ${alpha})`;
+                        ctx.lineWidth = 0.5;
                         ctx.moveTo(p1.x, p1.y);
                         ctx.lineTo(p2.x, p2.y);
                         ctx.stroke();
@@ -204,19 +303,13 @@ const HiveMindCanvas = () => {
             // Draw particles
             particles.forEach((p) => {
                 const mouseDist = Math.sqrt(Math.pow(mouseRef.current.x - p.x, 2) + Math.pow(mouseRef.current.y - p.y, 2));
-                const brightness = mouseDist < 120 ? 1 : 0.6 + Math.sin(p.twinkle) * 0.4;
+                const brightness = mouseDist < 120 ? 1 : 0.5 + Math.sin(p.twinkle) * 0.3;
+                const nodeAlpha = isDark ? brightness : Math.max(brightness, 0.8);
 
                 ctx.beginPath();
-                ctx.fillStyle = `rgba(255, 255, 255, ${brightness})`;
-                ctx.arc(p.x, p.y, p.size * (mouseDist < 80 ? 1.5 : 1), 0, Math.PI * 2);
+                ctx.fillStyle = isDark ? `rgba(255, 255, 255, ${brightness})` : `rgba(0, 0, 0, ${nodeAlpha})`;
+                ctx.arc(p.x, p.y, p.size * (mouseDist < 80 ? 1.3 : 1), 0, Math.PI * 2);
                 ctx.fill();
-
-                if (mouseDist < 80) {
-                    ctx.beginPath();
-                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-                    ctx.arc(p.x, p.y, p.size * 3, 0, Math.PI * 2);
-                    ctx.stroke();
-                }
             });
 
             animationRef.current = requestAnimationFrame(animate);
@@ -252,37 +345,88 @@ const HiveMindCanvas = () => {
     return <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />;
 };
 
-function InfoCard({ label, value, highlightedValue, cardInfo }: any) {
+function InfoCard({ icon, label, value, subvalue }: { icon: React.ReactNode, label: string, value: string, subvalue?: string }) {
     const { theme } = useTheme();
     const isDark = theme === 'dark';
 
     return (
         <div style={{
-            backgroundColor: isDark ? '#111' : '#fff',
-            borderRadius: '12px',
-            padding: '16px',
-            position: 'relative',
-            border: isDark ? '1px solid #222' : '1px solid #eee',
-            boxShadow: isDark ? 'none' : '0 2px 8px rgba(0,0,0,0.05)',
-            transition: 'all 0.3s ease'
+            backgroundColor: isDark ? '#0a0a0a' : '#fff',
+            borderRadius: '8px',
+            padding: '12px',
+            border: isDark ? '1px solid #111' : '1px solid #e5e5e5',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '6px'
         }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontSize: '12px', color: '#666' }}>{label}</span>
-                <ChevronDown size={14} style={{ color: isDark ? '#444' : '#ccc' }} />
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                color: isDark ? '#666' : '#888'
+            }}>
+                {icon}
+                <span style={{
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    letterSpacing: '0.08em',
+                    fontFamily: 'JetBrains Mono, monospace'
+                }}>
+                    {label}
+                </span>
             </div>
-            {highlightedValue ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: isDark ? '#ddd' : '#333' }}>{value.split(highlightedValue)[0]}</span>
-                    <span style={{ fontSize: '16px', fontWeight: 'bold', color: isDark ? '#fff' : '#000' }}>{highlightedValue}</span>
+            <div style={{
+                fontSize: '13px',
+                fontWeight: 600,
+                color: isDark ? '#fff' : '#1a1a1a',
+                fontFamily: 'JetBrains Mono, monospace'
+            }}>
+                {value}
+            </div>
+            {subvalue && (
+                <div style={{
+                    fontSize: '10px',
+                    color: isDark ? '#444' : '#aaa',
+                    fontFamily: 'JetBrains Mono, monospace'
+                }}>
+                    {subvalue}
                 </div>
-            ) : cardInfo ? (
-                <div>
-                    <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px', color: isDark ? '#ddd' : '#333' }}>{value}</div>
-                    <div style={{ fontSize: '12px', color: '#666' }}>{cardInfo}</div>
-                </div>
-            ) : (
-                <div style={{ fontSize: '13px', fontWeight: 600, color: isDark ? '#ddd' : '#333' }}>{value}</div>
             )}
+        </div>
+    );
+}
+
+function SideMetric({ label, value }: { label: string, value: string }) {
+    const { theme } = useTheme();
+    const isDark = theme === 'dark';
+
+    return (
+        <div style={{
+            backgroundColor: isDark ? 'rgba(10,10,10,0.8)' : 'rgba(255,255,255,0.9)',
+            border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
+            borderRadius: '4px',
+            padding: '6px 10px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '2px',
+            minWidth: '60px'
+        }}>
+            <span style={{
+                fontSize: '8px',
+                color: isDark ? '#555' : '#888',
+                fontFamily: 'JetBrains Mono, monospace',
+                letterSpacing: '0.05em'
+            }}>
+                {label}
+            </span>
+            <span style={{
+                fontSize: '12px',
+                fontWeight: 600,
+                color: isDark ? '#fff' : '#1a1a1a',
+                fontFamily: 'JetBrains Mono, monospace'
+            }}>
+                {value}
+            </span>
         </div>
     );
 }
@@ -293,19 +437,19 @@ function TimeRangeButton({ label, active = false }: { label: string, active?: bo
 
     return (
         <button style={{
-            background: active ? (isDark ? '#fff' : '#000') : 'transparent',
-            color: active ? (isDark ? '#000' : '#fff') : (isDark ? '#888' : '#666'),
-            border: 'none',
-            borderRadius: '6px',
-            padding: '4px 12px',
-            fontSize: '12px',
+            background: active ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)') : 'transparent',
+            color: active ? (isDark ? '#fff' : '#1a1a1a') : (isDark ? '#666' : '#888'),
+            border: active ? (isDark ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(0,0,0,0.2)') : '1px solid transparent',
+            borderRadius: '4px',
+            padding: '4px 10px',
+            fontSize: '10px',
             fontWeight: 600,
             cursor: 'pointer',
-            transition: 'all 0.2s ease'
+            transition: 'all 0.2s ease',
+            fontFamily: 'JetBrains Mono, monospace',
+            letterSpacing: '0.05em'
         }}>
             {label}
         </button>
     );
 }
-
-

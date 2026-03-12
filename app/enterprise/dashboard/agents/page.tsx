@@ -10,7 +10,8 @@ import {
     ChevronRight,
     Mic,
     Phone,
-    Zap
+    Zap,
+    ArrowRight
 } from "lucide-react";
 
 
@@ -128,10 +129,20 @@ export default function EnterpriseAgentsDashboard() {
                             No agents configured yet — showing the demo TARA agent. Create your own agent to get started.
                         </div>
                     )}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '24px' }}>
-                        {displayAgents.map((agent: any) => (
-                            <AgentCard key={agent.agent_id} agent={agent} isDark={isDark} onClick={() => navigateToDashboard(agent.agent_id)} />
-                        ))}
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '40px 0',
+                        minHeight: '60vh'
+                    }}>
+                        {displayAgents.length > 0 && (
+                            <AgentCard
+                                agent={displayAgents[0]}
+                                isDark={isDark}
+                                onClick={() => navigateToDashboard(displayAgents[0].agent_id)}
+                            />
+                        )}
                     </div>
                 </>
             )}
@@ -143,45 +154,114 @@ export default function EnterpriseAgentsDashboard() {
 
 function AgentCard({ agent, isDark, onClick }: { agent: any; isDark: boolean; onClick: () => void }) {
     return (
-        <motion.div whileHover={{ y: -4 }} onClick={onClick} style={{
-            backgroundColor: isDark ? '#111' : '#fff',
-            borderRadius: '24px',
-            padding: '24px',
-            border: isDark ? '1px solid #222' : '1px solid #eee',
-            cursor: 'pointer',
-            transition: 'all 0.3s ease'
-        }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                    <div style={{ width: '48px', height: '48px', backgroundColor: isDark ? '#000' : '#f5f5f5', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: isDark ? '1px solid #222' : 'none' }}>
-                        <Mic size={24} color={isDark ? '#666' : '#999'} />
-                    </div>
+        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <motion.div
+                whileHover={{ scale: 1.02 }}
+                onClick={onClick}
+                style={{
+                    position: 'relative',
+                    width: '340px',
+                    height: '480px',
+                    backgroundColor: '#0a0a0a',
+                    borderRadius: '24px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                    boxShadow: isDark ? '0 20px 40px rgba(0,0,0,0.5)' : '0 20px 40px rgba(10,30,40,0.25)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                }}
+                className="group"
+            >
+                {/* 1. Constant Pulsing Glow Background */}
+                <motion.div
+                    className="absolute inset-0 z-0 pointer-events-none"
+                    style={{
+                        background: `radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.4), transparent 70%)`
+                    }}
+                    animate={{
+                        opacity: [0.5, 0.8, 0.5],
+                        scale: [1, 1.05, 1],
+                    }}
+                    transition={{
+                        duration: 3,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                    }}
+                />
+
+                {/* 2. Dark Overlay for readability */}
+                <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 0 }} />
+
+                {/* Card Content - Overlaying the background */}
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '24px', color: '#fff', zIndex: 10 }}>
+                    {/* Header Section */}
                     <div>
-                        <h3 style={{ fontSize: '18px', fontWeight: 600, margin: 0 }}>{agent.agent_name}</h3>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                            <div style={{ width: '6px', height: '6px', backgroundColor: '#10b981', borderRadius: '50%' }} />
-                            <span style={{ fontSize: '12px', color: '#10b981', fontWeight: 600 }}>Active</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                            <div style={{ fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#fff' }} />
+                                AGENT
+                            </div>
+                            <div style={{ width: '32px', height: '32px', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(4px)' }}>
+                                <ArrowRight size={14} color="#fff" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Middle Section */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+                        <div style={{
+                            width: '48px',
+                            height: '48px',
+                            borderRadius: '50%',
+                            backgroundColor: 'rgba(255,255,255,0.1)',
+                            backdropFilter: 'blur(4px)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: '1px solid rgba(255,255,255,0.15)',
+                            marginBottom: '24px'
+                        }}>
+                            <Mic size={24} color="#ffffff" />
+                        </div>
+
+                        <h2 style={{ fontSize: '28px', fontWeight: 300, marginBottom: '8px', letterSpacing: '0.05em', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
+                            {agent.agent_name}
+                        </h2>
+
+                        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', fontWeight: 300, maxWidth: '90%', margin: '0 auto', lineHeight: '1.6' }}>
+                            {agent.agent_description || "Enterprise AI Assistant ready to manage interactions."}
+                        </p>
+                    </div>
+
+                    {/* Click Here Hover Overlay */}
+                    <div className="absolute inset-0 bg-black/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 backdrop-blur-sm">
+                        <div style={{
+                            padding: '12px 28px',
+                            backgroundColor: '#fff',
+                            color: '#000',
+                            borderRadius: '100px',
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            letterSpacing: '-0.01em',
+                            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                        }}>
+                            Click to Manage
+                            <ChevronRight size={16} />
                         </div>
                     </div>
                 </div>
-                <ChevronRight size={20} color={isDark ? '#444' : '#ccc'} />
-            </div>
-            <p style={{ color: '#666', fontSize: '14px', margin: '16px 0', lineHeight: '1.5' }}>{agent.agent_description || "Enterprise-grade voice agent."}</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', paddingTop: '12px', borderTop: isDark ? '1px solid #222' : '1px solid #f0f0f0' }}>
-                <MiniStat icon={<Phone size={12} />} label="Calls" value={agent.stats?.total_calls || 0} isDark={isDark} />
-                <MiniStat icon={<Zap size={12} />} label="Usage" value={`${agent.stats?.total_minutes || 0}m`} isDark={isDark} />
-            </div>
-        </motion.div>
-    );
-}
+            </motion.div>
 
-function MiniStat({ icon, label, value, isDark }: { icon: React.ReactNode; label: string; value: string | number; isDark: boolean }) {
-    return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ color: '#666' }}>{icon}</div>
-            <div style={{ fontSize: '12px' }}>
-                <span style={{ color: '#666', marginRight: '4px' }}>{label}:</span>
-                <span style={{ fontWeight: 600 }}>{value}</span>
+            {/* Description Description - Below card */}
+            <div style={{ marginTop: '24px', padding: '0 16px', maxWidth: '340px', textAlign: 'center' }}>
+                <p style={{ color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)', fontSize: '12px', lineHeight: '1.6', fontWeight: 300 }}>
+
+                    Select this agent to view insights, access the live HiveMind monitoring panel, and manage configurations.
+                </p>
             </div>
         </div>
     );
