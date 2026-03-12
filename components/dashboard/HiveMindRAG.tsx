@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/context/ThemeContext";
-import { Clock, Info } from "lucide-react";
+import { Clock, Info, RefreshCw } from "lucide-react";
 
 // Derive dynamic credentials and RAG API base URL from tenant
 // Uses subdomain (simple name like "davinci", "bundb") NOT tenant_id (UUID)
@@ -36,7 +36,12 @@ interface KnowledgePoint {
     issue_type: string;
     customer_segment: string;
     timestamp?: string;
-    created_at?: string; // ISO string expected for easier calc
+    created_at?: string;
+    // Additional fields for skills/rules
+    text?: string;
+    type?: string;
+    topic?: string;
+    severity?: string;
 }
 
 interface VisualizationData {
@@ -55,8 +60,11 @@ interface HiveMindRAGProps {
     autoLoad?: boolean;
     compact?: boolean;
     points?: KnowledgePoint[];
-    agentName?: string; // Add agent name for notification
+    agentName?: string;
 }
+
+const CACHE_KEY = 'hivemind_visualization_cache';
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export default function HiveMindRAG({
     width = "100%",
@@ -84,14 +92,31 @@ export default function HiveMindRAG({
     const [loading, setLoading] = useState(false);
     const [hoveredPoint, setHoveredPoint] = useState<KnowledgePoint | null>(null);
     const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected" | "connecting">("disconnected");
-    // New state for toast
+    const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [newFeatureToast, setNewFeatureToast] = useState<{ visible: boolean; count: number } | null>(null);
 
     const points = useMemo(() => propPoints || internalPoints, [propPoints, internalPoints]);
 
-    // Set mounted and generate particles
+    // Load from cache on mount
     useEffect(() => {
         setMounted(true);
+        
+        // Try to load from cache
+        try {
+            const cached = localStorage.getItem(CACHE_KEY);
+            if (cached) {
+                const { data, timestamp } = JSON.parse(cached);
+                if (Date.now() - timestamp < CACHE_TTL) {
+                    setInternalPoints(data);
+                    setLastUpdated(new Date(timestamp));
+                    setConnectionStatus("connected");
+                }
+            }
+        } catch (e) {
+            console.warn("Failed to load from cache:", e);
+        }
+
+        // Generate background particles
         const p = [];
         for (let i = 0; i < 350; i++) {
             let x, y;
@@ -122,25 +147,34 @@ export default function HiveMindRAG({
         particlesRef.current = p;
     }, []);
 
+    // Save to cache
+    const saveToCache = useCallback((data: KnowledgePoint[]) => {
+        try {
+            localStorage.setItem(CACHE_KEY, JSON.stringify({
+                data,
+                timestamp: Date.now()
+            }));
+            setLastUpdated(new Date());
+        } catch (e) {
+            console.warn("Failed to save to cache:", e);
+        }
+    }, []);
+
     // Check for recent points
     const { processedPoints, recentCount } = useMemo(() => {
         const now = new Date();
         let count = 0;
         const processed = points.map(p => {
-            // Determine if point is new (< 24 hours)
             let isRecent = false;
-            // First check explict timestamp string if it contains "h ago"
             if (p.timestamp && (p.timestamp.includes("h ") || p.timestamp.includes("m ") || p.timestamp.includes("just now"))) {
                 const hours = parseInt(p.timestamp);
                 if (!isNaN(hours) && hours < 24) isRecent = true;
             }
-            // Also check created_at if available
             else if (p.created_at) {
                 const diff = now.getTime() - new Date(p.created_at).getTime();
                 if (diff < 24 * 60 * 60 * 1000) isRecent = true;
             }
 
-            // Randomly simulate recent points for demo if no real timestamps
             if (!p.timestamp && !p.created_at && Math.random() < 0.05) isRecent = true;
 
             if (isRecent) count++;
@@ -149,21 +183,24 @@ export default function HiveMindRAG({
         return { processedPoints: processed, recentCount: count };
     }, [points]);
 
-    // Trigger toast when recent points are found (and loaded)
+    // Trigger toast when recent points are found
     useEffect(() => {
         if (recentCount > 0 && !loading && mounted) {
             setNewFeatureToast({ visible: true, count: recentCount });
-            const timer = setTimeout(() => setNewFeatureToast(null), 6000); // Hide after 6s
+            const timer = setTimeout(() => setNewFeatureToast(null), 6000);
             return () => clearTimeout(timer);
         }
     }, [recentCount, loading, mounted]);
 
-    const loadVisualization = useCallback(async () => {
-        if (propPoints) return;
+    const loadVisualization = useCallback(async (forceRefresh = false) => {
+        if (propPoints && !forceRefresh) return;
+        
         const { baseUrl: ragBase, tenantId, token } = getRagCredentials();
         if (!ragBase) return;
+        
         setLoading(true);
         setConnectionStatus("connecting");
+        
         try {
             const url = `/rag-api/api/v1/hive-mind/visualize?algorithm=tsne&limit=200&tenant_id=${encodeURIComponent(tenantId || 'davinci')}`;
             const response = await fetch(url, {
@@ -171,14 +208,17 @@ export default function HiveMindRAG({
                     "Authorization": token ? `Bearer ${token}` : ""
                 }
             });
+            
             if (response.ok) {
                 const data: VisualizationData = await response.json();
                 const pointsWithTime = data.points.map(p => ({
                     ...p,
                     timestamp: p.timestamp || `${Math.floor(Math.random() * 24)}h ${Math.floor(Math.random() * 60)}m ago`,
-                    created_at: new Date(Date.now() - Math.random() * 48 * 60 * 60 * 1000).toISOString() // Simulated
+                    created_at: p.created_at || new Date(Date.now() - Math.random() * 48 * 60 * 60 * 1000).toISOString()
                 }));
+                
                 setInternalPoints(pointsWithTime);
+                saveToCache(pointsWithTime);
                 setConnectionStatus("connected");
             }
         } catch (error) {
@@ -187,7 +227,11 @@ export default function HiveMindRAG({
         } finally {
             setLoading(false);
         }
-    }, [propPoints]);
+    }, [propPoints, saveToCache]);
+
+    const handleRefresh = useCallback(() => {
+        loadVisualization(true);
+    }, [loadVisualization]);
 
     const connectWebSocket = useCallback(() => {
         if (propPoints) return;
@@ -294,7 +338,7 @@ export default function HiveMindRAG({
                     const pulseRing = 10 + Math.sin(time * 3) * 4;
                     ctx.strokeStyle = "#A63E1B";
                     ctx.lineWidth = 1.5;
-                    ctx.globalAlpha = 0.6 + Math.sin(time * 3) * 0.4; // Fade in out
+                    ctx.globalAlpha = 0.6 + Math.sin(time * 3) * 0.4;
                     ctx.beginPath();
                     ctx.arc(p.dx, p.dy, pulseRing, 0, Math.PI * 2);
                     ctx.stroke();
@@ -356,9 +400,88 @@ export default function HiveMindRAG({
 
     if (!mounted) return <div style={{ width, height, backgroundColor: "transparent" }} />;
 
+    // Get tooltip content based on point type
+    const getTooltipContent = (point: KnowledgePoint) => {
+        const type = point.issue_type?.toLowerCase() || '';
+        
+        if (type.includes('skill')) {
+            return {
+                title: point.issue || 'Agent Skill',
+                subtitle: 'SKILL',
+                content: point.solution || point.text || 'No description available',
+                meta: point.topic ? `Topic: ${point.topic}` : undefined
+            };
+        }
+        
+        if (type.includes('rule')) {
+            return {
+                title: point.issue || 'Agent Rule',
+                subtitle: 'RULE',
+                content: point.solution || point.text || 'No description available',
+                meta: point.severity ? `Severity: ${point.severity}` : undefined
+            };
+        }
+        
+        if (type.includes('knowledge') || type.includes('kb')) {
+            return {
+                title: point.issue || 'Knowledge Entry',
+                subtitle: 'KNOWLEDGE BASE',
+                content: point.solution || point.text || 'No content available',
+                meta: point.topic ? `Topic: ${point.topic}` : undefined
+            };
+        }
+        
+        // Default customer insight
+        return {
+            title: point.issue || 'Customer Insight',
+            subtitle: point.issue_type?.replace(/_/g, ' ').toUpperCase() || 'INSIGHT',
+            content: point.solution || 'No solution recorded',
+            meta: point.customer_segment ? `Segment: ${point.customer_segment}` : undefined
+        };
+    };
+
     return (
         <div ref={containerRef} style={{ width, height, position: "relative", overflow: "hidden" }}>
-            <canvas ref={canvasRef} onMouseMove={handleMouseMove} onMouseLeave={() => { mouseRef.current = { x: -1000, y: -1000 }; setHoveredPoint(null); }} style={{ display: "block", cursor: "crosshair" }} />
+            <canvas 
+                ref={canvasRef} 
+                onMouseMove={handleMouseMove} 
+                onMouseLeave={() => { mouseRef.current = { x: -1000, y: -1000 }; setHoveredPoint(null); }} 
+                style={{ display: "block", cursor: "crosshair" }} 
+            />
+
+            {/* Refresh Button */}
+            <motion.button
+                onClick={handleRefresh}
+                disabled={loading}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                style={{
+                    position: "absolute",
+                    top: 20,
+                    left: 20,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "8px 14px",
+                    backgroundColor: "rgba(0,0,0,0.6)",
+                    borderRadius: "8px",
+                    backdropFilter: "blur(10px)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    zIndex: 20,
+                    cursor: loading ? "not-allowed" : "pointer",
+                    opacity: loading ? 0.6 : 1
+                }}
+            >
+                <motion.div
+                    animate={loading ? { rotate: 360 } : { rotate: 0 }}
+                    transition={{ duration: 1, repeat: loading ? Infinity : 0, ease: "linear" }}
+                >
+                    <RefreshCw size={14} color="#fff" />
+                </motion.div>
+                <span style={{ color: "#fff", fontSize: 11, fontWeight: 600, fontFamily: "JetBrains Mono, monospace" }}>
+                    {loading ? "UPDATING..." : "REFRESH"}
+                </span>
+            </motion.button>
 
             {/* Notification Toast for New Features */}
             <AnimatePresence>
@@ -370,12 +493,12 @@ export default function HiveMindRAG({
                         style={{
                             position: "absolute",
                             top: 24,
-                            right: compact ? 24 : 140, // Move left if stats are present
+                            right: compact ? 24 : 140,
                             display: "flex",
                             alignItems: "center",
                             gap: 12,
                             padding: "12px 20px",
-                            backgroundColor: "rgba(166, 62, 27, 0.15)", // Subtle red tint
+                            backgroundColor: "rgba(166, 62, 27, 0.15)",
                             borderRadius: 12,
                             border: "1px solid #A63E1B",
                             backdropFilter: "blur(10px)",
@@ -408,12 +531,55 @@ export default function HiveMindRAG({
             </AnimatePresence>
 
             {showStats && (
-                <div style={{ position: "absolute", top: 20, right: 20, display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", backgroundColor: "rgba(0,0,0,0.4)", borderRadius: "30px", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.1)", zIndex: 10 }}>
-                    <motion.div animate={{ scale: connectionStatus === "connected" ? [1, 1.2, 1] : 1, opacity: connectionStatus === "connecting" ? [1, 0.5, 1] : 1 }} transition={{ duration: 2, repeat: Infinity }} style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: connectionStatus === "connected" ? "#22c55e" : connectionStatus === "connecting" ? "#f59e0b" : "#666" }} />
-                    <span style={{ color: "#fff", fontSize: 11, fontWeight: 700, fontFamily: "JetBrains Mono, monospace" }}>{connectionStatus.toUpperCase()}</span>
+                <div style={{ 
+                    position: "absolute", 
+                    top: 20, 
+                    right: 20, 
+                    display: "flex", 
+                    alignItems: "center", 
+                    gap: 8, 
+                    padding: "8px 16px", 
+                    backgroundColor: "rgba(0,0,0,0.4)", 
+                    borderRadius: "30px", 
+                    backdropFilter: "blur(10px)", 
+                    border: "1px solid rgba(255,255,255,0.1)", 
+                    zIndex: 10 
+                }}>
+                    <motion.div 
+                        animate={{ 
+                            scale: connectionStatus === "connected" ? [1, 1.2, 1] : 1, 
+                            opacity: connectionStatus === "connecting" ? [1, 0.5, 1] : 1 
+                        }} 
+                        transition={{ duration: 2, repeat: Infinity }} 
+                        style={{ 
+                            width: 8, 
+                            height: 8, 
+                            borderRadius: "50%", 
+                            backgroundColor: connectionStatus === "connected" ? "#22c55e" : connectionStatus === "connecting" ? "#f59e0b" : "#666" 
+                        }} 
+                    />
+                    <span style={{ 
+                        color: "#fff", 
+                        fontSize: 11, 
+                        fontWeight: 700, 
+                        fontFamily: "JetBrains Mono, monospace" 
+                    }}>
+                        {connectionStatus.toUpperCase()}
+                    </span>
+                    {lastUpdated && (
+                        <span style={{ 
+                            color: "rgba(255,255,255,0.5)", 
+                            fontSize: 10, 
+                            fontFamily: "JetBrains Mono, monospace",
+                            marginLeft: 4
+                        }}>
+                            • {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                    )}
                 </div>
             )}
 
+            {/* Enhanced Tooltip */}
             <AnimatePresence>
                 {hoveredPoint && showTooltip && (
                     <motion.div
@@ -425,29 +591,99 @@ export default function HiveMindRAG({
                             bottom: compact ? 20 : 60,
                             left: "50%",
                             transform: "translateX(-50%)",
-                            width: compact ? 280 : 420,
-                            backgroundColor: "rgba(10, 10, 10, 0.45)",
-                            border: "1px solid rgba(255, 255, 255, 0.15)",
-                            borderRadius: "24px",
-                            padding: "24px",
+                            width: compact ? 320 : 480,
+                            maxWidth: "90vw",
+                            backgroundColor: "rgba(10, 10, 10, 0.95)",
+                            border: "1px solid rgba(255, 255, 255, 0.2)",
+                            borderRadius: "16px",
+                            padding: "20px",
                             backdropFilter: "blur(24px)",
                             boxShadow: "0 30px 60px rgba(0,0,0,0.8)",
                             zIndex: 100
                         }}
                     >
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                            <div style={{ fontSize: 10, fontFamily: "JetBrains Mono, monospace", color: "#A63E1B", textTransform: "uppercase", letterSpacing: "0.2em", display: "flex", alignItems: "center", gap: 6 }}>
-                                <Info size={12} />
-                                {hoveredPoint.issue_type?.replace(/_/g, " ")}
-                            </div>
-                            <div style={{ fontSize: 10, fontFamily: "JetBrains Mono, monospace", color: "rgba(255,255,255,0.4)", display: "flex", alignItems: "center", gap: 6 }}>
-                                <Clock size={12} />
-                                {hoveredPoint.timestamp}
-                            </div>
-                        </div>
-                        <div style={{ fontSize: compact ? 14 : 18, fontWeight: 700, color: "#fff", marginBottom: 10, lineHeight: 1.3 }}>{hoveredPoint.issue}</div>
-                        <div style={{ fontSize: compact ? 12 : 14, color: "rgba(255,255,255,0.6)", lineHeight: 1.6, borderLeft: "2px solid #A63E1B", paddingLeft: 16 }}>{hoveredPoint.solution}</div>
-                        <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: "24px", background: "linear-gradient(135deg, rgba(255,255,255,0.05), transparent)", pointerEvents: "none", zIndex: -1 }} />
+                        {(() => {
+                            const content = getTooltipContent(hoveredPoint);
+                            return (
+                                <>
+                                    <div style={{ 
+                                        display: "flex", 
+                                        justifyContent: "space-between", 
+                                        alignItems: "flex-start", 
+                                        marginBottom: 12 
+                                    }}>
+                                        <div style={{ 
+                                            fontSize: 10, 
+                                            fontFamily: "JetBrains Mono, monospace", 
+                                            color: "#A63E1B", 
+                                            textTransform: "uppercase", 
+                                            letterSpacing: "0.15em",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: 6
+                                        }}>
+                                            <Info size={12} />
+                                            {content.subtitle}
+                                        </div>
+                                        <div style={{ 
+                                            fontSize: 10, 
+                                            fontFamily: "JetBrains Mono, monospace", 
+                                            color: "rgba(255,255,255,0.4)", 
+                                            display: "flex", 
+                                            alignItems: "center", 
+                                            gap: 6 
+                                        }}>
+                                            <Clock size={12} />
+                                            {hoveredPoint.timestamp}
+                                        </div>
+                                    </div>
+                                    
+                                    <div style={{ 
+                                        fontSize: compact ? 16 : 20, 
+                                        fontWeight: 700, 
+                                        color: "#fff", 
+                                        marginBottom: 12, 
+                                        lineHeight: 1.3 
+                                    }}>
+                                        {content.title}
+                                    </div>
+                                    
+                                    <div style={{ 
+                                        fontSize: compact ? 13 : 15, 
+                                        color: "rgba(255,255,255,0.7)", 
+                                        lineHeight: 1.5,
+                                        maxHeight: "120px",
+                                        overflow: "auto"
+                                    }}>
+                                        {content.content}
+                                    </div>
+                                    
+                                    {content.meta && (
+                                        <div style={{
+                                            marginTop: 12,
+                                            paddingTop: 12,
+                                            borderTop: "1px solid rgba(255,255,255,0.1)",
+                                            fontSize: 11,
+                                            color: "rgba(255,255,255,0.5)",
+                                            fontFamily: "JetBrains Mono, monospace"
+                                        }}>
+                                            {content.meta}
+                                        </div>
+                                    )}
+                                    
+                                    {/* ID for reference */}
+                                    <div style={{
+                                        marginTop: 8,
+                                        fontSize: 9,
+                                        color: "rgba(255,255,255,0.3)",
+                                        fontFamily: "JetBrains Mono, monospace",
+                                        letterSpacing: "0.05em"
+                                    }}>
+                                        ID: {hoveredPoint.id.slice(0, 8)}...
+                                    </div>
+                                </>
+                            );
+                        })()}
                     </motion.div>
                 )}
             </AnimatePresence>
