@@ -179,7 +179,9 @@ export default function HiveMindRAG({
 
         try {
             // Use Next.js API proxy route to avoid CORS
-            const url = `/enterprise/dashboard/hivemind/api/hivemind?algorithm=tsne&limit=200&tenant_id=${encodeURIComponent(tenantId || 'davinci')}`;
+            const effectiveTenantId = tenantId || 'davinci';
+            const url = `/enterprise/dashboard/hivemind/api/hivemind?algorithm=tsne&limit=200&tenant_id=${effectiveTenantId}`;
+            console.log("HiveMindRAG loading visualization for tenant:", effectiveTenantId);
             const response = await fetch(url, {
                 headers: {
                     "Authorization": token ? `Bearer ${token}` : ""
@@ -199,7 +201,9 @@ export default function HiveMindRAG({
                 saveToCache(pointsWithTime);
                 setConnectionStatus("connected");
             } else {
-                throw new Error(`HTTP ${response.status}`);
+                const errorData = await response.json();
+                console.error("HiveMindRAG visualization error:", response.status, errorData);
+                throw new Error(`HTTP ${response.status}: ${JSON.stringify(errorData)}`);
             }
         } catch (error) {
             console.error("Failed to load HiveMind visualization:", error);

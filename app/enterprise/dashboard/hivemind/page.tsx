@@ -110,13 +110,16 @@ export default function EnterpriseDashboardHiveMindPage() {
 
     // Fetch visualization data from RAG API
     const loadVisualization = useCallback(async () => {
-        const { token } = getRagCredentials();
+        const { token, tenantId: credsTenantId } = getRagCredentials();
         setLoading(true);
         setConnectionStatus("connecting");
 
         try {
             // Use Next.js API route as proxy to avoid CORS issues
-            const url = `/enterprise/dashboard/hivemind/api/hivemind?tenant_id=${encodeURIComponent(tenantId || "davinci")}`;
+            // Use tenantId from state or fall back to credentials from localStorage
+            const effectiveTenantId = tenantId || credsTenantId || "davinci";
+            const url = `/enterprise/dashboard/hivemind/api/hivemind?algorithm=tsne&limit=200&tenant_id=${effectiveTenantId}`;
+            console.log("Loading visualization for tenant:", effectiveTenantId);
             const response = await fetch(url, {
                 headers: {
                     "Authorization": token ? `Bearer ${token}` : ""
@@ -129,7 +132,9 @@ export default function EnterpriseDashboardHiveMindPage() {
                 setPoints(data.points);
                 setConnectionStatus("connected");
             } else {
-                throw new Error(`HTTP ${response.status}`);
+                const errorData = await response.json();
+                console.error("Visualization error:", response.status, errorData);
+                throw new Error(`HTTP ${response.status}: ${JSON.stringify(errorData)}`);
             }
         } catch (error) {
             console.error("Failed to load HiveMind visualization:", error);
@@ -152,11 +157,11 @@ export default function EnterpriseDashboardHiveMindPage() {
         setChatMessages(prev => [...prev, userMessage]);
         setChatInput("");
         setIsQuerying(true);
-        setIsChatMinimized(false); // Show chat when new query is submitted
+        setIsChatMinimized(false);
 
         try {
             const { token } = getRagCredentials();
-            const response = await fetch(`/rag-api/api/v1/hive-mind/query?tenant_id=${encodeURIComponent(tenantId || "davinci")}`, {
+            const response = await fetch(`/enterprise/dashboard/hivemind/api/hivemind?tenant_id=${tenantId || "davinci"}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -178,13 +183,15 @@ export default function EnterpriseDashboardHiveMindPage() {
                 const data = await response.json();
                 const aiMessage: ChatMessage = {
                     role: "assistant",
-                    content: data.answer,
+                    content: data.answer || data.text || "No response available",
                     timestamp: new Date(),
                     sources: data.sources,
                     confidence: data.confidence
                 };
                 setChatMessages(prev => [...prev, aiMessage]);
             } else {
+                const errorData = await response.json();
+                console.error("Query error:", errorData);
                 throw new Error("Query failed");
             }
         } catch (error) {

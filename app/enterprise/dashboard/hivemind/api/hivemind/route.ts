@@ -9,24 +9,25 @@ export async function GET(request: NextRequest) {
     const limit = searchParams.get("limit") || "200";
 
     try {
-        const response = await fetch(
-            `${RAG_BASE_URL}/hivemind/visualize?algorithm=${algorithm}&limit=${limit}&tenant_id=${encodeURIComponent(tenantId)}`,
-            {
-                headers: {
-                    "Authorization": request.headers.get("Authorization") || ""
-                }
+        const url = `${RAG_BASE_URL}/hivemind/visualize?algorithm=${algorithm}&limit=${limit}&tenant_id=${tenantId}`;
+        console.log("Fetching from RAG API:", url);
+        const response = await fetch(url, {
+            headers: {
+                "Authorization": request.headers.get("Authorization") || ""
             }
-        );
+        });
 
         if (!response.ok) {
-            return NextResponse.json({ error: "Failed to fetch" }, { status: response.status });
+            const errorText = await response.text();
+            console.error("RAG API error response:", response.status, errorText);
+            return NextResponse.json({ error: "Failed to fetch", details: errorText }, { status: response.status });
         }
 
         const data = await response.json();
         return NextResponse.json(data);
     } catch (error) {
         console.error("HiveMind API error:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return NextResponse.json({ error: "Internal server error", details: String(error) }, { status: 500 });
     }
 }
 
@@ -36,26 +37,71 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const response = await fetch(
-            `${RAG_BASE_URL}/hivemind/skills?tenant_id=${encodeURIComponent(tenantId)}`,
-            {
+
+        // Check if this is a query request (has 'query' field)
+        if (body.query) {
+            // Proxy to query endpoint
+            const url = `${RAG_BASE_URL}/hivemind/query?tenant_id=${tenantId}`;
+            console.log("Posting query to RAG API:", url);
+            const response = await fetch(url, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": request.headers.get("Authorization") || ""
                 },
                 body: JSON.stringify(body)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error("RAG API query error:", response.status, errorText);
+                return NextResponse.json({ error: "Query failed", details: errorText }, { status: response.status });
+            }
+
+            const data = await response.json();
+            return NextResponse.json(data);
+        }
+
+        // This is a skill/rule/knowledge save request
+        // Transform doc_type to type for backend compatibility
+        const transformedBody = { ...body };
+        if (transformedBody.doc_type) {
+            // Map doc_type to type values expected by backend
+            const typeMapping: Record<string, string> = {
+                "Agent_Skill": "agent_skill",
+                "Agent_Rule": "agent_rule",
+                "General_KB": "general_kb",
+                "agent_skill": "agent_skill",
+                "agent_rule": "agent_rule",
+                "general_kb": "general_kb"
+            };
+            transformedBody.type = typeMapping[transformedBody.doc_type] || transformedBody.doc_type.toLowerCase();
+        }
+
+        const url = `${RAG_BASE_URL}/hivemind/skills?tenant_id=${tenantId}`;
+        console.log("Posting to RAG API:", url, "with body:", JSON.stringify(transformedBody));
+        const response = await fetch(
+            url,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": request.headers.get("Authorization") || ""
+                },
+                body: JSON.stringify(transformedBody)
             }
         );
 
         if (!response.ok) {
-            return NextResponse.json({ error: "Failed to save" }, { status: response.status });
+            const errorText = await response.text();
+            console.error("RAG API POST error:", response.status, errorText);
+            return NextResponse.json({ error: "Failed to save", details: errorText }, { status: response.status });
         }
 
         const data = await response.json();
         return NextResponse.json(data);
     } catch (error) {
         console.error("HiveMind API error:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return NextResponse.json({ error: "Internal server error", details: String(error) }, { status: 500 });
     }
 }
