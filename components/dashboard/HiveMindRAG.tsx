@@ -172,20 +172,14 @@ export default function HiveMindRAG({
     const loadVisualization = useCallback(async (forceRefresh = false) => {
         if (propPoints && !forceRefresh) return;
 
-        const { baseUrl: ragBase, tenantId, token } = getRagCredentials();
-        if (!ragBase) {
-            // No RAG config - still show background constellation
-            setLoading(false);
-            setConnectionStatus("disconnected");
-            return;
-        }
+        const { tenantId, token } = getRagCredentials();
 
         setLoading(true);
         setConnectionStatus("connecting");
 
         try {
-            // Use full URL with ragBase
-            const url = `${ragBase}/hivemind/visualize?algorithm=tsne&limit=200&tenant_id=${encodeURIComponent(tenantId || 'davinci')}`;
+            // Use Next.js API proxy route to avoid CORS
+            const url = `/enterprise/dashboard/hivemind/api/hivemind?algorithm=tsne&limit=200&tenant_id=${encodeURIComponent(tenantId || 'davinci')}`;
             const response = await fetch(url, {
                 headers: {
                     "Authorization": token ? `Bearer ${token}` : ""
@@ -308,7 +302,8 @@ export default function HiveMindRAG({
                     x: centerX + Math.cos(angle) * r,
                     y: centerY + Math.sin(angle) * r,
                     isReal: true,
-                    twinkle: Math.random() * Math.PI * 2
+                    twinkle: Math.random() * Math.PI * 2,
+                    size: 3 // Base size for real nodes
                 };
             });
 
@@ -337,15 +332,40 @@ export default function HiveMindRAG({
                 }
             }
 
-            // Draw ALL nodes (background + knowledge) as simple white twinkling stars - EXACT like dashboard
-            allNodes.forEach((p) => {
+            // Draw background particles as subtle twinkling stars
+            particlesRef.current.forEach((p) => {
                 const mouseDist = Math.sqrt(Math.pow(mouseRef.current.x - p.x, 2) + Math.pow(mouseRef.current.y - p.y, 2));
-                const brightness = mouseDist < 120 ? 1 : 0.5 + Math.sin(p.twinkle) * 0.3;
-                const size = p.size * (mouseDist < 80 ? 1.3 : 1);
+                const brightness = mouseDist < 120 ? 0.7 : 0.3 + Math.sin(p.twinkle) * 0.2;
+                const size = p.size * (mouseDist < 80 ? 1.2 : 1);
 
                 ctx.beginPath();
                 ctx.fillStyle = `rgba(255, 255, 255, ${brightness})`;
                 ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw real knowledge nodes as prominent bright stars with glow
+            realNodes.forEach((p) => {
+                const mouseDist = Math.sqrt(Math.pow(mouseRef.current.x - p.x, 2) + Math.pow(mouseRef.current.y - p.y, 2));
+                const baseBrightness = mouseDist < 120 ? 1 : 0.7 + Math.sin(p.twinkle) * 0.3;
+                const pulseSize = mouseDist < 80 ? 1.5 : 1 + Math.sin(time * 2 + p.twinkle) * 0.2;
+                const displaySize = Math.max(p.size, 2.5) * pulseSize;
+
+                // Outer glow for real nodes
+                const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, displaySize * 3);
+                gradient.addColorStop(0, `rgba(255, 255, 255, ${baseBrightness * 0.8})`);
+                gradient.addColorStop(0.5, `rgba(255, 255, 255, ${baseBrightness * 0.3})`);
+                gradient.addColorStop(1, `rgba(255, 255, 255, 0)`);
+
+                ctx.beginPath();
+                ctx.fillStyle = gradient;
+                ctx.arc(p.x, p.y, displaySize * 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Core bright dot
+                ctx.beginPath();
+                ctx.fillStyle = `rgba(255, 255, 255, ${baseBrightness})`;
+                ctx.arc(p.x, p.y, displaySize, 0, Math.PI * 2);
                 ctx.fill();
             });
 
