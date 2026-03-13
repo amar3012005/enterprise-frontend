@@ -110,16 +110,13 @@ export default function EnterpriseDashboardHiveMindPage() {
 
     // Fetch visualization data from RAG API
     const loadVisualization = useCallback(async () => {
-        const { baseUrl: ragBase, tenantId, token } = getRagCredentials();
-        if (!ragBase) {
-            setConnectionStatus("disconnected");
-            return;
-        }
+        const { token } = getRagCredentials();
         setLoading(true);
         setConnectionStatus("connecting");
 
         try {
-            const url = `${ragBase}/hivemind/visualize?algorithm=tsne&limit=200&tenant_id=${encodeURIComponent(tenantId || "davinci")}`;
+            // Use Next.js API route as proxy to avoid CORS issues
+            const url = `/enterprise/dashboard/hivemind/api/hivemind?tenant_id=${encodeURIComponent(tenantId || "davinci")}`;
             const response = await fetch(url, {
                 headers: {
                     "Authorization": token ? `Bearer ${token}` : ""
@@ -137,11 +134,10 @@ export default function EnterpriseDashboardHiveMindPage() {
         } catch (error) {
             console.error("Failed to load HiveMind visualization:", error);
             setConnectionStatus("disconnected");
-            // Keep showing the generated neural network
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [tenantId]);
 
     // Query the RAG system
     const handleQuery = async () => {
@@ -159,9 +155,8 @@ export default function EnterpriseDashboardHiveMindPage() {
         setIsChatMinimized(false); // Show chat when new query is submitted
 
         try {
-            const { baseUrl: ragBase, tenantId, token } = getRagCredentials();
-            if (!ragBase) throw new Error("RAG not configured");
-            const response = await fetch(`${ragBase}/hivemind/query?tenant_id=${encodeURIComponent(tenantId || "davinci")}`, {
+            const { token } = getRagCredentials();
+            const response = await fetch(`/rag-api/api/v1/hive-mind/query?tenant_id=${encodeURIComponent(tenantId || "davinci")}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -210,10 +205,9 @@ export default function EnterpriseDashboardHiveMindPage() {
         setIsQuerying(true);
         setIsChatMinimized(false);
         try {
-            const { baseUrl: ragBase, tenantId, token } = getRagCredentials();
-            if (!ragBase) throw new Error("RAG not configured");
+            const { tenantId, token } = getRagCredentials();
 
-            // Build base payload
+            // Build base payload with all universal fields
             const basePayload: Record<string, unknown> = {
                 tenant_id: tenantId || "davinci",
                 agent_id: selectedAgent?.agent_name || "unknown",
@@ -266,7 +260,7 @@ export default function EnterpriseDashboardHiveMindPage() {
                 payload = basePayload;
             }
 
-            const response = await fetch(`${ragBase}/hivemind/skills?tenant_id=${encodeURIComponent(tenantId || "davinci")}`, {
+            const response = await fetch(`/enterprise/dashboard/hivemind/api/hivemind?tenant_id=${encodeURIComponent(tenantId || "davinci")}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -476,12 +470,14 @@ export default function EnterpriseDashboardHiveMindPage() {
             </div>
 
             {/* Main Visualization Area */}
-            <div style={{ flex: 1, position: "relative" }}>
+            <div style={{ flex: 1, position: "relative", minHeight: "400px" }}>
                 <HiveMindRAG
                     points={points}
                     showTooltip={true}
                     showStats={false}
                     autoLoad={true}
+                    width="100%"
+                    height="100%"
                 />
             </div>
 

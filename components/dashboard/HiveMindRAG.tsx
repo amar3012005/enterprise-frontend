@@ -104,7 +104,7 @@ export default function HiveMindRAG({
     // Load from cache on mount
     useEffect(() => {
         setMounted(true);
-        
+
         // Try to load from cache
         try {
             const cached = localStorage.getItem(CACHE_KEY);
@@ -120,25 +120,8 @@ export default function HiveMindRAG({
             console.warn("Failed to load from cache:", e);
         }
 
-        // Generate background constellation stars
-        const p = [];
-        for (let i = 0; i < 180; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const r = Math.pow(Math.random(), 0.8) * 0.45;
-            p.push({
-                x: 0.5 + Math.cos(angle) * r,
-                y: 0.5 + Math.sin(angle) * r,
-                baseR: r,
-                baseAngle: angle,
-                angleOffset: Math.random() * Math.PI * 2,
-                rotationSpeed: (Math.random() - 0.5) * 0.0015,
-                driftSpeed: 0.0008 + Math.random() * 0.0015,
-                size: Math.random() * 1.0 + 0.3,
-                twinkle: Math.random() * Math.PI * 2,
-                alpha: Math.random() * 0.5 + 0.2
-            });
-        }
-        particlesRef.current = p;
+        // Don't pre-initialize particles here - do it in the render loop
+        particlesRef.current = [];
     }, []);
 
     // Save to cache
@@ -188,38 +171,46 @@ export default function HiveMindRAG({
 
     const loadVisualization = useCallback(async (forceRefresh = false) => {
         if (propPoints && !forceRefresh) return;
-        
+
         const { baseUrl: ragBase, tenantId, token } = getRagCredentials();
-        if (!ragBase) return;
-        
+        if (!ragBase) {
+            // No RAG config - still show background constellation
+            setLoading(false);
+            setConnectionStatus("disconnected");
+            return;
+        }
+
         setLoading(true);
         setConnectionStatus("connecting");
-        
+
         try {
-            const url = `/rag-api/api/v1/hive-mind/visualize?algorithm=tsne&limit=200&tenant_id=${encodeURIComponent(tenantId || 'davinci')}`;
+            // Use full URL with ragBase
+            const url = `${ragBase}/hivemind/visualize?algorithm=tsne&limit=200&tenant_id=${encodeURIComponent(tenantId || 'davinci')}`;
             const response = await fetch(url, {
                 headers: {
                     "Authorization": token ? `Bearer ${token}` : ""
                 }
             });
-            
+
             if (response.ok) {
                 const data: VisualizationData = await response.json();
                 const pointsWithTime = data.points.map(p => ({
                     ...p,
                     timestamp: p.timestamp || `${Math.floor(Math.random() * 24)}h ${Math.floor(Math.random() * 60)}m ago`,
                     created_at: p.created_at || new Date(Date.now() - Math.random() * 48 * 60 * 60 * 1000).toISOString(),
-                    // Ensure doc_type is preserved from server response
                     doc_type: p.doc_type || p.type || p.issue_type
                 }));
 
                 setInternalPoints(pointsWithTime);
                 saveToCache(pointsWithTime);
                 setConnectionStatus("connected");
+            } else {
+                throw new Error(`HTTP ${response.status}`);
             }
         } catch (error) {
             console.error("Failed to load HiveMind visualization:", error);
             setConnectionStatus("disconnected");
+            // Keep showing cached data or background
         } finally {
             setLoading(false);
         }
@@ -267,187 +258,94 @@ export default function HiveMindRAG({
             if (w <= 0 || h <= 0) { animationRef.current = requestAnimationFrame(render); return; }
 
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            timeRef.current += 0.003;
-            const time = timeRef.current;
+            const time = Date.now() * 0.001;
 
-            // Deep space background
+            // Clear background
             ctx.clearRect(0, 0, w, h);
             ctx.fillStyle = "#000000";
             ctx.fillRect(0, 0, w, h);
 
             const centerX = w / 2;
             const centerY = h / 2;
-            const clusterRadius = Math.min(w, h) * (compact ? 0.40 : 0.45);
+            const clusterRadius = Math.min(w, h) * 0.42;
 
-            // Initialize constellation nodes if empty - mix of background and real data
+            // Initialize particles if empty
             if (particlesRef.current.length === 0) {
-                // Create 300 background stars in a galaxy formation
-                for (let i = 0; i < 300; i++) {
+                const particleCount = 280;
+                for (let i = 0; i < particleCount; i++) {
                     const angle = Math.random() * Math.PI * 2;
-                    const r = Math.pow(Math.random(), 0.5) * clusterRadius;
+                    const r = Math.pow(Math.random(), 0.7) * clusterRadius;
                     particlesRef.current.push({
                         x: centerX + Math.cos(angle) * r,
                         y: centerY + Math.sin(angle) * r,
                         baseR: r,
                         baseAngle: angle,
                         angleOffset: Math.random() * Math.PI * 2,
-                        rotationSpeed: (Math.random() - 0.5) * 0.001,
-                        size: Math.random() * 1.5 + 0.5,
-                        twinkle: Math.random() * Math.PI * 2,
-                        alpha: Math.random() * 0.4 + 0.3
+                        rotationSpeed: (Math.random() - 0.5) * 0.002,
+                        size: Math.random() * 1.2 + 0.3,
+                        twinkle: Math.random() * Math.PI * 2
                     });
                 }
             }
 
-            // Process real knowledge nodes - map them into the constellation
-            const realNodes = processedPoints.map((p, idx) => {
-                const rawX = (p.x + 1) / 2, rawY = (p.y + 1) / 2;
-                // Spiral galaxy formation
-                const goldenAngle = Math.PI * (3 - Math.sqrt(5));
-                const angle = idx * goldenAngle + rawX * Math.PI;
-                const r = Math.sqrt(rawY) * clusterRadius * 0.85;
-                const nx = centerX + Math.cos(angle) * r;
-                const ny = centerY + Math.sin(angle) * r;
-                return { ...p, dx: nx, dy: ny, isReal: true, angle, r, twinkle: Math.random() * Math.PI * 2 };
-            });
-
-            // Update background constellation with slow rotation
+            // Update particle positions
             particlesRef.current.forEach((p) => {
                 p.baseAngle += p.rotationSpeed;
-                const dynamicR = p.baseR + Math.sin(time * 0.5 + p.angleOffset) * 2;
+                const dynamicR = p.baseR + Math.sin(time * 0.5 + p.angleOffset) * 5;
                 p.x = centerX + Math.cos(p.baseAngle) * dynamicR;
                 p.y = centerY + Math.sin(p.baseAngle) * dynamicR;
-                p.twinkle += 0.015;
+                p.twinkle += 0.03;
             });
 
-            const allNodes = [...particlesRef.current.map(p => ({ ...p, dx: p.x, dy: p.y })), ...realNodes];
+            // Map real knowledge nodes
+            const realNodes = processedPoints.map((p) => {
+                const rawX = (p.x + 1) / 2;
+                const rawY = (p.y + 1) / 2;
+                const angle = rawX * Math.PI * 2;
+                const r = Math.pow(rawY, 0.7) * clusterRadius;
+                return {
+                    ...p,
+                    x: centerX + Math.cos(angle) * r,
+                    y: centerY + Math.sin(angle) * r,
+                    isReal: true,
+                    twinkle: Math.random() * Math.PI * 2
+                };
+            });
 
-            // Draw neural network connections - VISIBLE constellation lines
-            // Connect nodes based on proximity and also create a mesh effect
-            const drawnConnections = new Set<string>();
+            const allNodes = [...particlesRef.current, ...realNodes];
 
-            // Draw connections for ALL nodes (background + real)
+            // Draw connections - EXACT white/gray lines from AgentVisualizer
             for (let i = 0; i < allNodes.length; i++) {
                 const p1 = allNodes[i];
-                let connectionCount = 0;
-
-                // Find nearest neighbors
-                const neighbors: { idx: number; dist: number }[] = [];
-                for (let j = 0; j < allNodes.length; j++) {
-                    if (i === j) continue;
+                for (let j = i + 1; j < allNodes.length; j++) {
                     const p2 = allNodes[j];
-                    const dx = p1.dx - p2.dx;
-                    const dy = p1.dy - p2.dy;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < 100) {
-                        neighbors.push({ idx: j, dist });
+                    const dx = p1.x - p2.x;
+                    const dy = p1.y - p2.y;
+                    const distSq = dx * dx + dy * dy;
+                    const maxDist = 70;
+
+                    if (distSq < maxDist * maxDist) {
+                        const dist = Math.sqrt(distSq);
+                        const alpha = (1 - dist / maxDist) * 0.25;
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.moveTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.stroke();
                     }
-                }
-
-                // Sort by distance and connect to closest
-                neighbors.sort((a, b) => a.dist - b.dist);
-                const maxConnections = p1.isReal ? 8 : 5;
-
-                for (let k = 0; k < Math.min(maxConnections, neighbors.length); k++) {
-                    const j = neighbors[k].idx;
-                    const dist = neighbors[k].dist;
-                    const p2 = allNodes[j];
-
-                    // Create unique key for connection
-                    const connKey = [i, j].sort().join('-');
-                    if (drawnConnections.has(connKey)) continue;
-                    drawnConnections.add(connKey);
-
-                    // Calculate opacity based on distance - MORE VISIBLE
-                    const alpha = (1 - dist / 100) * 0.35;
-
-                    // Draw the connection line
-                    ctx.beginPath();
-                    ctx.lineWidth = 0.6;
-                    ctx.strokeStyle = `rgba(255, 140, 80, ${alpha})`;
-                    ctx.moveTo(p1.dx, p1.dy);
-                    ctx.lineTo(p2.dx, p2.dy);
-                    ctx.stroke();
                 }
             }
 
-            // Draw knowledge nodes (real data points) - BRIGHTER stars
-            realNodes.forEach((p) => {
-                const isHovered = hoveredPoint && p.id === hoveredPoint.id;
-                const mDist = Math.hypot(mouseRef.current.x - p.dx, mouseRef.current.y - p.dy);
-                const mInf = Math.max(0, 1 - mDist / 100);
+            // Draw ALL nodes (background + knowledge) as simple white twinkling stars - EXACT like dashboard
+            allNodes.forEach((p) => {
+                const mouseDist = Math.sqrt(Math.pow(mouseRef.current.x - p.x, 2) + Math.pow(mouseRef.current.y - p.y, 2));
+                const brightness = mouseDist < 120 ? 1 : 0.5 + Math.sin(p.twinkle) * 0.3;
+                const size = p.size * (mouseDist < 80 ? 1.3 : 1);
 
-                const twinkleAlpha = 0.7 + Math.sin(time * 1.5 + p.twinkle) * 0.3;
-                const baseAlpha = isHovered ? 1 : twinkleAlpha;
-
-                // Pulsing aura for recent nodes
-                if (p.isRecent) {
-                    const pulseRing = 15 + Math.sin(time * 3) * 6;
-                    const pulseAlpha = 0.3 + Math.sin(time * 3) * 0.15;
-                    ctx.strokeStyle = `rgba(255, 107, 53, ${pulseAlpha})`;
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.arc(p.dx, p.dy, pulseRing, 0, Math.PI * 2);
-                    ctx.stroke();
-                }
-
-                // Hover glow effect - LARGER and more visible
-                if (isHovered || mInf > 0.05) {
-                    const glowR = 25 + mInf * 15;
-                    const g = ctx.createRadialGradient(p.dx, p.dy, 0, p.dx, p.dy, glowR);
-                    g.addColorStop(0, `rgba(255, 107, 53, ${0.5 + mInf * 0.4})`);
-                    g.addColorStop(0.3, `rgba(255, 140, 80, ${0.25 + mInf * 0.25})`);
-                    g.addColorStop(1, "transparent");
-                    ctx.fillStyle = g;
-                    ctx.beginPath();
-                    ctx.arc(p.dx, p.dy, glowR, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-
-                // Node size - BIGGER
-                const nodeSize = isHovered ? 6 : 4;
-                const brightness = isHovered ? 1 : baseAlpha;
-
-                // Layer 1: Large outer glow
-                ctx.fillStyle = `rgba(255, 107, 53, ${brightness * 0.25})`;
                 ctx.beginPath();
-                ctx.arc(p.dx, p.dy, nodeSize * 3, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Layer 2: Medium glow
-                ctx.fillStyle = `rgba(255, 140, 80, ${brightness * 0.5})`;
-                ctx.beginPath();
-                ctx.arc(p.dx, p.dy, nodeSize * 1.8, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Layer 3: Core
-                ctx.fillStyle = isHovered ? "#fff" : `rgba(255, 180, 100, ${brightness})`;
-                ctx.beginPath();
-                ctx.arc(p.dx, p.dy, nodeSize, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Layer 4: Bright center
-                ctx.fillStyle = `rgba(255, 230, 180, ${brightness})`;
-                ctx.beginPath();
-                ctx.arc(p.dx, p.dy, nodeSize * 0.5, 0, Math.PI * 2);
-                ctx.fill();
-            });
-
-            // Draw background constellation stars - VISIBLE
-            particlesRef.current.forEach((p) => {
-                const brightness = 0.4 + Math.sin(p.twinkle) * 0.25;
-                const alpha = p.alpha * brightness;
-
-                // Glow
-                ctx.fillStyle = `rgba(255, 120, 60, ${alpha * 0.4})`;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size * 2.5, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Core
-                ctx.fillStyle = `rgba(255, 160, 90, ${alpha})`;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${brightness})`;
+                ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
                 ctx.fill();
             });
 
@@ -466,15 +364,16 @@ export default function HiveMindRAG({
 
         if (points.length > 0) {
             const w = rect.width, h = rect.height;
-            const clusterRadius = Math.min(w, h) * (compact ? 0.38 : 0.42);
+            const clusterRadius = Math.min(w, h) * 0.42;
             const centerX = w / 2;
             const centerY = h / 2;
 
             let closest: any = null, minDist = 20;
-            processedPoints.forEach((p: any, idx: number) => {
-                const rawX = (p.x + 1) / 2, rawY = (p.y + 1) / 2;
-                const angle = (idx / processedPoints.length) * Math.PI * 2 + (rawX * 0.5);
-                const r = Math.pow(rawY, 0.7) * clusterRadius * 0.85;
+            processedPoints.forEach((p: any) => {
+                const rawX = (p.x + 1) / 2;
+                const rawY = (p.y + 1) / 2;
+                const angle = rawX * Math.PI * 2;
+                const r = Math.pow(rawY, 0.7) * clusterRadius;
                 const x = centerX + Math.cos(angle) * r;
                 const y = centerY + Math.sin(angle) * r;
                 const d = Math.hypot(mx - x, my - y);
@@ -573,12 +472,23 @@ export default function HiveMindRAG({
     };
 
     return (
-        <div ref={containerRef} style={{ width, height, position: "relative", overflow: "hidden" }}>
-            <canvas 
-                ref={canvasRef} 
-                onMouseMove={handleMouseMove} 
-                onMouseLeave={() => { mouseRef.current = { x: -1000, y: -1000 }; setHoveredPoint(null); }} 
-                style={{ display: "block", cursor: "crosshair" }} 
+        <div ref={containerRef} style={{
+            width: typeof width === 'number' ? `${width}px` : width,
+            height: typeof height === 'number' ? `${height}px` : height,
+            minHeight: "400px",
+            position: "relative",
+            overflow: "hidden"
+        }}>
+            <canvas
+                ref={canvasRef}
+                onMouseMove={handleMouseMove}
+                onMouseLeave={() => { mouseRef.current = { x: -1000, y: -1000 }; setHoveredPoint(null); }}
+                style={{
+                    display: "block",
+                    width: "100%",
+                    height: "100%",
+                    cursor: "crosshair"
+                }}
             />
 
             {/* Refresh Button */}

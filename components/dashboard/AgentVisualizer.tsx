@@ -11,9 +11,10 @@ interface AgentVisualizerProps {
     totalCalls: number;
     location?: string;
     createdAt?: string;
+    children?: React.ReactNode;
 }
 
-export default function AgentVisualizer({ agentName, agentDescription, totalCalls, location, createdAt }: AgentVisualizerProps) {
+export default function AgentVisualizer({ agentName, agentDescription, totalCalls, location, createdAt, children }: AgentVisualizerProps) {
     const { theme } = useTheme();
     const isDark = theme === 'dark';
 
@@ -157,9 +158,9 @@ export default function AgentVisualizer({ agentName, agentDescription, totalCall
                     </div>
                 </div>
 
-                {/* Generative HiveMind Visualization */}
-                <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-                    <HiveMindCanvas isDark={isDark} />
+                {/* Dynamic Visualization Layer */}
+                <div style={{ position: 'absolute', inset: 0, pointerEvents: children ? 'auto' : 'none' }}>
+                    {children || <HiveMindCanvas isDark={isDark} />}
                 </div>
 
                 {/* Bottom Controls - HUD Style */}
