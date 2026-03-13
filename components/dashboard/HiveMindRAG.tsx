@@ -37,11 +37,15 @@ interface KnowledgePoint {
     customer_segment: string;
     timestamp?: string;
     created_at?: string;
-    // Additional fields for skills/rules
+    // Schema fields for rich context
+    doc_type?: string;
     text?: string;
     type?: string;
     topic?: string;
     severity?: string;
+    filename?: string;
+    doc_type_detail?: string;
+    summary?: string;
 }
 
 interface VisualizationData {
@@ -116,32 +120,22 @@ export default function HiveMindRAG({
             console.warn("Failed to load from cache:", e);
         }
 
-        // Generate background particles
+        // Generate background constellation stars
         const p = [];
-        for (let i = 0; i < 350; i++) {
-            let x, y;
-            let attempts = 0;
-            const isInside = (nx: number, ny: number) => {
-                const centerX = 0.5, centerY = 0.5, a = 0.42, b = 0.32;
-                const dx = (nx - centerX) / a, dy = (ny - centerY) / b;
-                const angle = Math.atan2(dy, dx);
-                const irregularity = 0.08 * Math.sin(angle * 3) + 0.05 * Math.cos(angle * 5);
-                return (dx * dx + dy * dy) < (1 + irregularity) * (1 + irregularity);
-            };
-
-            do {
-                x = Math.random();
-                y = Math.random();
-                attempts++;
-            } while (!isInside(x, y) && attempts < 100);
-
+        for (let i = 0; i < 180; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const r = Math.pow(Math.random(), 0.8) * 0.45;
             p.push({
-                x, y,
-                vx: (Math.random() - 0.5) * 0.0002,
-                vy: (Math.random() - 0.5) * 0.0002,
-                size: Math.random() * 1.5 + 0.5,
-                alpha: Math.random() * 0.4 + 0.2,
-                pulse: Math.random() * Math.PI * 2
+                x: 0.5 + Math.cos(angle) * r,
+                y: 0.5 + Math.sin(angle) * r,
+                baseR: r,
+                baseAngle: angle,
+                angleOffset: Math.random() * Math.PI * 2,
+                rotationSpeed: (Math.random() - 0.5) * 0.0015,
+                driftSpeed: 0.0008 + Math.random() * 0.0015,
+                size: Math.random() * 1.0 + 0.3,
+                twinkle: Math.random() * Math.PI * 2,
+                alpha: Math.random() * 0.5 + 0.2
             });
         }
         particlesRef.current = p;
@@ -214,9 +208,11 @@ export default function HiveMindRAG({
                 const pointsWithTime = data.points.map(p => ({
                     ...p,
                     timestamp: p.timestamp || `${Math.floor(Math.random() * 24)}h ${Math.floor(Math.random() * 60)}m ago`,
-                    created_at: p.created_at || new Date(Date.now() - Math.random() * 48 * 60 * 60 * 1000).toISOString()
+                    created_at: p.created_at || new Date(Date.now() - Math.random() * 48 * 60 * 60 * 1000).toISOString(),
+                    // Ensure doc_type is preserved from server response
+                    doc_type: p.doc_type || p.type || p.issue_type
                 }));
-                
+
                 setInternalPoints(pointsWithTime);
                 saveToCache(pointsWithTime);
                 setConnectionStatus("connected");
@@ -271,97 +267,188 @@ export default function HiveMindRAG({
             if (w <= 0 || h <= 0) { animationRef.current = requestAnimationFrame(render); return; }
 
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            timeRef.current += 0.006;
+            timeRef.current += 0.003;
             const time = timeRef.current;
 
+            // Deep space background
             ctx.clearRect(0, 0, w, h);
-            ctx.fillStyle = isDark ? "#000000" : "#ffffff";
+            ctx.fillStyle = "#000000";
             ctx.fillRect(0, 0, w, h);
 
-            const scale = Math.min(w, h) * (compact ? 0.8 : 0.9);
-            const offsetX = (w - scale) / 2;
-            const offsetY = (h - scale) / 2;
+            const centerX = w / 2;
+            const centerY = h / 2;
+            const clusterRadius = Math.min(w, h) * (compact ? 0.40 : 0.45);
 
-            const drawPlexus = (allNodes: any[]) => {
-                ctx.lineWidth = 0.8;
-                for (let i = 0; i < allNodes.length; i++) {
-                    const p1 = allNodes[i];
-                    for (let j = i + 1; j < Math.min(i + 20, allNodes.length); j++) {
-                        const p2 = allNodes[j];
-                        const dist = Math.hypot(p1.dx - p2.dx, p1.dy - p2.dy);
-                        const maxDist = scale * 0.12;
-                        if (dist < maxDist) {
-                            const alpha = (1 - dist / maxDist) * 0.35 * (isDark ? 1 : 0.5);
-                            ctx.strokeStyle = isDark ? `rgba(255,255,255,${alpha})` : `rgba(0,0,0,${alpha})`;
-                            ctx.beginPath(); ctx.moveTo(p1.dx, p1.dy); ctx.lineTo(p2.dx, p2.dy); ctx.stroke();
-                        }
+            // Initialize constellation nodes if empty - mix of background and real data
+            if (particlesRef.current.length === 0) {
+                // Create 300 background stars in a galaxy formation
+                for (let i = 0; i < 300; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const r = Math.pow(Math.random(), 0.5) * clusterRadius;
+                    particlesRef.current.push({
+                        x: centerX + Math.cos(angle) * r,
+                        y: centerY + Math.sin(angle) * r,
+                        baseR: r,
+                        baseAngle: angle,
+                        angleOffset: Math.random() * Math.PI * 2,
+                        rotationSpeed: (Math.random() - 0.5) * 0.001,
+                        size: Math.random() * 1.5 + 0.5,
+                        twinkle: Math.random() * Math.PI * 2,
+                        alpha: Math.random() * 0.4 + 0.3
+                    });
+                }
+            }
+
+            // Process real knowledge nodes - map them into the constellation
+            const realNodes = processedPoints.map((p, idx) => {
+                const rawX = (p.x + 1) / 2, rawY = (p.y + 1) / 2;
+                // Spiral galaxy formation
+                const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+                const angle = idx * goldenAngle + rawX * Math.PI;
+                const r = Math.sqrt(rawY) * clusterRadius * 0.85;
+                const nx = centerX + Math.cos(angle) * r;
+                const ny = centerY + Math.sin(angle) * r;
+                return { ...p, dx: nx, dy: ny, isReal: true, angle, r, twinkle: Math.random() * Math.PI * 2 };
+            });
+
+            // Update background constellation with slow rotation
+            particlesRef.current.forEach((p) => {
+                p.baseAngle += p.rotationSpeed;
+                const dynamicR = p.baseR + Math.sin(time * 0.5 + p.angleOffset) * 2;
+                p.x = centerX + Math.cos(p.baseAngle) * dynamicR;
+                p.y = centerY + Math.sin(p.baseAngle) * dynamicR;
+                p.twinkle += 0.015;
+            });
+
+            const allNodes = [...particlesRef.current.map(p => ({ ...p, dx: p.x, dy: p.y })), ...realNodes];
+
+            // Draw neural network connections - VISIBLE constellation lines
+            // Connect nodes based on proximity and also create a mesh effect
+            const drawnConnections = new Set<string>();
+
+            // Draw connections for ALL nodes (background + real)
+            for (let i = 0; i < allNodes.length; i++) {
+                const p1 = allNodes[i];
+                let connectionCount = 0;
+
+                // Find nearest neighbors
+                const neighbors: { idx: number; dist: number }[] = [];
+                for (let j = 0; j < allNodes.length; j++) {
+                    if (i === j) continue;
+                    const p2 = allNodes[j];
+                    const dx = p1.dx - p2.dx;
+                    const dy = p1.dy - p2.dy;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 100) {
+                        neighbors.push({ idx: j, dist });
                     }
                 }
-            };
 
-            const bgNodes = particlesRef.current.map(p => ({
-                ...p,
-                dx: offsetX + p.x * scale,
-                dy: offsetY + p.y * scale
-            }));
+                // Sort by distance and connect to closest
+                neighbors.sort((a, b) => a.dist - b.dist);
+                const maxConnections = p1.isReal ? 8 : 5;
 
-            const realNodes = processedPoints.map(p => {
-                const rawX = (p.x + 1) / 2, rawY = (p.y + 1) / 2;
-                let nx = rawX, ny = rawY;
-                const centerX = 0.5, centerY = 0.5, a = 0.42, b = 0.32;
-                const dx = (nx - centerX) / a, dy = (ny - centerY) / b;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist > 1) { nx = 0.5 + (rawX - 0.5) * 0.85; ny = 0.5 + (rawY - 0.5) * 0.85; }
-                return {
-                    ...p,
-                    dx: offsetX + nx * scale,
-                    dy: offsetY + ny * scale,
-                    isReal: true
-                };
-            });
+                for (let k = 0; k < Math.min(maxConnections, neighbors.length); k++) {
+                    const j = neighbors[k].idx;
+                    const dist = neighbors[k].dist;
+                    const p2 = allNodes[j];
 
-            drawPlexus([...bgNodes, ...realNodes]);
+                    // Create unique key for connection
+                    const connKey = [i, j].sort().join('-');
+                    if (drawnConnections.has(connKey)) continue;
+                    drawnConnections.add(connKey);
 
-            bgNodes.forEach((p, i) => {
-                const pulse = Math.sin(time * 2 + (p.pulse || i * 0.1)) * 0.3 + 0.7;
-                const brightAlpha = Math.min(1, p.alpha * 1.8 * pulse);
-                ctx.fillStyle = isDark ? `rgba(255,255,255,${brightAlpha})` : `rgba(0,0,0,0.15)`;
-                ctx.beginPath(); ctx.arc(p.dx, p.dy, p.size * 1.2, 0, Math.PI * 2); ctx.fill();
-            });
+                    // Calculate opacity based on distance - MORE VISIBLE
+                    const alpha = (1 - dist / 100) * 0.35;
 
+                    // Draw the connection line
+                    ctx.beginPath();
+                    ctx.lineWidth = 0.6;
+                    ctx.strokeStyle = `rgba(255, 140, 80, ${alpha})`;
+                    ctx.moveTo(p1.dx, p1.dy);
+                    ctx.lineTo(p2.dx, p2.dy);
+                    ctx.stroke();
+                }
+            }
+
+            // Draw knowledge nodes (real data points) - BRIGHTER stars
             realNodes.forEach((p) => {
                 const isHovered = hoveredPoint && p.id === hoveredPoint.id;
                 const mDist = Math.hypot(mouseRef.current.x - p.dx, mouseRef.current.y - p.dy);
                 const mInf = Math.max(0, 1 - mDist / 100);
 
-                // Highlight NEW features (< 24h) with a pulsing ring
+                const twinkleAlpha = 0.7 + Math.sin(time * 1.5 + p.twinkle) * 0.3;
+                const baseAlpha = isHovered ? 1 : twinkleAlpha;
+
+                // Pulsing aura for recent nodes
                 if (p.isRecent) {
-                    const pulseRing = 12 + Math.sin(time * 3) * 5;
-                    ctx.strokeStyle = "#ff6b35";
-                    ctx.lineWidth = 2;
-                    ctx.globalAlpha = 0.8 + Math.sin(time * 3) * 0.2;
+                    const pulseRing = 15 + Math.sin(time * 3) * 6;
+                    const pulseAlpha = 0.3 + Math.sin(time * 3) * 0.15;
+                    ctx.strokeStyle = `rgba(255, 107, 53, ${pulseAlpha})`;
+                    ctx.lineWidth = 1;
                     ctx.beginPath();
                     ctx.arc(p.dx, p.dy, pulseRing, 0, Math.PI * 2);
                     ctx.stroke();
                 }
 
-                if (isHovered || mInf > 0.1) {
-                    const g = ctx.createRadialGradient(p.dx, p.dy, 0, p.dx, p.dy, 20);
-                    g.addColorStop(0, "#ff6b35"); g.addColorStop(1, "transparent");
-                    ctx.fillStyle = g; ctx.globalAlpha = 0.6 + mInf * 0.4;
-                    ctx.beginPath(); ctx.arc(p.dx, p.dy, 20, 0, Math.PI * 2); ctx.fill();
+                // Hover glow effect - LARGER and more visible
+                if (isHovered || mInf > 0.05) {
+                    const glowR = 25 + mInf * 15;
+                    const g = ctx.createRadialGradient(p.dx, p.dy, 0, p.dx, p.dy, glowR);
+                    g.addColorStop(0, `rgba(255, 107, 53, ${0.5 + mInf * 0.4})`);
+                    g.addColorStop(0.3, `rgba(255, 140, 80, ${0.25 + mInf * 0.25})`);
+                    g.addColorStop(1, "transparent");
+                    ctx.fillStyle = g;
+                    ctx.beginPath();
+                    ctx.arc(p.dx, p.dy, glowR, 0, Math.PI * 2);
+                    ctx.fill();
                 }
 
-                ctx.fillStyle = isHovered ? "#fff" : "#ff6b35";
-                ctx.globalAlpha = isHovered ? 1.0 : (0.9 + mInf * 0.1);
-                const size = isHovered ? 6 : 4;
-                ctx.beginPath(); ctx.arc(p.dx, p.dy, size, 0, Math.PI * 2); ctx.fill();
+                // Node size - BIGGER
+                const nodeSize = isHovered ? 6 : 4;
+                const brightness = isHovered ? 1 : baseAlpha;
+
+                // Layer 1: Large outer glow
+                ctx.fillStyle = `rgba(255, 107, 53, ${brightness * 0.25})`;
+                ctx.beginPath();
+                ctx.arc(p.dx, p.dy, nodeSize * 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Layer 2: Medium glow
+                ctx.fillStyle = `rgba(255, 140, 80, ${brightness * 0.5})`;
+                ctx.beginPath();
+                ctx.arc(p.dx, p.dy, nodeSize * 1.8, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Layer 3: Core
+                ctx.fillStyle = isHovered ? "#fff" : `rgba(255, 180, 100, ${brightness})`;
+                ctx.beginPath();
+                ctx.arc(p.dx, p.dy, nodeSize, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Layer 4: Bright center
+                ctx.fillStyle = `rgba(255, 230, 180, ${brightness})`;
+                ctx.beginPath();
+                ctx.arc(p.dx, p.dy, nodeSize * 0.5, 0, Math.PI * 2);
+                ctx.fill();
             });
 
-            particlesRef.current.forEach(p => {
-                p.x += p.vx; p.y += p.vy;
-                const dx = (p.x - 0.5) / 0.42, dy = (p.y - 0.5) / 0.32;
-                if (dx * dx + dy * dy > 1.2) { p.vx *= -1; p.vy *= -1; }
+            // Draw background constellation stars - VISIBLE
+            particlesRef.current.forEach((p) => {
+                const brightness = 0.4 + Math.sin(p.twinkle) * 0.25;
+                const alpha = p.alpha * brightness;
+
+                // Glow
+                ctx.fillStyle = `rgba(255, 120, 60, ${alpha * 0.4})`;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size * 2.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Core
+                ctx.fillStyle = `rgba(255, 160, 90, ${alpha})`;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
             });
 
             animationRef.current = requestAnimationFrame(render);
@@ -369,7 +456,7 @@ export default function HiveMindRAG({
 
         render();
         return () => { if (animationRef.current) cancelAnimationFrame(animationRef.current); };
-    }, [mounted, processedPoints, isDark, hoveredPoint, compact]);
+    }, [mounted, processedPoints, hoveredPoint, compact]);
 
     const handleMouseMove = (e: React.MouseEvent) => {
         const rect = canvasRef.current?.getBoundingClientRect();
@@ -378,12 +465,18 @@ export default function HiveMindRAG({
         mouseRef.current = { x: mx, y: my };
 
         if (points.length > 0) {
-            const w = rect.width, h = rect.height, scale = Math.min(w, h) * (compact ? 0.8 : 0.9);
-            const offX = (w - scale) / 2, offY = (h - scale) / 2;
-            let closest: any = null, minDist = 25;
-            processedPoints.forEach((p: any) => {
-                const nx = (p.x + 1) / 2, ny = (p.y + 1) / 2;
-                const x = offX + nx * scale, y = offY + ny * scale;
+            const w = rect.width, h = rect.height;
+            const clusterRadius = Math.min(w, h) * (compact ? 0.38 : 0.42);
+            const centerX = w / 2;
+            const centerY = h / 2;
+
+            let closest: any = null, minDist = 20;
+            processedPoints.forEach((p: any, idx: number) => {
+                const rawX = (p.x + 1) / 2, rawY = (p.y + 1) / 2;
+                const angle = (idx / processedPoints.length) * Math.PI * 2 + (rawX * 0.5);
+                const r = Math.pow(rawY, 0.7) * clusterRadius * 0.85;
+                const x = centerX + Math.cos(angle) * r;
+                const y = centerY + Math.sin(angle) * r;
                 const d = Math.hypot(mx - x, my - y);
                 if (d < minDist) { minDist = d; closest = p; }
             });
@@ -403,41 +496,79 @@ export default function HiveMindRAG({
 
     // Get tooltip content based on point type
     const getTooltipContent = (point: KnowledgePoint) => {
-        const type = point.issue_type?.toLowerCase() || '';
-        
-        if (type.includes('skill')) {
-            return {
-                title: point.issue || 'Agent Skill',
-                subtitle: 'SKILL',
-                content: point.solution || point.text || 'No description available',
-                meta: point.topic ? `Topic: ${point.topic}` : undefined
-            };
-        }
-        
-        if (type.includes('rule')) {
-            return {
-                title: point.issue || 'Agent Rule',
-                subtitle: 'RULE',
-                content: point.solution || point.text || 'No description available',
-                meta: point.severity ? `Severity: ${point.severity}` : undefined
-            };
-        }
-        
-        if (type.includes('knowledge') || type.includes('kb')) {
-            return {
-                title: point.issue || 'Knowledge Entry',
-                subtitle: 'KNOWLEDGE BASE',
-                content: point.solution || point.text || 'No content available',
-                meta: point.topic ? `Topic: ${point.topic}` : undefined
-            };
-        }
-        
-        // Default customer insight
+        // Determine doc_type from schema fields or fallbacks
+        const docType = point.doc_type ||
+            (point.type === 'agent_skill' ? 'Agent_Skill' :
+             point.type === 'agent_rule' ? 'Agent_Rule' :
+             point.issue_type?.toLowerCase().includes('skill') ? 'Agent_Skill' :
+             point.issue_type?.toLowerCase().includes('rule') ? 'Agent_Rule' :
+             point.issue_type?.toLowerCase().includes('knowledge') ? 'General_KB' :
+             'Case_Memory');
+
+        const typeConfig: Record<string, { label: string; color: string; icon: string }> = {
+            'Agent_Skill': { label: 'AGENT SKILL', color: '#22c55e', icon: '⚡' },
+            'Agent_Rule': { label: 'AGENT RULE', color: '#f59e0b', icon: '📋' },
+            'General_KB': { label: 'KNOWLEDGE BASE', color: '#3b82f6', icon: '📚' },
+            'Website_Map': { label: 'WEBSITE MAP', color: '#8b5cf6', icon: '🗺️' },
+            'Element_Context': { label: 'ELEMENT CONTEXT', color: '#ec4899', icon: '🎯' },
+            'Case_Memory': { label: 'CASE MEMORY', color: '#A63E1B', icon: '💡' },
+        };
+
+        const config = typeConfig[docType] || { label: docType.replace(/_/g, ' ').toUpperCase(), color: '#A63E1B', icon: '📄' };
+
+        // Get display title
+        const title = point.issue ||
+            point.summary?.slice(0, 100) ||
+            point.text?.slice(0, 100) ||
+            'Knowledge Entry';
+
+        // Get display content
+        const content = point.solution ||
+            point.text ||
+            point.summary ||
+            'No description available';
+
+        // Build metadata array
+        const metaItems: string[] = [];
+        if (point.topic) metaItems.push(`Topic: ${point.topic}`);
+        if (point.severity) metaItems.push(`Severity: ${point.severity}`);
+        if (point.filename) metaItems.push(`File: ${point.filename}`);
+        if (point.doc_type_detail && point.doc_type_detail !== 'General') metaItems.push(`Type: ${point.doc_type_detail}`);
+        if (point.customer_segment) metaItems.push(`Segment: ${point.customer_segment}`);
+
+        // Format timestamp nicely
+        const formatTimestamp = (ts?: string, created?: string): string => {
+            if (!ts && !created) return 'Unknown time';
+            try {
+                const date = created ? new Date(created) : undefined;
+                if (date && !isNaN(date.getTime())) {
+                    const now = new Date();
+                    const diff = now.getTime() - date.getTime();
+                    const minutes = Math.floor(diff / 60000);
+                    const hours = Math.floor(diff / 3600000);
+                    const days = Math.floor(diff / 86400000);
+
+                    if (minutes < 1) return 'Just now';
+                    if (minutes < 60) return `${minutes}m ago`;
+                    if (hours < 24) return `${hours}h ${minutes % 60}m ago`;
+                    if (days < 7) return `${days}d ago`;
+                    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                }
+                return ts || 'Unknown time';
+            } catch {
+                return ts || 'Unknown time';
+            }
+        };
+
         return {
-            title: point.issue || 'Customer Insight',
-            subtitle: point.issue_type?.replace(/_/g, ' ').toUpperCase() || 'INSIGHT',
-            content: point.solution || 'No solution recorded',
-            meta: point.customer_segment ? `Segment: ${point.customer_segment}` : undefined
+            title,
+            subtitle: config.label,
+            subtitleColor: config.color,
+            icon: config.icon,
+            content,
+            meta: metaItems.length > 0 ? metaItems.join(' • ') : undefined,
+            formattedTime: formatTimestamp(point.timestamp, point.created_at),
+            docType
         };
     };
 
@@ -580,26 +711,32 @@ export default function HiveMindRAG({
                 </div>
             )}
 
-            {/* Enhanced Tooltip */}
+            {/* Enhanced Glassmorphism Tooltip */}
             <AnimatePresence>
                 {hoveredPoint && showTooltip && (
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9, y: 10 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 25 }}
                         style={{
                             position: "absolute",
-                            bottom: compact ? 20 : 60,
+                            bottom: compact ? 20 : 80,
                             left: "50%",
                             transform: "translateX(-50%)",
-                            width: compact ? 320 : 480,
-                            maxWidth: "90vw",
-                            backgroundColor: "rgba(10, 10, 10, 0.95)",
-                            border: "1px solid rgba(255, 255, 255, 0.2)",
-                            borderRadius: "16px",
-                            padding: "20px",
-                            backdropFilter: "blur(24px)",
-                            boxShadow: "0 30px 60px rgba(0,0,0,0.8)",
+                            width: compact ? 340 : 520,
+                            maxWidth: "92vw",
+                            background: "rgba(20, 20, 25, 0.75)",
+                            border: "1px solid rgba(255, 255, 255, 0.15)",
+                            borderRadius: "20px",
+                            padding: "24px",
+                            backdropFilter: "blur(32px)",
+                            WebkitBackdropFilter: "blur(32px)",
+                            boxShadow: `
+                                0 8px 32px rgba(0, 0, 0, 0.4),
+                                0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+                                0 0 100px rgba(166, 62, 27, 0.08)
+                            `,
                             zIndex: 100
                         }}
                     >
@@ -607,80 +744,110 @@ export default function HiveMindRAG({
                             const content = getTooltipContent(hoveredPoint);
                             return (
                                 <>
-                                    <div style={{ 
-                                        display: "flex", 
-                                        justifyContent: "space-between", 
-                                        alignItems: "flex-start", 
-                                        marginBottom: 12 
+                                    {/* Header with Doc Type Badge & Timestamp */}
+                                    <div style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        marginBottom: 16,
+                                        gap: 12
                                     }}>
-                                        <div style={{ 
-                                            fontSize: 10, 
-                                            fontFamily: "JetBrains Mono, monospace", 
-                                            color: "#A63E1B", 
-                                            textTransform: "uppercase", 
-                                            letterSpacing: "0.15em",
+                                        {/* Doc Type Badge */}
+                                        <div style={{
                                             display: "flex",
                                             alignItems: "center",
-                                            gap: 6
+                                            gap: 8,
+                                            padding: "8px 14px",
+                                            backgroundColor: `${content.subtitleColor}15`,
+                                            border: `1px solid ${content.subtitleColor}40`,
+                                            borderRadius: "999px",
+                                            fontSize: 11,
+                                            fontWeight: 700,
+                                            fontFamily: "JetBrains Mono, monospace",
+                                            color: content.subtitleColor,
+                                            letterSpacing: "0.08em",
+                                            textTransform: "uppercase",
+                                            whiteSpace: "nowrap"
                                         }}>
-                                            <Info size={12} />
-                                            {content.subtitle}
+                                            <span>{content.icon}</span>
+                                            <span>{content.subtitle}</span>
                                         </div>
-                                        <div style={{ 
-                                            fontSize: 10, 
-                                            fontFamily: "JetBrains Mono, monospace", 
-                                            color: "rgba(255,255,255,0.4)", 
-                                            display: "flex", 
-                                            alignItems: "center", 
-                                            gap: 6 
+
+                                        {/* Timestamp */}
+                                        <div style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: 8,
+                                            fontSize: 11,
+                                            fontFamily: "JetBrains Mono, monospace",
+                                            color: "rgba(255,255,255,0.5)",
+                                            backgroundColor: "rgba(255,255,255,0.05)",
+                                            padding: "6px 12px",
+                                            borderRadius: "999px",
+                                            border: "1px solid rgba(255,255,255,0.08)"
                                         }}>
                                             <Clock size={12} />
-                                            {hoveredPoint.timestamp}
+                                            <span>{content.formattedTime}</span>
                                         </div>
                                     </div>
-                                    
-                                    <div style={{ 
-                                        fontSize: compact ? 16 : 20, 
-                                        fontWeight: 700, 
-                                        color: "#fff", 
-                                        marginBottom: 12, 
-                                        lineHeight: 1.3 
+
+                                    {/* Title */}
+                                    <div style={{
+                                        fontSize: compact ? 18 : 22,
+                                        fontWeight: 700,
+                                        color: "#fff",
+                                        marginBottom: 14,
+                                        lineHeight: 1.35,
+                                        letterSpacing: "-0.01em"
                                     }}>
                                         {content.title}
                                     </div>
-                                    
-                                    <div style={{ 
-                                        fontSize: compact ? 13 : 15, 
-                                        color: "rgba(255,255,255,0.7)", 
-                                        lineHeight: 1.5,
-                                        maxHeight: "120px",
-                                        overflow: "auto"
+
+                                    {/* Content */}
+                                    <div style={{
+                                        fontSize: compact ? 13 : 15,
+                                        color: "rgba(255,255,255,0.75)",
+                                        lineHeight: 1.55,
+                                        maxHeight: "140px",
+                                        overflow: "auto",
+                                        paddingRight: 8
                                     }}>
                                         {content.content}
                                     </div>
-                                    
+
+                                    {/* Metadata */}
                                     {content.meta && (
                                         <div style={{
-                                            marginTop: 12,
-                                            paddingTop: 12,
+                                            marginTop: 16,
+                                            paddingTop: 16,
                                             borderTop: "1px solid rgba(255,255,255,0.1)",
                                             fontSize: 11,
-                                            color: "rgba(255,255,255,0.5)",
-                                            fontFamily: "JetBrains Mono, monospace"
+                                            color: "rgba(255,255,255,0.55)",
+                                            fontFamily: "JetBrains Mono, monospace",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: 8
                                         }}>
-                                            {content.meta}
+                                            <Info size={12} />
+                                            <span>{content.meta}</span>
                                         </div>
                                     )}
-                                    
-                                    {/* ID for reference */}
+
+                                    {/* ID footer */}
                                     <div style={{
-                                        marginTop: 8,
-                                        fontSize: 9,
-                                        color: "rgba(255,255,255,0.3)",
+                                        marginTop: 12,
+                                        paddingTop: 12,
+                                        borderTop: content.meta ? undefined : "1px solid rgba(255,255,255,0.08)",
+                                        fontSize: 10,
+                                        color: "rgba(255,255,255,0.35)",
                                         fontFamily: "JetBrains Mono, monospace",
-                                        letterSpacing: "0.05em"
+                                        letterSpacing: "0.03em",
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center"
                                     }}>
-                                        ID: {hoveredPoint.id.slice(0, 8)}...
+                                        <span>ID: {hoveredPoint.id?.slice(0, 12)}...</span>
+                                        <span style={{ textTransform: "uppercase" }}>{content.docType}</span>
                                     </div>
                                 </>
                             );

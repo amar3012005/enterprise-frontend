@@ -93,6 +93,13 @@ export default function EnterpriseDashboardHiveMindPage() {
     const [tenantId, setTenantId] = useState<string | null>(null);
     const [isChatMinimized, setIsChatMinimized] = useState(false);
 
+    // Knowledge Base rich context fields
+    const [kbCategory, setKbCategory] = useState("");
+    const [kbDocType, setKbDocType] = useState("General");
+    const [kbFilename, setKbFilename] = useState("");
+    const [kbChunkIndex, setKbChunkIndex] = useState(0);
+    const [kbDocId, setKbDocId] = useState("");
+
     const getDashboardContext = useCallback((tenantId: string | null) => ({
         surface: "hivemind_dashboard",
         dashboard_mode: "enterprise_insights",
@@ -201,18 +208,63 @@ export default function EnterpriseDashboardHiveMindPage() {
         if (!chatInput.trim()) return;
 
         setIsQuerying(true);
-        setIsChatMinimized(false); // Show chat when new knowledge is submitted
+        setIsChatMinimized(false);
         try {
             const { baseUrl: ragBase, tenantId, token } = getRagCredentials();
             if (!ragBase) throw new Error("RAG not configured");
 
-            const payload = {
-                text: chatInput,
-                type: inputMode === "rule" ? "agent_rule" : inputMode === "knowledge" ? "general_kb" : "agent_skill",
-                topic: entryTopic,
-                ...(inputMode === "rule" ? { severity: ruleSeverity } : {}),
-                tenant_id: tenantId
+            // Build base payload
+            const basePayload: Record<string, unknown> = {
+                tenant_id: tenantId || "davinci",
+                agent_id: selectedAgent?.agent_name || "unknown",
+                session_type: "hivemind_dashboard",
             };
+
+            let payload: Record<string, unknown>;
+
+            if (inputMode === "knowledge") {
+                // Rich context payload for Knowledge Base (General_KB)
+                payload = {
+                    ...basePayload,
+                    doc_type: "General_KB",
+                    text: chatInput,
+                    summary: chatInput.slice(0, 200),
+                    // Type-specific fields for General_KB
+                    filename: kbFilename || "manual_entry.txt",
+                    original_filename: kbFilename || "manual_entry.txt",
+                    doc_type_detail: kbDocType || "General",
+                    chunk_index: kbChunkIndex,
+                    doc_id: kbDocId || undefined,
+                    topics: kbCategory || entryTopic || "general",
+                    // Backward compat
+                    data_type: "Internal_KB",
+                };
+            } else if (inputMode === "rule") {
+                // Agent Rule payload
+                payload = {
+                    ...basePayload,
+                    doc_type: "Agent_Rule",
+                    text: chatInput,
+                    summary: chatInput,
+                    topic: entryTopic,
+                    severity: ruleSeverity,
+                    // Backward compat
+                    type: "agent_rule",
+                };
+            } else if (inputMode === "skill") {
+                // Agent Skill payload
+                payload = {
+                    ...basePayload,
+                    doc_type: "Agent_Skill",
+                    text: chatInput,
+                    summary: chatInput,
+                    topic: entryTopic,
+                    // Backward compat
+                    type: "agent_skill",
+                };
+            } else {
+                payload = basePayload;
+            }
 
             const response = await fetch(`${ragBase}/hivemind/skills?tenant_id=${encodeURIComponent(tenantId || "davinci")}`, {
                 method: "POST",
@@ -225,15 +277,24 @@ export default function EnterpriseDashboardHiveMindPage() {
 
             if (response.ok) {
                 const label = inputMode === "rule" ? "rule" : inputMode === "knowledge" ? "knowledge entry" : "skill";
+                const details = inputMode === "knowledge"
+                    ? ` (${kbDocType}${kbCategory ? ` • ${kbCategory}` : ""}${kbChunkIndex > 0 ? ` • chunk ${kbChunkIndex}` : ""})`
+                    : "";
                 const successMessage: ChatMessage = {
                     role: "assistant",
-                    content: `Saved ${label} to HiveMind for ${(tenantId || "davinci").toUpperCase()}: "${chatInput}"`,
+                    content: `Saved ${label} to HiveMind for ${(tenantId || "davinci").toUpperCase()}: "${chatInput.slice(0, 60)}${chatInput.length > 60 ? "..." : ""}"${details}`,
                     timestamp: new Date()
                 };
                 setChatMessages(prev => [...prev, successMessage]);
                 setChatInput("");
                 setEntryTopic("general");
                 setRuleSeverity("standard");
+                // Reset KB fields
+                setKbCategory("");
+                setKbDocType("General");
+                setKbFilename("");
+                setKbChunkIndex(0);
+                setKbDocId("");
             } else {
                 throw new Error("Failed to add entry");
             }
@@ -679,6 +740,7 @@ export default function EnterpriseDashboardHiveMindPage() {
                         boxShadow: "0 12px 32px rgba(0,0,0,0.45)",
                         flexWrap: "wrap"
                     }}>
+                        {/* Category/Topic - shown for all non-chat modes */}
                         <div style={{
                             display: "flex",
                             flexDirection: "column",
@@ -693,13 +755,13 @@ export default function EnterpriseDashboardHiveMindPage() {
                                 color: "#666",
                                 fontWeight: 700
                             }}>
-                                Category
+                                {inputMode === "knowledge" ? "Topics/Category" : "Topic"}
                             </span>
                             <input
                                 type="text"
-                                value={entryTopic}
-                                onChange={(e) => setEntryTopic(e.target.value)}
-                                placeholder="general"
+                                value={inputMode === "knowledge" ? kbCategory : entryTopic}
+                                onChange={(e) => inputMode === "knowledge" ? setKbCategory(e.target.value) : setEntryTopic(e.target.value)}
+                                placeholder={inputMode === "knowledge" ? "e.g. billing, api_docs" : "general"}
                                 style={{
                                     height: 38,
                                     borderRadius: 12,
@@ -713,6 +775,123 @@ export default function EnterpriseDashboardHiveMindPage() {
                                 }}
                             />
                         </div>
+
+                        {/* Knowledge Base specific fields */}
+                        {inputMode === "knowledge" && (
+                            <>
+                                <div style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 6,
+                                    minWidth: 150,
+                                    flex: 1
+                                }}>
+                                    <span style={{
+                                        fontSize: 10,
+                                        letterSpacing: "0.08em",
+                                        textTransform: "uppercase",
+                                        color: "#666",
+                                        fontWeight: 700
+                                    }}>
+                                        Doc Type
+                                    </span>
+                                    <select
+                                        value={kbDocType}
+                                        onChange={(e) => setKbDocType(e.target.value)}
+                                        style={{
+                                            height: 38,
+                                            borderRadius: 12,
+                                            border: "1px solid #333",
+                                            backgroundColor: "#111",
+                                            color: "#fff",
+                                            padding: "0 12px",
+                                            outline: "none",
+                                            fontSize: 13,
+                                            fontFamily: "Inter, sans-serif"
+                                        }}
+                                    >
+                                        <option value="General">General</option>
+                                        <option value="Documentation">Documentation</option>
+                                        <option value="FAQ">FAQ</option>
+                                        <option value="API_Docs">API Docs</option>
+                                        <option value="Tutorial">Tutorial</option>
+                                        <option value="Policy">Policy</option>
+                                        <option value="Product_Info">Product Info</option>
+                                        <option value="Troubleshooting">Troubleshooting</option>
+                                    </select>
+                                </div>
+
+                                <div style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 6,
+                                    minWidth: 180,
+                                    flex: 1
+                                }}>
+                                    <span style={{
+                                        fontSize: 10,
+                                        letterSpacing: "0.08em",
+                                        textTransform: "uppercase",
+                                        color: "#666",
+                                        fontWeight: 700
+                                    }}>
+                                        Filename (optional)
+                                    </span>
+                                    <input
+                                        type="text"
+                                        value={kbFilename}
+                                        onChange={(e) => setKbFilename(e.target.value)}
+                                        placeholder="e.g. manual_entry.md"
+                                        style={{
+                                            height: 38,
+                                            borderRadius: 12,
+                                            border: "1px solid #333",
+                                            backgroundColor: "#111",
+                                            color: "#fff",
+                                            padding: "0 12px",
+                                            outline: "none",
+                                            fontSize: 13,
+                                            fontFamily: "Inter, sans-serif"
+                                        }}
+                                    />
+                                </div>
+
+                                <div style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 6,
+                                    minWidth: 100,
+                                    flex: 1
+                                }}>
+                                    <span style={{
+                                        fontSize: 10,
+                                        letterSpacing: "0.08em",
+                                        textTransform: "uppercase",
+                                        color: "#666",
+                                        fontWeight: 700
+                                    }}>
+                                        Chunk Index
+                                    </span>
+                                    <input
+                                        type="number"
+                                        value={kbChunkIndex}
+                                        onChange={(e) => setKbChunkIndex(parseInt(e.target.value) || 0)}
+                                        min={0}
+                                        style={{
+                                            height: 38,
+                                            borderRadius: 12,
+                                            border: "1px solid #333",
+                                            backgroundColor: "#111",
+                                            color: "#fff",
+                                            padding: "0 12px",
+                                            outline: "none",
+                                            fontSize: 13,
+                                            fontFamily: "Inter, sans-serif"
+                                        }}
+                                    />
+                                </div>
+                            </>
+                        )}
 
                         {inputMode === "rule" && (
                             <div style={{
