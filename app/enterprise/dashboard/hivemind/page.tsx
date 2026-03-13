@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -99,6 +99,10 @@ export default function EnterpriseDashboardHiveMindPage() {
     const [kbFilename, setKbFilename] = useState("");
     const [kbChunkIndex, setKbChunkIndex] = useState(0);
     const [kbDocId, setKbDocId] = useState("");
+
+    // File upload state
+    const [isProcessingFile, setIsProcessingFile] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const getDashboardContext = useCallback((tenantId: string | null) => ({
         surface: "hivemind_dashboard",
@@ -308,6 +312,180 @@ export default function EnterpriseDashboardHiveMindPage() {
             setChatMessages(prev => [...prev, errorMessage]);
         } finally {
             setIsQuerying(false);
+        }
+    };
+
+    /**
+     * Handle file upload - extract text and chunk using Groq LLM
+     */
+    const handleFileUpload = async (file: File) => {
+        setIsProcessingFile(true);
+        try {
+            const { tenantId, token } = getRagCredentials();
+
+            // Add status message
+            setChatMessages(prev => [...prev, {
+                role: "assistant",
+                content: `Processing "${file.name}"...`,
+                timestamp: new Date()
+            }]);
+
+            // Extract text from PDF
+            const pdfjsLib = await import("pdfjs-dist");
+            pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
+
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+            let fullText = "";
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map((item: any) => item.str).join(" ");
+                fullText += `\n--- Page ${i} ---\n${pageText}`;
+            }
+
+            if (!fullText.trim()) {
+                throw new Error("No text extracted from PDF");
+            }
+
+            // Chunk text using Groq LLM
+            const GROQ_API_KEY = process.env.NEXT_PUBLIC_GROQ_API_KEY || "";
+            const GROQ_MODEL = process.env.NEXT_PUBLIC_GROQ_MODEL || "llama-3.1-8b-instant";
+            if (!GROQ_API_KEY) {
+                throw new Error("Groq API key not configured");
+            }
+
+            const prompt = `You are a text chunking assistant. Break down the document into semantic chunks (200-500 words each).
+Each chunk should be self-contained. Return ONLY valid JSON:
+{
+  "chunks": [
+    {"text": "chunk content", "topic": "topic name", "summary": "brief summary"}
+  ]
+}
+
+DOCUMENT:
+${fullText.slice(0, 15000)}`;
+
+            const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${GROQ_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: GROQ_MODEL,
+                    messages: [
+                        { role: "system", content: "Respond with valid JSON only." },
+                        { role: "user", content: prompt }
+                    ],
+                    temperature: 0.1,
+                    max_tokens: 4000
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Groq API error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const content = data.choices[0]?.message?.content || "";
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+
+            if (!jsonMatch) {
+                throw new Error("Invalid JSON from Groq");
+            }
+
+            const parsed = JSON.parse(jsonMatch[0]);
+            const chunks = parsed.chunks || [];
+
+            if (chunks.length === 0) {
+                throw new Error("No chunks created from document");
+            }
+
+            // Generate a doc_id for this file
+            const docId = `file_${file.name.replace(/[^a-z0-9]/gi, "_")}_${Date.now()}`;
+
+            // Submit each chunk using the same handleKnowledgeSubmit flow
+            setChatMessages(prev => [...prev, {
+                role: "assistant",
+                content: `Uploading ${chunks.length} chunks to HiveMind...`,
+                timestamp: new Date()
+            }]);
+
+            let successCount = 0;
+            for (let i = 0; i < chunks.length; i++) {
+                const chunk = chunks[i];
+
+                const payload = {
+                    tenant_id: tenantId || "davinci",
+                    agent_id: selectedAgent?.agent_name || "unknown",
+                    session_type: "hivemind_dashboard",
+                    doc_type: "General_KB",
+                    text: chunk.text,
+                    summary: chunk.summary,
+                    filename: file.name,
+                    original_filename: file.name,
+                    doc_type_detail: "General",
+                    chunk_index: i,
+                    doc_id: docId,
+                    topics: chunk.topic || "general",
+                    data_type: "Internal_KB",
+                };
+
+                try {
+                    const uploadResponse = await fetch(`/enterprise/dashboard/hivemind/api/hivemind?tenant_id=${encodeURIComponent(tenantId || "davinci")}`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": token ? `Bearer ${token}` : ""
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (uploadResponse.ok) {
+                        successCount++;
+                    }
+                } catch (chunkError) {
+                    console.error(`Chunk ${i} upload failed:`, chunkError);
+                }
+
+                // Small delay between uploads
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+
+            // Final status message
+            setChatMessages(prev => [...prev, {
+                role: "assistant",
+                content: `✅ Successfully uploaded ${successCount}/${chunks.length} chunks from "${file.name}" to HiveMind`,
+                timestamp: new Date()
+            }]);
+
+            // Reset KB fields
+            setKbFilename("");
+            setKbDocId("");
+            setKbChunkIndex(0);
+
+        } catch (error) {
+            console.error("File upload error:", error);
+            setChatMessages(prev => [...prev, {
+                role: "assistant",
+                content: `Failed to process file: ${error instanceof Error ? error.message : String(error)}`,
+                timestamp: new Date()
+            }]);
+        } finally {
+            setIsProcessingFile(false);
+        }
+    };
+
+    const onFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const files = event.target.files;
+        if (files && files.length > 0) {
+            handleFileUpload(files[0]);
+            // Reset input so same file can be selected again
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
         }
     };
 
@@ -950,8 +1128,9 @@ export default function EnterpriseDashboardHiveMindPage() {
                     {/* Left Icons */}
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                         <button
-                            onClick={() => setIsSkillsModalOpen(true)}
-                            title="Upload file"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isProcessingFile}
+                            title="Upload PDF file"
                             style={{
                                 width: 32,
                                 height: 32,
@@ -961,15 +1140,26 @@ export default function EnterpriseDashboardHiveMindPage() {
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
-                                cursor: "pointer",
-                                color: "#888",
+                                cursor: isProcessingFile ? "not-allowed" : "pointer",
+                                color: isProcessingFile ? "#444" : "#888",
                                 transition: "all 0.2s"
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = "#fff"}
-                            onMouseLeave={(e) => e.currentTarget.style.color = "#888"}
+                            onMouseEnter={(e) => {
+                                if (!isProcessingFile) e.currentTarget.style.color = "#fff";
+                            }}
+                            onMouseLeave={(e) => {
+                                if (!isProcessingFile) e.currentTarget.style.color = "#888";
+                            }}
                         >
                             <Paperclip size={20} />
                         </button>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".pdf,.docx,.txt,.md"
+                            onChange={onFileSelected}
+                            style={{ display: "none" }}
+                        />
                     </div>
 
                     <input

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const RAG_BASE_URL = "https://demo.davinciai.eu:8030";
+// Point to Orchestrator EU Proxy (NOT direct RAG)
+const ORCHESTRATOR_URL = "https://demo.davinciai.eu:8030";
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
@@ -9,8 +10,9 @@ export async function GET(request: NextRequest) {
     const limit = searchParams.get("limit") || "200";
 
     try {
-        const url = `${RAG_BASE_URL}/hivemind/visualize?algorithm=${algorithm}&limit=${limit}&tenant_id=${tenantId}`;
-        console.log("Fetching from RAG API:", url);
+        // Fixed: Use Orchestrator hivemind endpoint
+        const url = `${ORCHESTRATOR_URL}/hivemind/visualize?algorithm=${algorithm}&limit=${limit}&tenant_id=${tenantId}`;
+        console.log("Fetching from Orchestrator:", url);
         const response = await fetch(url, {
             headers: {
                 "Authorization": request.headers.get("Authorization") || ""
@@ -19,7 +21,7 @@ export async function GET(request: NextRequest) {
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error("RAG API error response:", response.status, errorText);
+            console.error("Orchestrator error response:", response.status, errorText);
             return NextResponse.json({ error: "Failed to fetch", details: errorText }, { status: response.status });
         }
 
@@ -40,9 +42,9 @@ export async function POST(request: NextRequest) {
 
         // Check if this is a query request (has 'query' field)
         if (body.query) {
-            // Proxy to query endpoint
-            const url = `${RAG_BASE_URL}/hivemind/query?tenant_id=${tenantId}`;
-            console.log("Posting query to RAG API:", url);
+            // Proxy to query endpoint via Orchestrator
+            const url = `${ORCHESTRATOR_URL}/hivemind/query?tenant_id=${tenantId}`;
+            console.log("Posting query to Orchestrator:", url);
             const response = await fetch(url, {
                 method: "POST",
                 headers: {
@@ -54,7 +56,7 @@ export async function POST(request: NextRequest) {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error("RAG API query error:", response.status, errorText);
+                console.error("Orchestrator query error:", response.status, errorText);
                 return NextResponse.json({ error: "Query failed", details: errorText }, { status: response.status });
             }
 
@@ -62,24 +64,38 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(data);
         }
 
-        // This is a skill/rule/knowledge save request
-        // Transform doc_type to type for backend compatibility
-        const transformedBody = { ...body };
-        if (transformedBody.doc_type) {
-            // Map doc_type to type values expected by backend
-            const typeMapping: Record<string, string> = {
-                "Agent_Skill": "agent_skill",
-                "Agent_Rule": "agent_rule",
-                "General_KB": "general_kb",
-                "agent_skill": "agent_skill",
-                "agent_rule": "agent_rule",
-                "general_kb": "general_kb"
-            };
-            transformedBody.type = typeMapping[transformedBody.doc_type] || transformedBody.doc_type.toLowerCase();
+        // Route to different endpoints based on doc_type
+        const docType = body.doc_type || body.type;
+        let endpoint: string;
+        let transformedBody = { ...body };
+
+        if (docType === "Agent_Skill" || docType === "agent_skill") {
+            // Skills endpoint
+            endpoint = "/hivemind/skills";
+            transformedBody.type = "agent_skill";
+        } else if (docType === "Agent_Rule" || docType === "agent_rule") {
+            // Rules endpoint
+            endpoint = "/hivemind/rules";
+            transformedBody.type = "agent_rule";
+        } else if (docType === "General_KB" || docType === "general_kb") {
+            // Knowledge Base endpoint
+            endpoint = "/hivemind/knowledge_base";
+            transformedBody.type = "general_kb";
+        } else {
+            // Default to skills endpoint for unknown types
+            endpoint = "/hivemind/skills";
+            if (transformedBody.doc_type) {
+                const typeMapping: Record<string, string> = {
+                    "Agent_Skill": "agent_skill",
+                    "Agent_Rule": "agent_rule",
+                    "General_KB": "general_kb"
+                };
+                transformedBody.type = typeMapping[transformedBody.doc_type] || transformedBody.doc_type.toLowerCase();
+            }
         }
 
-        const url = `${RAG_BASE_URL}/hivemind/skills?tenant_id=${tenantId}`;
-        console.log("Posting to RAG API:", url, "with body:", JSON.stringify(transformedBody));
+        const url = `${ORCHESTRATOR_URL}${endpoint}?tenant_id=${tenantId}`;
+        console.log("Posting to Orchestrator:", url, "with body:", JSON.stringify(transformedBody));
         const response = await fetch(
             url,
             {
@@ -94,7 +110,7 @@ export async function POST(request: NextRequest) {
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error("RAG API POST error:", response.status, errorText);
+            console.error("Orchestrator POST error:", response.status, errorText);
             return NextResponse.json({ error: "Failed to save", details: errorText }, { status: response.status });
         }
 
