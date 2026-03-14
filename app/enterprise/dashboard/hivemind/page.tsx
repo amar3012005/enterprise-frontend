@@ -114,15 +114,14 @@ export default function EnterpriseDashboardHiveMindPage() {
 
     // Fetch visualization data from RAG API
     const loadVisualization = useCallback(async () => {
-        const { token, tenantId: credsTenantId } = getRagCredentials();
+        const { baseUrl, token, tenantId: credsTenantId } = getRagCredentials();
         setLoading(true);
         setConnectionStatus("connecting");
 
         try {
-            // Use Next.js API route as proxy to avoid CORS issues
-            // Use tenantId from state or fall back to credentials from localStorage
+            // Call Orchestrator directly
             const effectiveTenantId = tenantId || credsTenantId || "davinci";
-            const url = `/enterprise/dashboard/hivemind/api/hivemind?algorithm=tsne&limit=200&tenant_id=${effectiveTenantId}`;
+            const url = `${baseUrl}/hivemind/visualize?algorithm=tsne&limit=200&tenant_id=${effectiveTenantId}`;
             console.log("Loading visualization for tenant:", effectiveTenantId);
             const response = await fetch(url, {
                 headers: {
@@ -164,8 +163,8 @@ export default function EnterpriseDashboardHiveMindPage() {
         setIsChatMinimized(false);
 
         try {
-            const { token } = getRagCredentials();
-            const response = await fetch(`/enterprise/dashboard/hivemind/api/hivemind?tenant_id=${tenantId || "davinci"}`, {
+            const { baseUrl, token } = getRagCredentials();
+            const response = await fetch(`${baseUrl}/hivemind/query?tenant_id=${tenantId || "davinci"}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -216,7 +215,7 @@ export default function EnterpriseDashboardHiveMindPage() {
         setIsQuerying(true);
         setIsChatMinimized(false);
         try {
-            const { tenantId, token } = getRagCredentials();
+            const { baseUrl, tenantId, token } = getRagCredentials();
 
             // Build base payload with all universal fields
             const basePayload: Record<string, unknown> = {
@@ -271,7 +270,17 @@ export default function EnterpriseDashboardHiveMindPage() {
                 payload = basePayload;
             }
 
-            const response = await fetch(`/enterprise/dashboard/hivemind/api/hivemind?tenant_id=${encodeURIComponent(tenantId || "davinci")}`, {
+            // Route based on inputMode
+            let endpoint: string;
+            if (inputMode === "rule") {
+                endpoint = "/hivemind/rules";
+            } else if (inputMode === "knowledge") {
+                endpoint = "/hivemind/knowledge_base";
+            } else {
+                endpoint = "/hivemind/skills";
+            }
+
+            const response = await fetch(`${baseUrl}${endpoint}?tenant_id=${encodeURIComponent(tenantId || "davinci")}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -321,7 +330,7 @@ export default function EnterpriseDashboardHiveMindPage() {
     const handleFileUpload = async (file: File) => {
         setIsProcessingFile(true);
         try {
-            const { tenantId, token } = getRagCredentials();
+            const { baseUrl, tenantId, token } = getRagCredentials();
 
             // Add status message
             setChatMessages(prev => [...prev, {
@@ -434,7 +443,7 @@ ${fullText.slice(0, 15000)}`;
                 };
 
                 try {
-                    const uploadResponse = await fetch(`/enterprise/dashboard/hivemind/api/hivemind?tenant_id=${encodeURIComponent(tenantId || "davinci")}`, {
+                    const uploadResponse = await fetch(`${baseUrl}/hivemind/knowledge_base?tenant_id=${encodeURIComponent(tenantId || "davinci")}`, {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",

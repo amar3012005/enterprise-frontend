@@ -172,15 +172,15 @@ export default function HiveMindRAG({
     const loadVisualization = useCallback(async (forceRefresh = false) => {
         if (propPoints && !forceRefresh) return;
 
-        const { tenantId, token } = getRagCredentials();
+        const { baseUrl, tenantId, token } = getRagCredentials();
 
         setLoading(true);
         setConnectionStatus("connecting");
 
         try {
-            // Use Next.js API proxy route to avoid CORS
+            // Call Orchestrator directly
             const effectiveTenantId = tenantId || 'davinci';
-            const url = `/enterprise/dashboard/hivemind/api/hivemind?algorithm=tsne&limit=200&tenant_id=${effectiveTenantId}`;
+            const url = `${baseUrl}/hivemind/visualize?algorithm=tsne&limit=200&tenant_id=${effectiveTenantId}`;
             console.log("HiveMindRAG loading visualization for tenant:", effectiveTenantId);
             const response = await fetch(url, {
                 headers: {
