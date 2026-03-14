@@ -366,15 +366,12 @@ export default function EnterpriseDashboardHiveMindPage() {
             }
 
             const prompt = `You are a text chunking assistant. Break down the document into semantic chunks (200-500 words each).
-Each chunk should be self-contained. Return ONLY valid JSON:
-{
-  "chunks": [
-    {"text": "chunk content", "topic": "topic name", "summary": "brief summary"}
-  ]
-}
+Each chunk should be self-contained. Return ONLY a JSON object with this exact format (no markdown, no code blocks):
+
+{"chunks":[{"text":"chunk content here","topic":"topic name","summary":"brief summary"},{"text":"chunk content here","topic":"topic name","summary":"brief summary"}]}
 
 DOCUMENT:
-${fullText.slice(0, 15000)}`;
+${fullText.slice(0, 8000)}`;
 
             const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: "POST",
@@ -399,13 +396,33 @@ ${fullText.slice(0, 15000)}`;
 
             const data = await response.json();
             const content = data.choices[0]?.message?.content || "";
-            const jsonMatch = content.match(/\{[\s\S]*\}/);
 
-            if (!jsonMatch) {
+            // Extract JSON more robustly
+            let parsed;
+            try {
+                // Try direct parse first
+                parsed = JSON.parse(content);
+            } catch {
+                // Find JSON object with balanced braces
+                const jsonMatch = content.match(/\{[\s\S]*?\}/g);
+                if (jsonMatch) {
+                    // Try each match until one parses
+                    for (const match of jsonMatch) {
+                        try {
+                            parsed = JSON.parse(match);
+                            if (parsed.chunks) break;
+                        } catch {
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            if (!parsed || !parsed.chunks) {
+                console.error("Invalid JSON from Groq:", content);
                 throw new Error("Invalid JSON from Groq");
             }
 
-            const parsed = JSON.parse(jsonMatch[0]);
             const chunks = parsed.chunks || [];
 
             if (chunks.length === 0) {
