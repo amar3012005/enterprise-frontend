@@ -36,7 +36,7 @@ interface CallLog {
     agent_id: string;
     duration_display: string;
     duration_seconds: number;
-    cost_euros: number;
+    cost_tokens: number;
     status: "completed" | "failed" | "interrupted";
     start_time: string;
     sentiment_score: number | null;
@@ -206,7 +206,7 @@ export default function EnterpriseDashboardCallsPage() {
                 return acc + (min * 60 + sec);
             }, 0) / calls.length)
             : 0,
-        totalTokens: calls.reduce((a, c) => a + (c.total_llm_tokens || 0), 0),
+        totalTokens: calls.reduce((a, c) => a + (Number(c.cost_tokens) || 0), 0),
         avgIQ: calls.filter(c => c.agent_iq !== null).length > 0
             ? (calls.reduce((a, c) => a + (c.agent_iq || 0), 0) / calls.filter(c => c.agent_iq !== null).length)
             : 0,
@@ -591,7 +591,7 @@ export default function EnterpriseDashboardCallsPage() {
                                             fontWeight: 600,
                                             color: isDark ? "#fff" : "#000"
                                         }}>
-                                            {Math.ceil(call.duration_seconds / 60) * 100}
+                                            {call.cost_tokens}
                                         </div>
                                     </motion.div>
 

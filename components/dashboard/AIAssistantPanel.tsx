@@ -218,6 +218,14 @@ export default function AIAssistantPanel({
     const audioConfigRef = useRef({ format: 'pcm_f32le', sampleRate: 44100 });
     const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+    // Audio Enhancements Refs
+    const activeSourcesRef = useRef(new Set<AudioBufferSourceNode>());
+    const outputGainRef = useRef<GainNode | null>(null);
+    const telephonyHighpassRef = useRef<BiquadFilterNode | null>(null);
+    const telephonyLowpassRef = useRef<BiquadFilterNode | null>(null);
+    const minAcceptedPlaybackTurnIdRef = useRef(0);
+    const currentPlaybackTurnIdRef = useRef<number | null>(null);
+
     const callTimerRef = useRef<NodeJS.Timeout | null>(null);
     const animationFrameRef = useRef<number | null>(null);
 
@@ -231,6 +239,45 @@ export default function AIAssistantPanel({
     const hasTtfcForTurnRef = useRef(false);
     const agentResponseBufferRef = useRef<string>("");
     const currentAgentMessageRef = useRef<string>("");
+
+    // Audio Chain Initialization
+    const ensureOutputChain = () => {
+        if (!audioCtxRef.current) return null;
+        const ctx = audioCtxRef.current;
+        if (!outputGainRef.current) outputGainRef.current = ctx.createGain();
+        if (!telephonyHighpassRef.current) {
+            telephonyHighpassRef.current = ctx.createBiquadFilter();
+            telephonyHighpassRef.current.type = 'highpass';
+            telephonyHighpassRef.current.frequency.value = 250;
+        }
+        if (!telephonyLowpassRef.current) {
+            telephonyLowpassRef.current = ctx.createBiquadFilter();
+            telephonyLowpassRef.current.type = 'lowpass';
+            telephonyLowpassRef.current.frequency.value = 3400;
+        }
+        return { gain: outputGainRef.current, highpass: telephonyHighpassRef.current, lowpass: telephonyLowpassRef.current };
+    };
+
+    const stopPlayback = () => {
+        if (Number.isFinite(currentPlaybackTurnIdRef.current)) {
+            minAcceptedPlaybackTurnIdRef.current = Math.max(minAcceptedPlaybackTurnIdRef.current, (currentPlaybackTurnIdRef.current || 0) + 1);
+        }
+        for (const source of activeSourcesRef.current) {
+            try { 
+                source.onended = null; 
+                source.stop(); 
+            } catch (_) { }
+        }
+        activeSourcesRef.current.clear();
+        binaryQueueRef.current = [];
+        currentPlaybackTurnIdRef.current = null;
+        audioStreamCompleteRef.current = false;
+        playbackStartTimeRef.current = null;
+        if (audioCtxRef.current) {
+            lastPlaybackTimeRef.current = audioCtxRef.current.currentTime;
+        }
+        setAgentIsSpeaking(false);
+    };
 
     // Login Mode & Demo Call Limit
     const [loginMode, setLoginMode] = useState<string>('demo');
@@ -389,7 +436,8 @@ export default function AIAssistantPanel({
                     if (data.type === 'stream_complete') {
                         console.log('🎵 Audio stream marked complete');
                         audioStreamCompleteRef.current = true;
-                        setAgentIsSpeaking(false);
+                        // For dedicated audio streams, we don't clear agentIsSpeaking here, 
+                        // we let playAudioChunk's onended do it via checkPlaybackComplete
                     }
                 } catch (err) {
                     console.warn('⚠️ Non-JSON message on audio stream:', e.data);
@@ -508,7 +556,7 @@ export default function AIAssistantPanel({
             const source = micAudioCtx.createMediaStreamSource(stream);
             const processor = micAudioCtx.createScriptProcessor(2048, 1, 1);
             processor.onaudioprocess = (e) => {
-                if (ws.readyState === WebSocket.OPEN && wsConnectedRef.current && !agentIsSpeaking) {
+                if (ws.readyState === WebSocket.OPEN && wsConnectedRef.current) {
                     const inputData = e.inputBuffer.getChannelData(0);
                     const pcmData = new Int16Array(inputData.length);
                     for (let i = 0; i < inputData.length; i++) {
@@ -600,21 +648,32 @@ export default function AIAssistantPanel({
                                 setMetrics(prev => ({ ...prev, ttft }));
                                 hasTtftForTurnRef.current = true;
                             }
-                            currentAgentMessageRef.current += data.text;
+                            // One turn at a time: if it's a new response start, or we're streaming
+                            currentAgentMessageRef.current = data.text; // Update with latest chunk for current turn
                             setCurrentTranscript(currentAgentMessageRef.current);
                         } else {
-                            setTranscripts(prev => [...prev, {
+                            const newAgentMsg = {
                                 id: crypto.randomUUID(),
-                                role: 'agent',
-                                text: currentAgentMessageRef.current || data.text,
+                                role: 'agent' as const,
+                                text: data.text,
                                 timestamp: Date.now(),
                                 isFinal: true
-                            }]);
+                            };
+                            setTranscripts(prev => [...prev, newAgentMsg]);
                             currentAgentMessageRef.current = '';
                             setCurrentTranscript('');
                         }
                     }
                 } else if (data.type === 'audio_chunk') {
+                    const turnId = Number(data.playback_turn_id);
+                    if (Number.isFinite(turnId)) {
+                        if (turnId < minAcceptedPlaybackTurnIdRef.current) {
+                            if (data.binary_sent && binaryQueueRef.current.length > 0) binaryQueueRef.current.shift();
+                            return;
+                        }
+                        currentPlaybackTurnIdRef.current = turnId;
+                    }
+
                     if (data.sample_rate) {
                         audioConfigRef.current.sampleRate = data.sample_rate;
                     }
@@ -640,11 +699,6 @@ export default function AIAssistantPanel({
                     } else {
                         const audioB64 = data.data || data.audio;
                         if (audioB64) {
-                            if (turnStartTimeRef.current && !hasTtfcForTurnRef.current) {
-                                const ttfc = Math.round(performance.now() - turnStartTimeRef.current);
-                                setMetrics(prev => ({ ...prev, ttfc }));
-                                hasTtfcForTurnRef.current = true;
-                            }
                             playAudioChunk(audioB64);
                         }
                     }
@@ -656,10 +710,8 @@ export default function AIAssistantPanel({
                 } else if (data.type === 'audio_complete' || data.is_final) {
                     audioStreamCompleteRef.current = true;
                     checkPlaybackComplete();
-                } else if (data.type === 'interrupt' || data.type === 'clear') {
-                    setAgentIsSpeaking(false);
-                    lastPlaybackTimeRef.current = audioCtxRef.current?.currentTime || 0;
-                    playbackStartTimeRef.current = null;
+                } else if (data.type === 'interrupt' || data.type === 'clear' || data.type === 'playback_stop' || (data.type === 'state_update' && (data.state === 'listening' || data.state === 'thinking'))) {
+                    stopPlayback();
                 } else if (data.type === 'ping') {
                     if (ws.readyState === WebSocket.OPEN) {
                         ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() / 1000 }));
@@ -755,17 +807,36 @@ export default function AIAssistantPanel({
 
             const source = audioCtxRef.current.createBufferSource();
             source.buffer = buffer;
-            source.connect(audioCtxRef.current.destination);
+            
+            const chain = ensureOutputChain();
+            if (!chain) return;
+
+            // Apply "Telephony" style audio enhancement by default for the dashboard panel
+            source.connect(chain.highpass);
+            chain.highpass.connect(chain.lowpass);
+            chain.lowpass.connect(chain.gain);
+            chain.gain.connect(audioCtxRef.current.destination);
 
             const now = audioCtxRef.current.currentTime;
             let startAt = lastPlaybackTimeRef.current;
+            
+            // Drift correction & initial buffer
+            if (!playbackStartTimeRef.current) {
+                playbackStartTimeRef.current = Date.now();
+                startAt = now + 0.05;
+            }
             if (startAt < now) {
                 startAt = now;
             }
 
+            activeSourcesRef.current.add(source);
+            source.onended = () => {
+                activeSourcesRef.current.delete(source);
+                checkPlaybackComplete();
+            };
+            
             source.start(startAt);
             lastPlaybackTimeRef.current = startAt + buffer.duration;
-            source.onended = () => checkPlaybackComplete();
         }
     };
 
@@ -778,10 +849,12 @@ export default function AIAssistantPanel({
                 wsRef.current.send(JSON.stringify({
                     type: 'playback_done',
                     duration_ms: duration,
+                    playback_turn_id: currentPlaybackTurnIdRef.current,
                     timestamp: Date.now() / 1000
                 }));
                 playbackStartTimeRef.current = null;
                 audioStreamCompleteRef.current = false;
+                currentPlaybackTurnIdRef.current = null;
             }
         }
     };
@@ -804,7 +877,8 @@ export default function AIAssistantPanel({
             audioWsRef.current = null;
             audioStreamActiveRef.current = false;
         }
-        binaryQueueRef.current = [];
+
+        stopPlayback();
 
         if (finalDuration > 0) {
             try {
@@ -819,7 +893,7 @@ export default function AIAssistantPanel({
                         ttft_ms: finalMetrics.ttft,
                         ttfc_ms: finalMetrics.ttfc,
                         compression_ratio: finalMetrics.ratio,
-                        cost_euros: (finalDuration / 60) * 0.15
+                        cost_tokens: Math.ceil(finalDuration / 60) * 100
                     })
                 });
                 if (response.ok) {
@@ -834,9 +908,23 @@ export default function AIAssistantPanel({
             audioCtxRef.current.close();
             audioCtxRef.current = null;
         }
-        if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
-        if (callTimerRef.current) clearInterval(callTimerRef.current);
-        if (micStream) micStream.getTracks().forEach(track => track.stop());
+        
+        // Clean up audio enhancement nodes
+        outputGainRef.current = null;
+        telephonyHighpassRef.current = null;
+        telephonyLowpassRef.current = null;
+
+        if (pingIntervalRef.current) {
+            clearInterval(pingIntervalRef.current);
+            pingIntervalRef.current = null;
+        }
+        if (callTimerRef.current) {
+            clearInterval(callTimerRef.current);
+            callTimerRef.current = null;
+        }
+        if (micStream) {
+            micStream.getTracks().forEach(track => track.stop());
+        }
 
         setIsCallActive(false);
         setConnectionStatus(null);
@@ -1068,7 +1156,7 @@ export default function AIAssistantPanel({
                             volumeMode="manual"
                             manualInput={userVolume}
                             manualOutput={agentIsSpeaking ? (0.6 + Math.random() * 0.4) : 0}
-                            colors={["#CADCFC", "#A0B9D1"]}
+                            colors={["#A63E1B", "#EBE5DF"]}
                         />
                     </motion.div>
                 </div>
