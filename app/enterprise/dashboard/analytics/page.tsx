@@ -38,12 +38,12 @@ interface AnalyticsData {
     // Today's metrics
     total_calls_today: number;
     total_minutes_today: number;
-    total_cost_today: number;
+    total_tokens_today: number;
 
     // All-time metrics
     total_calls_all_time: number;
     total_minutes_all_time: number;
-    total_cost_all_time: number;
+    total_tokens_all_time: number;
 
     // Performance metrics
     success_rate: number;
@@ -68,7 +68,7 @@ interface AnalyticsData {
 }
 
 interface WalletData {
-    balance_euros: number;
+    balance_tokens: number;
     estimated_calls_remaining: number;
     balance_status: "healthy" | "low" | "critical";
 }
@@ -307,7 +307,7 @@ export default function EnterpriseDashboardAnalyticsPage() {
                         letterSpacing: "0.05em",
                         fontFamily: "JetBrains Mono, monospace"
                     }}>
-                        Total Cost
+                        Tokens Used (Lifetime)
                     </div>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
                         <span style={{
@@ -316,8 +316,9 @@ export default function EnterpriseDashboardAnalyticsPage() {
                             fontFamily: "JetBrains Mono, monospace",
                             color: isDark ? "#fff" : "#000"
                         }}>
-                            €{(analytics?.total_cost_today || 0).toFixed(2)}
+                            {(analytics?.total_tokens_all_time || 0).toLocaleString()}
                         </span>
+                        <span style={{ fontSize: 14, color: "#666", fontWeight: 600, marginLeft: 4 }}>Tokens</span>
                     </div>
                 </motion.div>
 
@@ -350,8 +351,9 @@ export default function EnterpriseDashboardAnalyticsPage() {
                             fontFamily: "JetBrains Mono, monospace",
                             color: isDark ? "#fff" : "#000"
                         }}>
-                            €{(wallet?.balance_euros || 0).toFixed(2)}
+                            {(wallet?.balance_tokens || 0).toLocaleString()}
                         </span>
+                        <span style={{ fontSize: 14, color: "#666", fontWeight: 600, marginLeft: 4 }}>Tokens</span>
                     </div>
                 </motion.div>
 
@@ -564,10 +566,10 @@ export default function EnterpriseDashboardAnalyticsPage() {
                             fontWeight: 600,
                             marginBottom: 4
                         }}>
-                            Cost by Duration
+                            Tokens by Duration
                         </h3>
                         <p style={{ margin: 0, fontSize: 13, color: "#666" }}>
-                            Call distribution by length
+                            Token consumption relative to call length
                         </p>
                     </div>
                     <div style={{ height: 240 }}>
@@ -634,13 +636,13 @@ export default function EnterpriseDashboardAnalyticsPage() {
                         isDark={isDark}
                     />
                     <PerformanceItem
-                        label="Cost per Call"
-                        value={`€${((analytics?.total_cost_today || 0) / Math.max(analytics?.total_calls_today || 1, 1)).toFixed(2)}`}
+                        label="Tokens per Minutes"
+                        value="100"
                         isDark={isDark}
                     />
                     <PerformanceItem
-                        label="Cost per Minute"
-                        value={`€${((analytics?.total_cost_today || 0) / Math.max(analytics?.total_minutes_today || 1, 1)).toFixed(2)}`}
+                        label="Token Value (€)"
+                        value="€0.004"
                         isDark={isDark}
                     />
                 </div>
@@ -792,7 +794,7 @@ function CustomTooltip({ active, payload, label, isDark }: any) {
                 color: isDark ? "#fff" : "#000",
                 fontFamily: "JetBrains Mono, monospace"
             }}>
-                {payload[0].value}
+                {payload[0].value} {payload[0].dataKey === 'cost' ? 'Tokens' : ''}
             </p>
         </div>
     );

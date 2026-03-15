@@ -32,6 +32,7 @@ export default function DashboardLayout({
 
     return (
         <div
+            suppressHydrationWarning
             style={{
                 minHeight: "100vh",
                 height: "100vh",

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    Mic,
+    Send,
     RefreshCw,
     Paperclip,
 } from "lucide-react";
@@ -358,20 +358,30 @@ export default function EnterpriseDashboardHiveMindPage() {
                 throw new Error("No text extracted from PDF");
             }
 
-            // Chunk text using Groq LLM
+            // Parent-Document Retrieval chunking strategy
+            // 1. Create small child chunks for precise search (100-200 tokens)
+            // 2. Link each child to a parent chunk (full section/paragraph)
+            // 3. Store child text for embedding, parent context for LLM
+
             const GROQ_API_KEY = process.env.NEXT_PUBLIC_GROQ_API_KEY || "";
             const GROQ_MODEL = process.env.NEXT_PUBLIC_GROQ_MODEL || "llama-3.1-8b-instant";
             if (!GROQ_API_KEY) {
                 throw new Error("Groq API key not configured");
             }
 
-            const prompt = `You are a text chunking assistant. Break down the document into semantic chunks (200-500 words each).
-Each chunk should be self-contained. Return ONLY a JSON object with this exact format (no markdown, no code blocks):
+            // Step 1: Identify parent sections and create child chunks
+            const prompt = `You are a document chunking expert using Parent-Document Retrieval.
 
-{"chunks":[{"text":"chunk content here","topic":"topic name","summary":"brief summary"},{"text":"chunk content here","topic":"topic name","summary":"brief summary"}]}
+TASK: Break the document into semantic PARENT sections (300-500 words each).
+For each PARENT section, extract 2-4 small CHILD chunks (50-100 words each) that represent specific points/facts.
+
+Each CHILD must reference its PARENT for full context.
+
+Return ONLY this JSON format (no markdown):
+{"sections":[{"parent_text":"Full parent section text here (300-500 words)","parent_topic":"Section topic","children":[{"text":"Small child chunk 1","summary":"Brief summary"},{"text":"Small child chunk 2","summary":"Brief summary"}]}]}
 
 DOCUMENT:
-${fullText.slice(0, 8000)}`;
+${fullText.slice(0, 10000)}`;
 
             const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: "POST",
@@ -397,20 +407,17 @@ ${fullText.slice(0, 8000)}`;
             const data = await response.json();
             const content = data.choices[0]?.message?.content || "";
 
-            // Extract JSON more robustly
+            // Extract JSON robustly
             let parsed;
             try {
-                // Try direct parse first
                 parsed = JSON.parse(content);
             } catch {
-                // Find JSON object with balanced braces
                 const jsonMatch = content.match(/\{[\s\S]*?\}/g);
                 if (jsonMatch) {
-                    // Try each match until one parses
                     for (const match of jsonMatch) {
                         try {
                             parsed = JSON.parse(match);
-                            if (parsed.chunks) break;
+                            if (parsed.sections) break;
                         } catch {
                             continue;
                         }
@@ -418,24 +425,51 @@ ${fullText.slice(0, 8000)}`;
                 }
             }
 
-            if (!parsed || !parsed.chunks) {
+            if (!parsed || !parsed.sections) {
                 console.error("Invalid JSON from Groq:", content);
                 throw new Error("Invalid JSON from Groq");
             }
 
-            const chunks = parsed.chunks || [];
+            const sections = parsed.sections || [];
 
-            if (chunks.length === 0) {
-                throw new Error("No chunks created from document");
+            if (sections.length === 0) {
+                throw new Error("No sections created from document");
             }
+
+            // Flatten sections into child chunks with parent references
+            const chunks: Array<{
+                text: string;
+                summary: string;
+                parent_text: string;
+                parent_topic: string;
+                section_index: number;
+                child_index: number;
+            }> = [];
+
+            sections.forEach((section: any, sectionIdx: number) => {
+                const parentText = section.parent_text || "";
+                const parentTopic = section.parent_topic || "general";
+                const children = section.children || [];
+
+                children.forEach((child: any, childIdx: number) => {
+                    chunks.push({
+                        text: child.text || "",
+                        summary: child.summary || "",
+                        parent_text: parentText,
+                        parent_topic: parentTopic,
+                        section_index: sectionIdx,
+                        child_index: childIdx
+                    });
+                });
+            });
 
             // Generate a doc_id for this file
             const docId = `file_${file.name.replace(/[^a-z0-9]/gi, "_")}_${Date.now()}`;
 
-            // Submit each chunk using the same handleKnowledgeSubmit flow
+            // Submit each child chunk with parent context
             setChatMessages(prev => [...prev, {
                 role: "assistant",
-                content: `Uploading ${chunks.length} chunks to HiveMind...`,
+                content: `Uploading ${chunks.length} chunks (${sections.length} parent sections) to HiveMind using Parent-Document Retrieval...`,
                 timestamp: new Date()
             }]);
 
@@ -448,15 +482,24 @@ ${fullText.slice(0, 8000)}`;
                     agent_id: selectedAgent?.agent_name || "unknown",
                     session_type: "hivemind_dashboard",
                     doc_type: "General_KB",
+                    // Child text is used for embedding/search (small, precise)
                     text: chunk.text,
+                    // Parent context gives LLM full context
+                    parent_text: chunk.parent_text,
+                    parent_topic: chunk.parent_topic,
                     summary: chunk.summary,
                     filename: file.name,
                     original_filename: file.name,
                     doc_type_detail: "General",
                     chunk_index: i,
+                    section_index: chunk.section_index,
+                    child_index: chunk.child_index,
                     doc_id: docId,
-                    topics: chunk.topic || "general",
+                    topics: chunk.parent_topic,
                     data_type: "Internal_KB",
+                    // Metadata for retrieval strategy
+                    retrieval_strategy: "parent_document",
+                    chunk_type: "child"
                 };
 
                 try {
@@ -483,7 +526,7 @@ ${fullText.slice(0, 8000)}`;
             // Final status message
             setChatMessages(prev => [...prev, {
                 role: "assistant",
-                content: `✅ Successfully uploaded ${successCount}/${chunks.length} chunks from "${file.name}" to HiveMind`,
+                content: `✅ Successfully uploaded ${successCount}/${chunks.length} child chunks from ${sections.length} parent sections in "${file.name}" to HiveMind`,
                 timestamp: new Date()
             }]);
 
@@ -764,7 +807,7 @@ ${fullText.slice(0, 8000)}`;
                 left: "50%",
                 transform: "translateX(-50%)",
                 width: "100%",
-                maxWidth: 600,
+                maxWidth: 900,
                 padding: "0 24px",
                 zIndex: 20
             }}>
@@ -1215,30 +1258,44 @@ ${fullText.slice(0, 8000)}`;
                         }}
                     />
 
-                    {/* Right Microphone Button */}
+                    {/* Right Send Button */}
                     <button
+                        onClick={() => {
+                            if (inputMode === "chat") {
+                                handleQuery();
+                            } else {
+                                handleKnowledgeSubmit();
+                            }
+                        }}
+                        disabled={isQuerying || !chatInput.trim()}
                         style={{
                             width: 44,
                             height: 44,
                             borderRadius: "50%",
-                            backgroundColor: "#fff",
+                            backgroundColor: chatInput.trim() && !isQuerying ? "#fff" : "#333",
                             border: "none",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            cursor: "pointer",
-                            color: "#000",
+                            cursor: chatInput.trim() && !isQuerying ? "pointer" : "not-allowed",
+                            color: chatInput.trim() && !isQuerying ? "#000" : "#666",
                             transition: "all 0.2s",
-                            boxShadow: "0 2px 8px rgba(255,255,255,0.2)"
+                            boxShadow: chatInput.trim() && !isQuerying ? "0 2px 8px rgba(255,255,255,0.2)" : "none"
                         }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = "scale(1.05)";
+                            if (chatInput.trim() && !isQuerying) {
+                                e.currentTarget.style.transform = "scale(1.05)";
+                            }
                         }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.transform = "scale(1)";
                         }}
                     >
-                        <Mic size={20} />
+                        {isQuerying ? (
+                            <RefreshCw size={20} style={{ animation: "spin 1s linear infinite" }} />
+                        ) : (
+                            <Send size={20} />
+                        )}
                     </button>
                 </div>
             </div>

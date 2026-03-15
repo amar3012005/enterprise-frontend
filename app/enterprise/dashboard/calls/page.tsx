@@ -95,9 +95,8 @@ function SentimentIndicator({ score, isDark }: { score: number | null; isDark: b
     if (score === null || score === undefined) return <span style={{ color: "#444", fontSize: 12 }}>—</span>;
 
     const getSentimentConfig = (s: number) => {
-        if (s >= 0.6) return { Icon: TrendingUp, color: "#22c55e" };
-        if (s >= 0.4) return { Icon: Minus, color: "#888" };
-        return { Icon: TrendingDown, color: "#ef4444" };
+        if (s >= 0.4) return { Icon: TrendingUp, color: "#22c55e" };
+        return { Icon: TrendingDown, color: "#ffffff" };
     };
 
     const { Icon, color } = getSentimentConfig(score);
@@ -435,7 +434,7 @@ export default function EnterpriseDashboardCallsPage() {
                     <TableHeader>Sentiment</TableHeader>
                     <TableHeader>Signals</TableHeader>
                     <TableHeader>AI Metrics</TableHeader>
-                    <TableHeader>Cost</TableHeader>
+                    <TableHeader>Tokens</TableHeader>
                 </div>
 
                 {/* Scrollable Body */}
@@ -585,14 +584,14 @@ export default function EnterpriseDashboardCallsPage() {
                                             </div>
                                         </div>
 
-                                        {/* Cost */}
+                                        {/* Tokens */}
                                         <div style={{
                                             fontFamily: "JetBrains Mono, monospace",
                                             fontSize: 13,
                                             fontWeight: 600,
                                             color: isDark ? "#fff" : "#000"
                                         }}>
-                                            €{call.cost_euros.toFixed(2)}
+                                            {Math.ceil(call.duration_seconds / 60) * 100}
                                         </div>
                                     </motion.div>
 
@@ -655,7 +654,7 @@ export default function EnterpriseDashboardCallsPage() {
                                                     <div>
                                                         <DetailLabel icon={Activity} label="Session Metrics" />
                                                         <DetailRow label="Total Turns" value={call.total_turns || 0} />
-                                                        <DetailRow label="LLM Tokens" value={(call.total_llm_tokens || 0).toLocaleString()} />
+                                                        <DetailRow label="TOTAL LLM Tokens" value={(call.total_llm_tokens || 0).toLocaleString()} />
                                                         <DetailRow label="Avg TTFT" value={call.ttft_ms ? `${call.ttft_ms}ms` : "—"} />
                                                         <DetailRow label="Session Type" value={
                                                             <span style={{
@@ -689,7 +688,9 @@ export default function EnterpriseDashboardCallsPage() {
                                                         <DetailRow label="Churn Risk" value={call.is_churn_risk ? "Yes" : "No"} />
                                                         <DetailRow label="Sentiment" value={
                                                             (call.sentiment_score ?? call.avg_sentiment) !== null
-                                                                ? `${(((call.sentiment_score ?? call.avg_sentiment) as number) * 100).toFixed(0)}%`
+                                                                ? <span style={{ color: (call.sentiment_score ?? call.avg_sentiment)! >= 0.4 ? "#22c55e" : "#ffffff" }}>
+                                                                    {`${(((call.sentiment_score ?? call.avg_sentiment) as number) * 100).toFixed(0)}%`}
+                                                                  </span>
                                                                 : "—"
                                                         } />
                                                     </div>
