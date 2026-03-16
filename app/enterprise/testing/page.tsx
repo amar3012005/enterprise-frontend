@@ -10,7 +10,7 @@ export default function EnterpriseTestingPage() {
     const isDark = theme === "dark";
 
     // Parameters for testing
-    const [port, setPort] = useState("8004");
+    const [port, setPort] = useState("8010");
     const [tenantId, setTenantId] = useState("davinci");
     const [lang, setLang] = useState("de");
 
@@ -19,7 +19,7 @@ export default function EnterpriseTestingPage() {
         agent_id: "agent-demo-001", // Forces fallback usage in AIAssistantPanel
         agent_name: "TARA x DEBUG",
         agent_description: "Real-time orchestration debugger",
-        websocket_url: `wss://demo.davinciai.eu:${port}/ws`,
+        websocket_url: `wss://demo.davinciai.eu:8010/ws`,
         voice: "anushka",
         language_primary: lang,
     });
