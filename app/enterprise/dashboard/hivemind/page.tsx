@@ -653,7 +653,7 @@ ${fullText.slice(0, 10000)}`;
                         margin: "4px 0 0 0",
                         fontWeight: 400
                     }}>
-                        Enterprise-grade voice agent for Davinci AI
+                        Enterprise-grade voice agent for {tenantId?.toUpperCase() || "Davinci AI"}
                     </p>
                     <div style={{
                         display: "flex",
@@ -784,17 +784,17 @@ ${fullText.slice(0, 10000)}`;
                         fontSize: 12,
                         fontFamily: "JetBrains Mono, monospace"
                     }}>
-                        <div>
-                            <span style={{ color: "#666" }}>{vizData.total_points}</span>
-                            <span style={{ marginLeft: 6 }}>NODES</span>
-                        </div>
-                        <div>
-                            <span style={{ color: "#666" }}>{vizData.dimension}</span>
-                            <span style={{ marginLeft: 6 }}>DIMENSIONS</span>
-                        </div>
-                        <div>
-                            <span style={{ color: "#666" }}>{vizData.algorithm?.toUpperCase()}</span>
-                            <span style={{ marginLeft: 6 }}>ALGORITHM</span>
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            padding: '6px 14px',
+                            backgroundColor: 'rgba(34, 197, 94, 0.08)',
+                            border: '1px solid rgba(34, 197, 94, 0.15)',
+                            borderRadius: 8,
+                        }}>
+                            <span style={{ color: "#22c55e", fontWeight: 700 }}>{vizData.total_points}</span>
+                            <span style={{ color: "#22c55e", opacity: 0.8 }}>NODES</span>
                         </div>
                     </div>
                 )}
@@ -803,7 +803,7 @@ ${fullText.slice(0, 10000)}`;
             {/* Chat Interface - Bottom Center */}
             <div style={{
                 position: "absolute",
-                bottom: 56,
+                bottom: 24,
                 left: "50%",
                 transform: "translateX(-50%)",
                 width: "100%",

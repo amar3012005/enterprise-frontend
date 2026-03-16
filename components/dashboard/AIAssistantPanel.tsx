@@ -539,7 +539,11 @@ export default function AIAssistantPanel({
                     }
                 }));
 
-                ws.send(JSON.stringify({ type: 'start_session', timestamp: Date.now() / 1000 }));
+                ws.send(JSON.stringify({ 
+                    type: 'start_session', 
+                    language: 'de',
+                    timestamp: Date.now() / 1000 
+                }));
                 connectAudioWebSocket(sessionId, wsUrlTemp);
             } else {
                 ws.send(JSON.stringify({

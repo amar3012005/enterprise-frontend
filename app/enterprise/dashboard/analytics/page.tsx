@@ -247,7 +247,7 @@ export default function EnterpriseDashboardAnalyticsPage() {
                 marginBottom: 24
             }}>
                 <StatCard
-                    label="Total Calls"
+                    label="Total Calls (Today)"
                     value={analytics?.total_calls_today || 0}
                     unit="Sessions"
                     icon={Phone}
@@ -257,7 +257,7 @@ export default function EnterpriseDashboardAnalyticsPage() {
                     delay={0.1}
                 />
                 <StatCard
-                    label="Hot Leads Found"
+                    label="Hot Leads Found (Today)"
                     value={analytics?.leads_today || 0}
                     unit="Leads"
                     icon={Flame}
@@ -265,7 +265,7 @@ export default function EnterpriseDashboardAnalyticsPage() {
                     delay={0.2}
                 />
                 <StatCard
-                    label="Churn Risks"
+                    label="Churn Risks (Today)"
                     value={analytics?.churn_risks_today || 0}
                     unit="Alerts"
                     icon={AlertTriangle}
@@ -419,7 +419,7 @@ export default function EnterpriseDashboardAnalyticsPage() {
                                 fontWeight: 600,
                                 marginBottom: 4
                             }}>
-                                Call Volume
+                                Call Volume (Hourly)
                             </h3>
                             <p style={{ margin: 0, fontSize: 13, color: "#666" }}>
                                 Activity by Hour of Day
@@ -500,7 +500,7 @@ export default function EnterpriseDashboardAnalyticsPage() {
                                 fontWeight: 600,
                                 marginBottom: 4
                             }}>
-                                Total Calls
+                                Total Calls (Monthly)
                             </h3>
                             <p style={{ margin: 0, fontSize: 13, color: "#666" }}>
                                 Monthly Trend (12 Months)
@@ -566,7 +566,7 @@ export default function EnterpriseDashboardAnalyticsPage() {
                             fontWeight: 600,
                             marginBottom: 4
                         }}>
-                            Tokens by Duration
+                            Tokens by Duration (Per Call)
                         </h3>
                         <p style={{ margin: 0, fontSize: 13, color: "#666" }}>
                             Token consumption relative to call length
