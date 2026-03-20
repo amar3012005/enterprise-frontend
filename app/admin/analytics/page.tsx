@@ -30,13 +30,20 @@ export default function AdminAnalyticsPage() {
 
     if (!metrics) return <div className="flex h-full items-center justify-center text-[#555]">No data</div>;
 
+    const revenue = metrics.total_revenue ?? 0;
+    const calls = metrics.total_calls ?? 0;
+    const minutes = metrics.total_minutes ?? 0;
+    const tenants = metrics.total_tenants ?? 0;
+    const users = metrics.total_users ?? 0;
+    const agents = metrics.total_agents ?? 0;
+
     const cards = [
-        { label: "Total Revenue", value: `€${metrics.total_revenue.toLocaleString()}`, icon: DollarSign, color: "from-emerald-600 to-emerald-900", text: "text-emerald-400", border: "border-emerald-500/20", description: "Sum of all cost_euros in call_logs" },
-        { label: "Total Calls", value: metrics.total_calls.toLocaleString(), icon: PhoneCall, color: "from-blue-600 to-blue-900", text: "text-blue-400", border: "border-blue-500/20", description: "COUNT(*) FROM call_logs" },
-        { label: "Total Minutes", value: metrics.total_minutes.toLocaleString(), icon: Activity, color: "from-purple-600 to-purple-900", text: "text-purple-400", border: "border-purple-500/20", description: "SUM(duration_seconds) / 60" },
-        { label: "Active Tenants", value: metrics.total_tenants.toLocaleString(), icon: Building, color: "from-[#ff5722] to-orange-900", text: "text-[#ff5722]", border: "border-[#ff5722]/20", description: "COUNT(*) FROM tenants" },
-        { label: "Registered Users", value: metrics.total_users.toLocaleString(), icon: Users, color: "from-cyan-600 to-cyan-900", text: "text-cyan-400", border: "border-cyan-500/20", description: "COUNT(*) FROM users" },
-        { label: "Deployed Agents", value: metrics.total_agents.toLocaleString(), icon: Bot, color: "from-amber-600 to-amber-900", text: "text-amber-400", border: "border-amber-500/20", description: "COUNT(*) FROM agents" },
+        { label: "Total Revenue", value: `€${revenue.toLocaleString()}`, icon: DollarSign, color: "from-emerald-600 to-emerald-900", text: "text-emerald-400", border: "border-emerald-500/20", description: "Sum of all cost_euros in call_logs" },
+        { label: "Total Calls", value: calls.toLocaleString(), icon: PhoneCall, color: "from-blue-600 to-blue-900", text: "text-blue-400", border: "border-blue-500/20", description: "COUNT(*) FROM call_logs" },
+        { label: "Total Minutes", value: minutes.toLocaleString(), icon: Activity, color: "from-purple-600 to-purple-900", text: "text-purple-400", border: "border-purple-500/20", description: "SUM(duration_seconds) / 60" },
+        { label: "Active Tenants", value: tenants.toLocaleString(), icon: Building, color: "from-[#ff5722] to-orange-900", text: "text-[#ff5722]", border: "border-[#ff5722]/20", description: "COUNT(*) FROM tenants" },
+        { label: "Registered Users", value: users.toLocaleString(), icon: Users, color: "from-cyan-600 to-cyan-900", text: "text-cyan-400", border: "border-cyan-500/20", description: "COUNT(*) FROM users" },
+        { label: "Deployed Agents", value: agents.toLocaleString(), icon: Bot, color: "from-amber-600 to-amber-900", text: "text-amber-400", border: "border-amber-500/20", description: "COUNT(*) FROM agents" },
     ];
 
     return (
@@ -76,19 +83,19 @@ export default function AdminAnalyticsPage() {
                     <div className="bg-[#060608] rounded-lg p-4 border border-[#111115]">
                         <p className="text-[10px] text-[#444] font-mono mb-1">AVG Cost/Call</p>
                         <p className="text-lg font-bold text-emerald-400">
-                            €{metrics.total_calls > 0 ? (metrics.total_revenue / metrics.total_calls).toFixed(4) : "0.00"}
+                            €{calls > 0 ? (revenue / calls).toFixed(4) : "0.00"}
                         </p>
                     </div>
                     <div className="bg-[#060608] rounded-lg p-4 border border-[#111115]">
                         <p className="text-[10px] text-[#444] font-mono mb-1">AVG Duration</p>
                         <p className="text-lg font-bold text-blue-400">
-                            {metrics.total_calls > 0 ? ((metrics.total_minutes * 60 / metrics.total_calls) / 60).toFixed(1) : "0"} min
+                            {calls > 0 ? ((minutes * 60 / calls) / 60).toFixed(1) : "0"} min
                         </p>
                     </div>
                     <div className="bg-[#060608] rounded-lg p-4 border border-[#111115]">
                         <p className="text-[10px] text-[#444] font-mono mb-1">Agents/Tenant</p>
                         <p className="text-lg font-bold text-amber-400">
-                            {metrics.total_tenants > 0 ? (metrics.total_agents / metrics.total_tenants).toFixed(1) : "0"}
+                            {tenants > 0 ? (agents / tenants).toFixed(1) : "0"}
                         </p>
                     </div>
                 </div>

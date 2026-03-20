@@ -197,12 +197,12 @@ export default function AdminDatabasePage() {
             {metrics && (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
                     {[
-                        { label: "Revenue", value: `€${metrics.total_revenue.toLocaleString()}`, icon: DollarSign, color: "text-emerald-400" },
-                        { label: "Calls", value: metrics.total_calls.toLocaleString(), icon: Activity, color: "text-blue-400" },
-                        { label: "Minutes", value: metrics.total_minutes.toLocaleString(), icon: Activity, color: "text-purple-400" },
-                        { label: "Tenants", value: metrics.total_tenants.toLocaleString(), icon: Building, color: "text-[#ff5722]" },
-                        { label: "Users", value: metrics.total_users.toLocaleString(), icon: Users, color: "text-cyan-400" },
-                        { label: "Agents", value: metrics.total_agents.toLocaleString(), icon: Bot, color: "text-amber-400" },
+                        { label: "Revenue", value: `€${(metrics.total_revenue ?? 0).toLocaleString()}`, icon: DollarSign, color: "text-emerald-400" },
+                        { label: "Calls", value: (metrics.total_calls ?? 0).toLocaleString(), icon: Activity, color: "text-blue-400" },
+                        { label: "Minutes", value: (metrics.total_minutes ?? 0).toLocaleString(), icon: Activity, color: "text-purple-400" },
+                        { label: "Tenants", value: (metrics.total_tenants ?? 0).toLocaleString(), icon: Building, color: "text-[#ff5722]" },
+                        { label: "Users", value: (metrics.total_users ?? 0).toLocaleString(), icon: Users, color: "text-cyan-400" },
+                        { label: "Agents", value: (metrics.total_agents ?? 0).toLocaleString(), icon: Bot, color: "text-amber-400" },
                     ].map((m) => (
                         <div key={m.label} className="bg-[#0a0a0e] border border-[#1a1a1f] rounded-lg p-4">
                             <div className="flex items-center justify-between mb-2">
