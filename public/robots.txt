@@ -1,0 +1,7 @@
+# Da'vinci Enterprise Dashboard — enterprise.davinciai.eu
+User-agent: *
+Disallow: /api/
+Disallow: /dashboard/
+Allow: /
+
+Sitemap: https://enterprise.davinciai.eu/sitemap.xml
