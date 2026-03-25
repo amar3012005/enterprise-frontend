@@ -215,7 +215,8 @@ export default function AIAssistantPanel({
     const lastPlaybackTimeRef = useRef(0);
     const playbackStartTimeRef = useRef<number | null>(null);
     const audioStreamCompleteRef = useRef(false);
-    const audioConfigRef = useRef({ format: 'pcm_f32le', sampleRate: 44100 });
+    // Match server audio format: pcm_s16le at 16000 Hz
+    const audioConfigRef = useRef({ format: 'pcm_s16le', sampleRate: 16000 });
     const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     // Audio Enhancements Refs
@@ -558,7 +559,8 @@ export default function AIAssistantPanel({
                     },
                     timestamp: Date.now() / 1000
                 }));
-                connectAudioWebSocket(sessionId, wsUrlTemp, tenantId);
+                // NOTE: Audio streams through main /ws, not separate /stream endpoint
+                // connectAudioWebSocket(sessionId, wsUrlTemp, tenantId);
             } else {
                 ws.send(JSON.stringify({
                     event: "start",
@@ -566,7 +568,8 @@ export default function AIAssistantPanel({
                 }));
             }
 
-            const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 44100 });
+            // Use 16000 sample rate for both playback and recording (matches server config)
+            const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
             audioCtxRef.current = audioCtx;
             lastPlaybackTimeRef.current = audioCtx.currentTime;
 
