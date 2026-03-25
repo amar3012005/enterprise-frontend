@@ -14,7 +14,7 @@ const DEMO_TARA_AGENT = {
     agent_id: "agent-demo-001",
     agent_name: "TARA",
     agent_description: "Demo AI Voice Agent — Task-Aware Responsive Assistant",
-    websocket_url: "wss://demo.davinciai.eu:8443",
+    websocket_url: "wss://demo.davinciai.eu:8030",
     location: "EU-West",
     created_at: new Date().toISOString(),
     stats: { total_calls: 142, total_minutes: 487, success_rate: 0.942 },

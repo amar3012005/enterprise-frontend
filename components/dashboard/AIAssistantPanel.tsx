@@ -344,11 +344,11 @@ export default function AIAssistantPanel({
     useEffect(() => {
         if (loginMode === 'demo' && isCallActive) {
             if (callDuration === DEMO_WARNING_TIME) {
-                alert('⏰ Demo call will end in 30 seconds');
+                console.warn('Demo call will end in 30 seconds');
             }
             if (callDuration >= DEMO_CALL_LIMIT) {
                 endCall();
-                alert('⏱️ Demo call limit (5 minutes) reached. Upgrade to Enterprise for unlimited calls.');
+                console.warn('Demo call limit reached');
             }
         }
     }, [callDuration, loginMode, isCallActive]);
@@ -459,7 +459,7 @@ export default function AIAssistantPanel({
 
     const startCall = async () => {
         if (!agentData) {
-            alert("Agent data not loaded yet");
+            console.warn("Agent data not loaded yet");
             return;
         }
         try {
@@ -475,7 +475,7 @@ export default function AIAssistantPanel({
             startVoiceCall(stream);
         } catch (err) {
             console.error("Mic access failed:", err);
-            alert("Please enable microphone access");
+            console.error("Microphone access denied");
         }
     };
 
@@ -524,25 +524,31 @@ export default function AIAssistantPanel({
                 console.log(`🚀 Handshake for ${agentName} (Tenant: ${tenantId})`);
                 ws.send(JSON.stringify({
                     type: 'session_config',
-                    tenant_id: tenantId,
-                    agent_id: agentIdToUse,
-                    agent_name: agentName,
-                    user_id: userId,
-                    session_type: 'webcall',
-                    language: agentData.language_primary || 'de',
-                    interaction_mode: 'interactive',
-                    stt_mode: 'streaming',
-                    tts_mode: 'streaming',
-                    metadata: {
-                        source: 'enterprise_dashboard',
-                        region: 'EU'
+                    config: {
+                        mode: 'voice',
+                        tenant_id: tenantId,
+                        agent_id: agentIdToUse,
+                        agent_name: agentName,
+                        user_id: userId,
+                        session_type: 'webcall',
+                        stt_mode: 'audio',
+                        tts_mode: 'audio',
+                        language: agentData.language_primary || 'de',
                     }
                 }));
 
-                ws.send(JSON.stringify({ 
-                    type: 'start_session', 
-                    language: 'de',
-                    timestamp: Date.now() / 1000 
+                ws.send(JSON.stringify({
+                    type: 'start_session',
+                    flow_config: {
+                        policy_mode: 'sales',
+                        conversation_policy: 'sales',
+                        policy_flags: {
+                            enable_strategic_policy: true,
+                            enable_stage_aware_retrieval: true,
+                            enable_micro_reasoning: true
+                        }
+                    },
+                    timestamp: Date.now() / 1000
                 }));
                 connectAudioWebSocket(sessionId, wsUrlTemp);
             } else {
@@ -768,7 +774,7 @@ export default function AIAssistantPanel({
 
         ws.onerror = (event) => {
             console.error('❌ WebSocket error occurred:', event);
-            alert("Connection error. Please check if the voice orchestrator is online.");
+            console.error("Connection error: voice orchestrator may be offline");
             endCall();
         };
     };
