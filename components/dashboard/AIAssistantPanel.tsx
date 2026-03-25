@@ -395,15 +395,23 @@ export default function AIAssistantPanel({
     }, [agentIsSpeaking, connectionStatus]);
 
     // Connect to dedicated audio WebSocket
-    const connectAudioWebSocket = (sessionId: string, baseWsUrl: string) => {
+    const connectAudioWebSocket = (sessionId: string, baseWsUrl: string, resolvedTenantId?: string) => {
         if (!sessionId || !baseWsUrl) {
             console.warn('⚠️ Cannot connect audio WebSocket: missing sessionId or baseWsUrl');
             return;
         }
 
         const baseUrl = baseWsUrl.replace(/\/ws\/?(\?.*)?$/, '');
-        const urlObj = new URL(baseWsUrl);
-        const tenantId = urlObj.searchParams.get('tenant_id') || 'davinci';
+        // Use the explicitly passed tenant ID, or try to parse from URL, or read from localStorage
+        let tenantId: string = resolvedTenantId || '';
+        if (!tenantId) {
+            try { tenantId = new URL(baseWsUrl).searchParams.get('tenant_id') || ''; } catch { /* ignore */ }
+        }
+        if (!tenantId) {
+            const stored = typeof window !== 'undefined' ? localStorage.getItem('tenant') : null;
+            const info = stored ? JSON.parse(stored) : null;
+            tenantId = info?.subdomain || info?.tenant_id || 'davinci';
+        }
         const audioUrl = `${baseUrl}/stream?session_id=${encodeURIComponent(sessionId)}&tenant_id=${encodeURIComponent(tenantId)}`;
 
         console.log('🔊 Connecting dedicated audio WebSocket:', audioUrl);
@@ -550,7 +558,7 @@ export default function AIAssistantPanel({
                     },
                     timestamp: Date.now() / 1000
                 }));
-                connectAudioWebSocket(sessionId, wsUrlTemp);
+                connectAudioWebSocket(sessionId, wsUrlTemp, tenantId);
             } else {
                 ws.send(JSON.stringify({
                     event: "start",
