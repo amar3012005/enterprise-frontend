@@ -245,6 +245,7 @@ export default function AIAssistantPanel({
     const lastPlaybackTimeRef = useRef(0);
     const playbackStartTimeRef = useRef<number | null>(null);
     const audioStreamCompleteRef = useRef(false);
+    const playedAudioThisTurnRef = useRef(false);
     const audioConfigRef = useRef({ format: 'pcm_s16le', sampleRate: 16000 });
     const currentPlaybackTurnIdRef = useRef<number | null>(null);
     const minAcceptedPlaybackTurnIdRef = useRef(0);
@@ -388,7 +389,11 @@ export default function AIAssistantPanel({
         if (!audioCtxRef.current) return;
         if (audioCtxRef.current.currentTime >= lastPlaybackTimeRef.current - 0.1) {
             setAgentIsSpeaking(false);
-            if (audioStreamCompleteRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
+            if (
+                audioStreamCompleteRef.current &&
+                playedAudioThisTurnRef.current &&
+                wsRef.current?.readyState === WebSocket.OPEN
+            ) {
                 const duration = playbackStartTimeRef.current ? Date.now() - playbackStartTimeRef.current : 0;
                 wsRef.current.send(JSON.stringify({
                     type: 'playback_done',
@@ -398,6 +403,7 @@ export default function AIAssistantPanel({
                 }));
                 playbackStartTimeRef.current = null;
                 audioStreamCompleteRef.current = false;
+                playedAudioThisTurnRef.current = false;
                 currentPlaybackTurnIdRef.current = null;
             }
         }
@@ -434,6 +440,7 @@ export default function AIAssistantPanel({
         binaryQueueRef.current = [];
         currentPlaybackTurnIdRef.current = null;
         audioStreamCompleteRef.current = false;
+        playedAudioThisTurnRef.current = false;
         playbackStartTimeRef.current = null;
         if (audioCtxRef.current) lastPlaybackTimeRef.current = audioCtxRef.current.currentTime;
         setAgentIsSpeaking(false);
@@ -466,6 +473,7 @@ export default function AIAssistantPanel({
         }
 
         if (audioCtxRef.current) {
+            playedAudioThisTurnRef.current = true;
             const buf = audioCtxRef.current.createBuffer(1, f32.length, sr);
             buf.copyToChannel(f32 as Float32Array<ArrayBuffer>, 0);
             const s = audioCtxRef.current.createBufferSource();
@@ -703,20 +711,26 @@ export default function AIAssistantPanel({
                 }
                 if (d.sample_rate) audioConfigRef.current.sampleRate = d.sample_rate;
 
-                setAgentIsSpeaking(true);
-                audioStreamCompleteRef.current = false;
+                const hasBinaryAudio = Boolean(d.binary_sent && binaryQueueRef.current.length > 0);
+                const hasInlineAudio = Boolean(d.data || d.audio);
+                const hasAudioPayload = hasBinaryAudio || hasInlineAudio;
+
+                if (hasAudioPayload) {
+                    setAgentIsSpeaking(true);
+                    audioStreamCompleteRef.current = false;
+                }
 
                 // TTFC metric
-                if (turnStartTimeRef.current && !hasTtfcForTurnRef.current) {
+                if (hasAudioPayload && turnStartTimeRef.current && !hasTtfcForTurnRef.current) {
                     const ttfc = Math.round(performance.now() - turnStartTimeRef.current);
                     setMetrics(prev => ({ ...prev, ttfc }));
                     hasTtfcForTurnRef.current = true;
                 }
 
-                if (d.binary_sent && binaryQueueRef.current.length > 0) {
+                if (hasBinaryAudio) {
                     const c = binaryQueueRef.current.shift();
                     if (c) playAudioChunk(c, audioConfigRef.current.format === 'pcm_s16le');
-                } else {
+                } else if (hasInlineAudio) {
                     const a = d.data || d.audio;
                     if (a) playAudioChunk(a);
                 }
@@ -727,8 +741,8 @@ export default function AIAssistantPanel({
                 }
             }
 
-            // ── audio_complete or is_final ──
-            if (d.type === 'audio_complete' || d.is_final) {
+            // ── explicit audio_complete only ──
+            if (d.type === 'audio_complete') {
                 audioStreamCompleteRef.current = true;
                 checkPlaybackComplete();
             }
