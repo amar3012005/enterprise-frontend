@@ -527,7 +527,8 @@ export default function AIAssistantPanel({
 
         ws.onopen = () => {
             wsConnectedRef.current = true;
-            const sessionId = crypto.randomUUID();
+            // Use the SAME session ID as the main WS — server rejects mismatched IDs
+            const sessionId = defaultSessionId;
             sessionIdRef.current = sessionId;
 
             if (isCustomProtocol) {
@@ -605,7 +606,16 @@ export default function AIAssistantPanel({
 
         ws.onmessage = async (e) => {
             if (e.data instanceof ArrayBuffer) {
-                binaryQueueRef.current.push(e.data);
+                // If dedicated audio WS is active, queue for audio_chunk JSON to dequeue
+                // Otherwise play directly (intro audio before audio WS connects)
+                if (audioStreamActiveRef.current) {
+                    binaryQueueRef.current.push(e.data);
+                } else {
+                    // Play directly like TaraVoiceWidget — handles intro audio
+                    if (!playbackStartTimeRef.current) playbackStartTimeRef.current = Date.now();
+                    setAgentIsSpeaking(true);
+                    playAudioChunk(e.data, audioConfigRef.current.format === 'pcm_s16le');
+                }
                 return;
             }
 
