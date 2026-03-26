@@ -606,16 +606,7 @@ export default function AIAssistantPanel({
 
         ws.onmessage = async (e) => {
             if (e.data instanceof ArrayBuffer) {
-                // If dedicated audio WS is active, queue for audio_chunk JSON to dequeue
-                // Otherwise play directly (intro audio before audio WS connects)
-                if (audioStreamActiveRef.current) {
-                    binaryQueueRef.current.push(e.data);
-                } else {
-                    // Play directly like TaraVoiceWidget — handles intro audio
-                    if (!playbackStartTimeRef.current) playbackStartTimeRef.current = Date.now();
-                    setAgentIsSpeaking(true);
-                    playAudioChunk(e.data, audioConfigRef.current.format === 'pcm_s16le');
-                }
+                binaryQueueRef.current.push(e.data);
                 return;
             }
 
@@ -727,18 +718,11 @@ export default function AIAssistantPanel({
 
                     if (data.is_final) {
                         audioStreamCompleteRef.current = true;
-                        // Don't call checkPlaybackComplete() here — let source.onended handle it
-                        // Calling it synchronously causes playback_done to fire before audio plays
+                        checkPlaybackComplete();
                     }
                 } else if (data.type === 'audio_complete' || data.is_final) {
                     audioStreamCompleteRef.current = true;
-                    // Don't call checkPlaybackComplete() synchronously — let source.onended handle it
-                    // Fallback: if no audio sources are active (no chunks received), check after delay
-                    setTimeout(() => {
-                        if (audioStreamCompleteRef.current && activeSourcesRef.current.size === 0) {
-                            checkPlaybackComplete();
-                        }
-                    }, 2000);
+                    checkPlaybackComplete();
                 } else if (data.type === 'interrupt' || data.type === 'clear' || data.type === 'playback_stop' || (data.type === 'state_update' && (data.state === 'listening' || data.state === 'thinking'))) {
                     stopPlayback();
                 } else if (data.type === 'ping') {
