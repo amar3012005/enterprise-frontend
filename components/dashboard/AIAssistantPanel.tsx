@@ -863,7 +863,7 @@ export default function AIAssistantPanel({
         if (!audioCtxRef.current) return;
         if (audioCtxRef.current.currentTime >= lastPlaybackTimeRef.current - 0.1) {
             setAgentIsSpeaking(false);
-            if (audioStreamCompleteRef.current && wsRef.current?.readyState === WebSocket.OPEN && agentData?.websocket_url && agentData.websocket_url !== "not_set") {
+            if (audioStreamCompleteRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
                 const duration = playbackStartTimeRef.current ? Date.now() - playbackStartTimeRef.current : 0;
                 wsRef.current.send(JSON.stringify({
                     type: 'playback_done',
