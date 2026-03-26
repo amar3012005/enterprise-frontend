@@ -202,7 +202,6 @@ export default function EnterpriseTestingPage() {
                         key={`${port}-${lang}`} // Re-mount when critical settings change
                         agentId={testingAgent.agent_id}
                         fallbackAgent={testingAgent}
-                        layoutMode="phone"
                     />
                 </div>
            </div>
